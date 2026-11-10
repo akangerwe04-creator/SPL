@@ -16,14 +16,8 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Current Database: `spl2026`
+-- Struktur dan Data Tabel Aplikasi SPL (Siap Import ke Hostinger / cPanel)
 --
-
-/*!40000 DROP DATABASE IF EXISTS `spl2026`*/;
-
-CREATE DATABASE /*!32312 IF NOT EXISTS*/ `spl2026` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci */;
-
-USE `spl2026`;
 
 --
 -- Table structure for table `agent_deposits`
