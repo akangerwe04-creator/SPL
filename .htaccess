@@ -5,6 +5,15 @@
 
     RewriteEngine On
 
+    # Keamanan: Blokir akses langsung ke file sensitif
+    RewriteRule ^\.env - [F,L,NC]
+    RewriteRule ^composer\.(json|lock) - [F,L,NC]
+    RewriteRule ^package\.json - [F,L,NC]
+    RewriteRule ^storage/framework/ - [F,L,NC]
+    RewriteRule ^storage/logs/ - [F,L,NC]
+    RewriteRule ^bootstrap/cache/ - [F,L,NC]
+    RewriteRule ^database/.*\.sql$ - [F,L,NC]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
@@ -14,6 +23,9 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
+    # Teruskan request ke folder public/ secara otomatis
+    RewriteCond %{REQUEST_URI} !/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+
     DirectoryIndex index.php
 </IfModule>
-

@@ -16,6 +16,7 @@ yarn-error.log
 /.vscode
 /database/*.sqlite
 /database/*.sqlite-journal
+*.zip
 /storage/framework/cache/data/*
 /storage/framework/sessions/*
 /storage/framework/views/*
