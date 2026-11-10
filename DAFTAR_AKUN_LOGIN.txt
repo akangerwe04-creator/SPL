@@ -1,0 +1,45 @@
+================================================================================
+           DAFTAR AKUN PENGGUNA RESMI - SPL (SUSI PARSEL LEBARAN) 2026
+================================================================================
+
+1. AKUN SUPER ADMIN / OWNER
+   - Peran        : Super Admin / Pemilik Usaha
+   - Username     : owner
+   - Password     : ownerspl
+   - Akses Menu   : Dashboard Finansial, 71 Menu Agen, Belanja Barang, Tutup Buku, 
+                    Pengaturan Logo/Aplikasi, Backup/Reset Data, Ekspor Rekap.
+
+2. AKUN ADMINISTRATOR OPERASIONAL
+   - Peran        : Administrator
+   - Username     : admin
+   - Password     : admin123
+   - Akses Menu   : Manajemen Agen & Konsumen, Tutup Buku, Pengaturan Data Barang & Paket.
+
+3. CONTOH BEBERAPA AKUN AGEN LAPANGAN (DARI TOTAL 71 AGEN AKTIF)
+   Semua akun agen lapangan sudah dibuatkan dan tersimpan di database:
+
+   No | Nama Agen Lapangan  | Username      | Password  | No. WhatsApp
+   ---+---------------------+---------------+-----------+-----------------
+   1  | AI KOMARIAH         | aikomariah    | password  | 081234567890
+   2  | ELIS MAYA           | elismaya      | password  | 08123456789
+   3  | N YETI              | nyeti         | password  | 08123456789
+   4  | ADEL                | adel          | password  | 08123456789
+   5  | DIANA               | diana         | password  | 08123456789
+   6  | SITI ALFIAH         | sitialfiah    | password  | 08123456789
+   7  | RISMA               | risma         | password  | 08123456789
+   8  | NISSA               | nissa         | password  | 08123456789
+   9  | RESTIA              | restia        | password  | 08123456789
+   10 | TEH ASIH            | tehasih       | password  | 08123456789
+   11 | WINDA NINGSIH       | windaningsih  | password  | 08123456789
+   12 | IRA SINTA           | irasinta      | agenspl   | 0812-3456-7890
+   13 | TEH DEVI            | tehdevi       | agenspl   | 0812-3456-7890
+   14 | LISNA               | lisna         | agenspl   | 0812-3456-7890
+   15 | SITI NURHALIZA      | sitinur       | password123| 0813-9876-5432
+   ... dan 56 agen lainnya.
+
+* CATATAN UNTUK OWNER:
+  Untuk mengunduh daftar LENGKAP seluruh 71 agen beserta password, nama, dan nomor WA
+  dalam format Excel (.xlsx), login sebagai Owner lalu klik menu:
+  "2. Menu Agen" -> Tombol "Ekspor Akun Agen (.xlsx)".
+================================================================================
+
