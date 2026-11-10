@@ -1,8 +1,4 @@
 <IfModule mod_rewrite.c>
-    <IfModule mod_negotiation.c>
-        Options -MultiViews -Indexes
-    </IfModule>
-
     RewriteEngine On
 
     # Keamanan: Blokir akses langsung ke file sensitif
@@ -23,9 +19,8 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Teruskan request ke folder public/ secara otomatis
+    # Teruskan request ke folder public/ secara aman tanpa rewrite loop
+    RewriteCond %{ENV:REDIRECT_STATUS} ^$
     RewriteCond %{REQUEST_URI} !/public/
     RewriteRule ^(.*)$ public/$1 [L]
-
-    DirectoryIndex index.php
 </IfModule>
