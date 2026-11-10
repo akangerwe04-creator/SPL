@@ -142,3 +142,4 @@ Pastikan folder `storage` dan `bootstrap/cache` dapat ditulis oleh web server:
    - **Admin**: `admin` / `admin123`
    - **Agen**: `agen01` s/d `agen71` / `agen123`
 4. Selamat, aplikasi Susi Parsel Lebaran (SPL) 2026 Anda sudah online dan siap digunakan oleh 500+ pengguna secara bersamaan!
+

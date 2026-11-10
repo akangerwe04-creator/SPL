@@ -549,7 +549,7 @@
                             <div class="flex items-center justify-between pb-3 border-b border-amber-200">
                                 <div class="flex items-center space-x-2.5 flex-wrap">
                                     <span class="w-6 h-6 rounded-full bg-amber-600 text-white font-black text-xs flex items-center justify-center shadow-xs" x-text="tIdx + 1"></span>
-                                    <h5 class="font-extrabold text-amber-950 text-sm" x-text="`Pilihan Jenis Tabungan #${tIdx + 1}`"></h5>
+                                    <h5 class="font-extrabold text-amber-950 text-sm" x-text="tier.title ? tier.title : `Pilihan Jenis Tabungan #${tIdx + 1}`"></h5>
                                     <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-900 border border-amber-300"
                                         x-text="`Setor: ${formatRupiah(tier.installment_amount)}/mgg → Cair: ${formatRupiah(tier.target_nominal)}`">
                                     </span>
@@ -559,6 +559,19 @@
                                         <i class="fa-solid fa-trash-can mr-1"></i> Hapus Jenis Ini
                                     </button>
                                 </template>
+                            </div>
+
+                            <!-- INPUT JUDUL / LABEL TIER (OPSIONAL) -->
+                            <div class="space-y-1">
+                                <label class="block font-black text-amber-950 text-xs">
+                                    <i class="fa-solid fa-tag text-amber-600 mr-1"></i> Nama / Label Pilihan Tabungan Ini (Opsional)
+                                </label>
+                                <input type="text"
+                                    :name="type === 'tabungan' ? `tabungan_tiers[${tIdx}][title]` : ''"
+                                    x-model="tier.title"
+                                    :placeholder="`Contoh: Tabungan SPL ${formatRupiah(tier.installment_amount)} / Mgg`"
+                                    class="w-full p-2.5 bg-white border border-amber-300 rounded-lg text-xs font-bold text-amber-950 focus:outline-none focus:border-amber-600 shadow-2xs placeholder:text-slate-400">
+                                <p class="text-[10px] text-amber-800 font-medium">Bisa dikosongkan. Jika kosong, sistem otomatis memberi nama berdasarkan nominal setor & cair.</p>
                             </div>
 
                             <!-- INPUT UTAMA: NOMINAL STOR & NOMINAL YANG AKAN DIDAPAT -->
@@ -1306,7 +1319,7 @@
 function packageBuilder() {
     return {
         name: @json(old('name', '')),
-        type: 'parsel',
+        type: '{{ old('type', 'parsel') }}',
         periodType: '{{ old('period_type', 'harian') }}',
         startDate: '{{ old('start_date', $defaultStartDate) }}',
         endDate: '{{ old('end_date', $defaultEndDate) }}',
@@ -1328,16 +1341,17 @@ function packageBuilder() {
             { item_name: '', item_id: '', quantity: 1, unit: 'kg', installment_amount: 0, is_bonus: false }
         ],
 
-        // Data Multi-Tier Khusus Tabungan SPL
-        tabunganTiers: [
-            {
-                installment_amount: 10000,
-                target_nominal: 300000,
-                bonuses: [
-                    { item_id: '', item_name: '', quantity: 1, unit: 'pcs' }
+        // Data Multi-Tier Khusus Tabungan SPL (Preserved via old input)
+        tabunganTiers: @json(old('tabungan_tiers', [
+            [
+                'installment_amount' => 10000,
+                'target_nominal' => 300000,
+                'title' => '',
+                'bonuses' => [
+                    [ 'item_id' => '', 'item_name' => '', 'quantity' => 1, 'unit' => 'pcs' ]
                 ]
-            }
-        ],
+            ]
+        ])),
 
         addTabunganTier() {
             const lastTier = this.tabunganTiers[this.tabunganTiers.length - 1];
@@ -1346,6 +1360,7 @@ function packageBuilder() {
             this.tabunganTiers.push({
                 installment_amount: nextInstallment,
                 target_nominal: nextTarget,
+                title: '',
                 bonuses: [
                     { item_id: '', item_name: '', quantity: 1, unit: 'pcs' }
                 ]

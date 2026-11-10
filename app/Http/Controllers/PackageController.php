@@ -63,92 +63,121 @@ class PackageController extends Controller
             $periodType = $request->input('period_type', 'mingguan');
             $installmentCount = max(1, (int) ($request->input('installment_count') ?: 30));
             $baseName = trim($request->input('name') ?: 'Tabungan SPL');
-            $createdPackages = [];
+            $startDate = $request->filled('start_date') ? $request->input('start_date') : null;
+            $endDate = $request->filled('end_date') ? $request->input('end_date') : null;
+            $safeThreshold = $request->filled('safe_threshold') ? (float) $request->input('safe_threshold') : null;
+            $description = $request->input('description') ?: 'Paket Tabungan SPL dengan pencairan uang tunai dan hadiah bonus gratis.';
+            $imagePath = null;
 
-            foreach ($tiers as $tIdx => $tier) {
-                $installment = (float) ($tier['installment_amount'] ?? 0);
-                $targetDidapat = (float) ($tier['target_nominal'] ?? 0);
-                if ($installment <= 0 && $targetDidapat <= 0) {
-                    continue;
-                }
-
-                if ($installment <= 0 && $targetDidapat > 0 && $installmentCount > 0) {
-                    $installment = $targetDidapat / $installmentCount;
-                } elseif ($targetDidapat <= 0 && $installment > 0) {
-                    $targetDidapat = $installment * $installmentCount;
-                }
-
-                $code = Package::generateNextCode('tabungan');
-
-                $tierName = count($tiers) > 1 
-                    ? ($baseName . ' (Setor Rp ' . number_format($installment, 0, ',', '.') . ' - Cair Rp ' . number_format($targetDidapat, 0, ',', '.') . ')')
-                    : $baseName;
-
-                $pkg = Package::create([
-                    'code' => $code,
-                    'name' => $tierName,
-                    'type' => 'tabungan',
-                    'base_price' => $targetDidapat,
-                    'target_nominal' => $targetDidapat,
-                    'installment_count' => $installmentCount,
-                    'installment_amount' => $installment,
-                    'admin_fee' => 0,
-                    'period_type' => $periodType,
-                    'start_date' => $request->input('start_date'),
-                    'end_date' => $request->input('end_date'),
-                    'description' => $request->input('description') ?: 'Paket Tabungan SPL dengan pencairan uang tunai dan hadiah bonus gratis.',
-                    'is_active' => true,
-                ]);
-
-                // Simpan hadiah bonus untuk jenis tabungan ini
-                if (!empty($tier['bonuses']) && is_array($tier['bonuses'])) {
-                    foreach ($tier['bonuses'] as $b) {
-                        $itemId = $b['item_id'] ?? null;
-                        $itemName = trim($b['item_name'] ?? ($b['name'] ?? ''));
-                        $qty = max(1, (int) ($b['quantity'] ?? ($b['qty'] ?? 1)));
-                        $unit = trim($b['unit'] ?? 'pcs') ?: 'pcs';
-
-                        if (empty($itemId) && !empty($itemName)) {
-                            $existingItem = Item::whereRaw('LOWER(name) = ?', [strtolower($itemName)])->first();
-                            if ($existingItem) {
-                                $itemId = $existingItem->id;
-                            } else {
-                                $codeItem = Item::generateNextCode('Hadiah Bonus');
-                                $newItem = Item::create([
-                                    'code' => $codeItem,
-                                    'name' => $itemName,
-                                    'category' => 'Hadiah Bonus',
-                                    'base_unit' => $unit,
-                                    'wholesale_unit' => 'dus',
-                                    'conversion_rate' => 1,
-                                    'unit_price' => 0,
-                                    'cost_price' => 0,
-                                    'wholesale_price' => 0,
-                                    'stock_units' => 0,
-                                    'is_active' => true,
-                                ]);
-                                $itemId = $newItem->id;
-                            }
-                        }
-
-                        if (!empty($itemId)) {
-                            PackageItem::create([
-                                'package_id' => $pkg->id,
-                                'item_id' => $itemId,
-                                'quantity' => $qty,
-                                'unit' => $unit,
-                                'is_bonus' => true,
-                            ]);
-                        }
-                    }
-                }
-
-                $createdPackages[] = $pkg;
+            if ($request->hasFile('image')) {
+                $result = ImageOptimizer::optimizeAndSave($request->file('image'), 'packages');
+                $imagePath = $result['path'] ?? null;
             }
 
-            if (!empty($createdPackages)) {
-                return redirect()->route('packages.index')
-                    ->with('success', 'Berhasil mendaftarkan ' . count($createdPackages) . ' jenis Tabungan SPL dengan nominal storan dan hadiah bonus masing-masing.');
+            DB::beginTransaction();
+            try {
+                $createdPackages = [];
+
+                foreach ($tiers as $tIdx => $tier) {
+                    $installment = (float) ($tier['installment_amount'] ?? 0);
+                    $targetDidapat = (float) ($tier['target_nominal'] ?? 0);
+                    if ($installment <= 0 && $targetDidapat <= 0) {
+                        continue;
+                    }
+
+                    if ($installment <= 0 && $targetDidapat > 0 && $installmentCount > 0) {
+                        $installment = Package::roundInstallment($targetDidapat / $installmentCount);
+                    } elseif ($targetDidapat <= 0 && $installment > 0) {
+                        $targetDidapat = $installment * $installmentCount;
+                    }
+
+                    $code = Package::generateNextCode('tabungan');
+
+                    $customTitle = trim($tier['title'] ?? ($tier['name'] ?? ''));
+                    if (!empty($customTitle)) {
+                        $tierName = $customTitle;
+                    } else {
+                        $tierName = count($tiers) > 1 
+                            ? ($baseName . ' (Setor Rp ' . number_format($installment, 0, ',', '.') . ' - Cair Rp ' . number_format($targetDidapat, 0, ',', '.') . ')')
+                            : $baseName;
+                    }
+
+                    $pkg = Package::create([
+                        'code' => $code,
+                        'name' => $tierName,
+                        'type' => 'tabungan',
+                        'base_price' => $targetDidapat,
+                        'target_nominal' => $targetDidapat,
+                        'installment_count' => $installmentCount,
+                        'installment_amount' => $installment,
+                        'admin_fee' => 0,
+                        'period_type' => $periodType,
+                        'start_date' => $startDate,
+                        'end_date' => $endDate,
+                        'safe_threshold' => $safeThreshold,
+                        'image_path' => $imagePath,
+                        'description' => $description,
+                        'is_active' => true,
+                    ]);
+
+                    // Simpan hadiah bonus untuk jenis tabungan ini
+                    if (!empty($tier['bonuses']) && is_array($tier['bonuses'])) {
+                        foreach ($tier['bonuses'] as $b) {
+                            $itemId = $b['item_id'] ?? null;
+                            $itemName = trim($b['item_name'] ?? ($b['name'] ?? ''));
+                            $qty = max(1, (int) ($b['quantity'] ?? ($b['qty'] ?? 1)));
+                            $unit = trim($b['unit'] ?? 'pcs') ?: 'pcs';
+
+                            if (empty($itemId) && !empty($itemName)) {
+                                $existingItem = Item::whereRaw('LOWER(name) = ?', [strtolower($itemName)])->first();
+                                if ($existingItem) {
+                                    $itemId = $existingItem->id;
+                                } else {
+                                    $codeItem = Item::generateNextCode('Hadiah Bonus');
+                                    $newItem = Item::create([
+                                        'code' => $codeItem,
+                                        'name' => $itemName,
+                                        'category' => 'Hadiah Bonus',
+                                        'base_unit' => $unit,
+                                        'wholesale_unit' => 'dus',
+                                        'conversion_rate' => 1,
+                                        'unit_price' => 0,
+                                        'cost_price' => 0,
+                                        'wholesale_price' => 0,
+                                        'stock_units' => 0,
+                                        'is_active' => true,
+                                    ]);
+                                    $itemId = $newItem->id;
+                                }
+                            }
+
+                            if (!empty($itemId)) {
+                                PackageItem::create([
+                                    'package_id' => $pkg->id,
+                                    'item_id' => $itemId,
+                                    'quantity' => $qty,
+                                    'unit' => $unit,
+                                    'is_bonus' => true,
+                                ]);
+                            }
+                        }
+                    }
+
+                    $createdPackages[] = $pkg;
+                }
+
+                if (!empty($createdPackages)) {
+                    DB::commit();
+                    return redirect()->route('packages.index')
+                        ->with('success', 'Berhasil mendaftarkan ' . count($createdPackages) . ' pilihan jenis Tabungan SPL dengan nominal storan, uang tunai cair, dan hadiah bonus masing-masing.');
+                }
+
+                DB::rollBack();
+            } catch (\Throwable $e) {
+                DB::rollBack();
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Gagal menyimpan pilihan jenis tabungan: ' . $e->getMessage());
             }
         }
 
