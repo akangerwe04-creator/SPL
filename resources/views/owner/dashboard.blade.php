@@ -169,15 +169,9 @@
                                             {{ $dep->formatted_total }}
                                         </td>
                                         <td class="py-3 px-4">
-                                            @if($dep->status === 'submitted')
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-                                                    <i class="fa-solid fa-bell mr-1 animate-pulse"></i> Diajukan Agen
-                                                </span>
-                                            @elseif($dep->status === 'pending')
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
-                                                    <i class="fa-solid fa-basket-shopping mr-1"></i> Keranjang Berjalan
-                                                </span>
-                                            @endif
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                                                <i class="fa-solid fa-bell mr-1 animate-pulse"></i> Diajukan Agen (Menunggu Validasi)
+                                            </span>
                                         </td>
                                         <td class="py-3 px-4 text-right space-x-1">
                                             <a href="{{ route('owner.deposits.show', $dep) }}" class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition">

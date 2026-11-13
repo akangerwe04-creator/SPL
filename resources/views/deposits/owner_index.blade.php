@@ -49,11 +49,11 @@
     <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
         <form action="{{ route('owner.deposits.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
             <select name="status" onchange="this.form.submit()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-medium text-slate-700">
-                <option value="">Semua Status</option>
-                <option value="submitted" {{ request('status') === 'submitted' ? 'selected' : '' }}>Diajukan (Menunggu Validasi)</option>
+                <option value="">Semua Status Aktif (Diajukan, Disahkan, Ditolak)</option>
+                <option value="submitted" {{ request('status') === 'submitted' ? 'selected' : '' }}>Diajukan Agen (Menunggu Validasi)</option>
                 <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Disahkan (Valid)</option>
-                <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending Lapangan</option>
                 <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Ditolak</option>
+                <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Draft Lapangan (Belum Diajukan)</option>
             </select>
 
             <select name="agent_id" onchange="this.form.submit()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-medium text-slate-700">

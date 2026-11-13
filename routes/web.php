@@ -60,6 +60,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
     Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->name('customers.edit');
     Route::put('/customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+    Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
     Route::post('/customers/package/{customerPackage}/cancel', [CustomerController::class, 'cancelPackage'])->name('customers.package.cancel');
 
     // 4. Smart Payment Checklist
@@ -70,6 +71,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/agent/cart', [AgentDepositController::class, 'currentCart'])->name('agent.cart');
     Route::post('/agent/cart/{deposit}/submit', [AgentDepositController::class, 'submitCart'])->name('agent.cart.submit');
     Route::get('/agent/deposits/history', [AgentDepositController::class, 'agentHistory'])->name('agent.deposits.history');
+    Route::post('/agent/deposits/{deposit}/reopen', [AgentDepositController::class, 'reopenRejected'])->name('agent.deposits.reopen');
 
     // 6. OWNER ONLY ROUTES (7 MENU TERSTRUKTUR)
     Route::middleware(['role:owner'])->group(function () {

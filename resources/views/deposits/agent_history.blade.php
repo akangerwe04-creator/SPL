@@ -77,9 +77,19 @@
                                             <i class="fa-solid fa-clock mr-1 animate-pulse"></i> Menunggu Sah
                                         </span>
                                     @elseif($dep->status === 'rejected')
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800">
-                                            <i class="fa-solid fa-circle-xmark mr-1"></i> Ditolak
-                                        </span>
+                                        <div class="space-y-1">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800">
+                                                <i class="fa-solid fa-circle-xmark mr-1"></i> Ditolak
+                                            </span>
+                                            <div>
+                                                <form action="{{ route('agent.deposits.reopen', $dep) }}" method="POST" class="inline" onsubmit="return confirm('Buka kembali setoran ini ke Keranjang Aktif untuk diperbaiki?');">
+                                                    @csrf
+                                                    <button type="submit" class="inline-flex items-center px-2 py-0.5 rounded bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] shadow-2xs transition">
+                                                        <i class="fa-solid fa-rotate-left mr-1"></i> Buka / Revisi
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
                                     @else
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
                                             Pending

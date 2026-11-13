@@ -78,6 +78,15 @@ class CustomerController extends Controller
         $validated = $request->validate($rules);
         $agentId = $user->isOwner() ? $validated['agent_id'] : $user->id;
 
+        // Pengecekan nama konsumen duplikat di agen yang sama (DITOLAK sesuai aturan SPL)
+        $duplicate = Customer::where('agent_id', $agentId)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim($validated['name']))])
+            ->exists();
+
+        if ($duplicate) {
+            return back()->withInput()->with('error', 'Pendaftaran ditolak: Konsumen dengan nama "' . $validated['name'] . '" sudah terdaftar pada agen ini. Mohon gunakan nama yang berbeda atau tambahkan pembeda wilayah/dusun.');
+        }
+
         $package = Package::with('packagings')->findOrFail($validated['package_id']);
 
         DB::beginTransaction();
@@ -314,8 +323,19 @@ class CustomerController extends Controller
             abort(403);
         }
 
+        $customer->load([
+            'agent',
+            'customerPackages.package.packageItems.item',
+            'customerPackages.packaging',
+            'customerPackages.payments',
+        ]);
+
+        $activePackage = $customer->customerPackages->where('status', '!=', 'canceled')->first();
+        $packages = Package::where('is_active', true)->with(['packageItems.item', 'packagings'])->get();
+        $packagings = \App\Models\Packaging::where('is_active', true)->get();
         $agents = User::where('role', 'agent')->get();
-        return view('customers.edit', compact('customer', 'agents'));
+
+        return view('customers.edit', compact('customer', 'activePackage', 'packages', 'packagings', 'agents', 'user'));
     }
 
     public function update(Request $request, Customer $customer)
@@ -331,24 +351,191 @@ class CustomerController extends Controller
             'address' => 'nullable|string',
             'notes' => 'nullable|string',
             'agent_id' => 'nullable|exists:users,id',
+            'package_id' => 'nullable|exists:packages,id',
+            'packaging_id' => 'nullable',
         ]);
 
-        if ($user->isOwner() && !empty($validated['agent_id'])) {
-            $customer->agent_id = $validated['agent_id'];
-            // Perbarui juga paket aktif
-            foreach ($customer->customerPackages as $cp) {
-                $cp->update(['agent_id' => $validated['agent_id']]);
-            }
+        $targetAgentId = ($user->isOwner() && !empty($validated['agent_id'])) ? $validated['agent_id'] : $customer->agent_id;
+
+        // Pengecekan nama konsumen duplikat di agen yang sama (DITOLAK)
+        $duplicate = Customer::where('agent_id', $targetAgentId)
+            ->where('id', '!=', $customer->id)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim($validated['name']))])
+            ->exists();
+
+        if ($duplicate) {
+            return back()->withInput()->with('error', 'Pembaruan ditolak: Konsumen dengan nama "' . $validated['name'] . '" sudah terdaftar pada agen ini. Mohon gunakan nama yang berbeda atau tambahkan pembeda.');
         }
 
-        $customer->update([
-            'name' => $validated['name'],
-            'phone' => $validated['phone'],
-            'address' => $validated['address'],
-            'notes' => $validated['notes'],
-        ]);
+        DB::beginTransaction();
+        try {
+            if ($user->isOwner() && !empty($validated['agent_id'])) {
+                $customer->agent_id = $validated['agent_id'];
+                foreach ($customer->customerPackages as $cp) {
+                    $cp->update(['agent_id' => $validated['agent_id']]);
+                }
+            }
 
-        return redirect()->route('customers.show', $customer)->with('success', 'Data konsumen berhasil diperbarui.');
+            $customer->update([
+                'name' => $validated['name'],
+                'phone' => $validated['phone'],
+                'address' => $validated['address'],
+                'notes' => $validated['notes'],
+            ]);
+
+            // Cek pembaruan paket & kemasan konsumen
+            $activePackage = $customer->customerPackages->where('status', '!=', 'canceled')->first();
+            if ($activePackage && $request->filled('package_id')) {
+                $newPackageId = (int) $validated['package_id'];
+                $newPackagingId = !empty($validated['packaging_id']) ? (int) $validated['packaging_id'] : null;
+
+                $packageChanged = ((int)$activePackage->package_id !== $newPackageId);
+                $packagingChanged = ((int)($activePackage->packaging_id ?? 0) !== (int)($newPackagingId ?? 0));
+
+                if ($packageChanged || $packagingChanged) {
+                    $newPackage = Package::with(['packagings', 'packageItems'])->findOrFail($newPackageId);
+
+                    // Hitung harga kemasan baru
+                    $packagingPrice = 0;
+                    if ($newPackagingId) {
+                        $pkgOption = $newPackage->packagings->where('id', $newPackagingId)->first();
+                        if ($pkgOption) {
+                            $packagingPrice = $pkgOption->pivot->custom_price !== null ? (float)$pkgOption->pivot->custom_price : (float)$pkgOption->price;
+                        } else {
+                            $masterKms = \App\Models\Packaging::find($newPackagingId);
+                            if ($masterKms) {
+                                $packagingPrice = (float) $masterKms->price;
+                            }
+                        }
+                    }
+
+                    // Tentukan Total Target & Cicilan baru
+                    $installmentCount = $newPackage->installment_count ?: 30;
+                    if ((float) $newPackage->target_nominal > 0) {
+                        $targetNominal = (float) $newPackage->target_nominal + $packagingPrice;
+                        $rawInstallment = $installmentCount > 0 ? ($targetNominal / $installmentCount) : 0;
+                    } else {
+                        $baseInstallment = (float) ($newPackage->installment_amount ?: 0);
+                        $rawInstallment = $baseInstallment + ($installmentCount > 0 ? ($packagingPrice / $installmentCount) : 0);
+                        $targetNominal = ($baseInstallment * $installmentCount) + $packagingPrice;
+                    }
+                    $installmentAmount = Package::roundInstallment($rawInstallment);
+
+                    // Cek riwayat pembayaran yang sudah ada
+                    $paidPayments = $activePackage->payments()->where('is_paid', true)->get();
+                    $paidCount = $paidPayments->count();
+                    $paidSum = (float) $paidPayments->sum('amount');
+
+                    if ($paidCount === 0) {
+                        // Belum ada cicilan disetor: Hapus seluruh ceklis lama, susun ceklis baru
+                        $activePackage->payments()->delete();
+                        for ($week = 1; $week <= $installmentCount; $week++) {
+                            Payment::create([
+                                'customer_package_id' => $activePackage->id,
+                                'agent_id' => $activePackage->agent_id,
+                                'period_number' => $week,
+                                'amount' => $installmentAmount,
+                                'is_paid' => false,
+                                'is_locked' => false,
+                                'status' => 'unpaid',
+                            ]);
+                        }
+                    } else {
+                        // Sudah ada cicilan masuk: Pertahankan yang sudah terbayar, sesuaikan sisa tagihan
+                        $remainingTarget = max(0, $targetNominal - $paidSum);
+                        $remainingCount = max(1, $installmentCount - $paidCount);
+                        $newRemainingInstallment = Package::roundInstallment($remainingTarget / $remainingCount);
+
+                        // Hapus kotak tagihan yang belum terbayar
+                        $activePackage->payments()->where('is_paid', false)->delete();
+
+                        // Buat kotak tagihan baru untuk sisa periode
+                        for ($w = 1; $w <= $remainingCount; $w++) {
+                            $periodNum = $paidCount + $w;
+                            Payment::create([
+                                'customer_package_id' => $activePackage->id,
+                                'agent_id' => $activePackage->agent_id,
+                                'period_number' => $periodNum,
+                                'amount' => $newRemainingInstallment,
+                                'is_paid' => false,
+                                'is_locked' => false,
+                                'status' => 'unpaid',
+                            ]);
+                        }
+                    }
+
+                    // Perbarui metadata activePackage
+                    $activePackage->update([
+                        'package_id' => $newPackage->id,
+                        'packaging_id' => $newPackagingId,
+                        'packaging_price' => $packagingPrice,
+                        'total_target' => $targetNominal,
+                    ]);
+
+                    $activePackage->recalculatePaidAmount();
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('customers.show', $customer)
+                ->with('success', 'Data konsumen dan pilihan paket/kemasan berhasil diperbarui.');
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return back()->withInput()->with('error', 'Gagal memperbarui data: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Hapus Data Konsumen (Jika Tidak Jadi Ikut Program SPL)
+     */
+    public function destroy(Customer $customer)
+    {
+        $user = Auth::user();
+        if ($user->isAgent() && $customer->agent_id !== $user->id) {
+            abort(403, 'Anda tidak memiliki hak untuk menghapus data konsumen ini.');
+        }
+
+        // Cek jika sudah ada setoran yang telah disahkan/diverifikasi oleh Owner
+        $hasVerifiedPayments = $customer->customerPackages()
+            ->whereHas('payments', fn($q) => $q->where('is_locked', true)->orWhere('status', 'verified'))
+            ->exists();
+
+        if ($hasVerifiedPayments && !$user->isOwner()) {
+            return back()->with('error', 'Konsumen ini tidak dapat langsung dihapus karena sudah memiliki setoran yang disahkan oleh Owner. Silakan gunakan fitur Batal Konsumen (Mundur Potongan 10%) atau hubungi Owner.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $customerName = $customer->name;
+
+            // Catat id deposit keranjang yang mungkin terdampak (misal ada ceklis pending di keranjang berjalan agen)
+            $affectedDepositIds = Payment::whereIn('customer_package_id', $customer->customerPackages->pluck('id'))
+                ->whereNotNull('agent_deposit_id')
+                ->pluck('agent_deposit_id')
+                ->unique();
+
+            // Hapus konsumen (cascade delete customerPackages, payments, customerCustomItems)
+            $customer->delete();
+
+            // Hitung ulang keranjang agen yang terdampak agar saldo keranjang berjalan akurat
+            foreach ($affectedDepositIds as $depId) {
+                $dep = \App\Models\AgentDeposit::find($depId);
+                if ($dep) {
+                    $dep->recalculateTotal();
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('customers.index')
+                ->with('success', 'Konsumen "' . $customerName . '" berhasil dihapus karena tidak jadi ikut program.');
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal menghapus konsumen: ' . $e->getMessage());
+        }
     }
 
     /**

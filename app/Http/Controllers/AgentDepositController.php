@@ -75,6 +75,10 @@ class AgentDepositController extends Controller
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        } else {
+            // Sesuai arahan Owner: Jika agen belum ajukan maka ke owner belum masuk data apa-apa.
+            // Jangan tampilkan keranjang berjalan 'pending' secara default.
+            $query->where('status', '!=', 'pending');
         }
 
         if ($request->filled('agent_id')) {
@@ -136,6 +140,51 @@ class AgentDepositController extends Controller
 
         return redirect()->route('owner.deposits.index')
             ->with('success', 'Setoran telah ditolak dengan catatan: ' . $request->notes);
+    }
+
+    /**
+     * Agen: Buka kembali berkas setoran yang ditolak untuk diperbaiki / disesuaikan
+     */
+    public function reopenRejected(AgentDeposit $deposit)
+    {
+        $user = Auth::user();
+        if ($deposit->agent_id !== $user->id && !$user->isOwner()) {
+            abort(403);
+        }
+
+        if ($deposit->status !== 'rejected') {
+            return back()->with('error', 'Hanya setoran yang ditolak yang dapat dibuka kembali.');
+        }
+
+        // Cari keranjang aktif saat ini (jika ada)
+        $currentPending = AgentDeposit::where('agent_id', $deposit->agent_id)
+            ->where('status', 'pending')
+            ->where('id', '!=', $deposit->id)
+            ->first();
+
+        if ($currentPending && $currentPending->payments()->count() > 0) {
+            // Gabungkan pembayaran dari setoran yang ditolak ke keranjang aktif
+            \App\Models\Payment::where('agent_deposit_id', $deposit->id)->update([
+                'agent_deposit_id' => $currentPending->id,
+            ]);
+            $currentPending->recalculateTotal();
+            $deposit->delete();
+        } else {
+            // Hapus keranjang pending kosong jika ada, lalu jadikan berkas ini sebagai pending kembali
+            if ($currentPending) {
+                $currentPending->delete();
+            }
+            $deposit->update([
+                'status' => 'pending',
+                'submitted_at' => null,
+                'approved_at' => null,
+                'approved_by' => null,
+            ]);
+            $deposit->recalculateTotal();
+        }
+
+        return redirect()->route('agent.cart')
+            ->with('success', 'Setoran ' . $deposit->deposit_number . ' telah dikembalikan ke Keranjang Aktif untuk direvisi dan diceklis ulang.');
     }
 }
 

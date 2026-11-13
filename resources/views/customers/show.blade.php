@@ -17,10 +17,17 @@
         <a href="{{ route('customers.index') }}" class="inline-flex items-center font-bold text-emerald-600 hover:text-emerald-700">
             <i class="fa-solid fa-arrow-left mr-1.5"></i> Kembali ke Daftar Konsumen
         </a>
-        <div class="space-x-2">
-            <a href="{{ route('customers.edit', $customer) }}" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold">
-                <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Data
+        <div class="flex items-center space-x-2">
+            <a href="{{ route('customers.edit', $customer) }}" class="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 transition">
+                <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Data & Paket
             </a>
+            <form action="{{ route('customers.destroy', $customer) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data konsumen {{ addslashes($customer->name) }} secara permanen karena tidak jadi ikut program?');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 font-bold border border-red-200 transition" title="Hapus jika tidak jadi ikut">
+                    <i class="fa-solid fa-trash-can mr-1"></i> Hapus
+                </button>
+            </form>
         </div>
     </div>
 

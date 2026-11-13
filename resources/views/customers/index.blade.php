@@ -148,11 +148,23 @@
                                     @endif
                                 </td>
                                 <td class="py-3.5 px-4 text-right">
-                                    @if($pkg)
-                                        <a href="{{ route('payments.checklist', $pkg) }}" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-xs">
-                                            <i class="fa-solid fa-list-check mr-1.5"></i> Ceklis Tagihan
+                                    <div class="flex items-center justify-end space-x-1.5">
+                                        @if($pkg)
+                                            <a href="{{ route('payments.checklist', $pkg) }}" class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-2xs" title="Buka Ceklis Tagihan">
+                                                <i class="fa-solid fa-list-check mr-1"></i> Ceklis
+                                            </a>
+                                        @endif
+                                        <a href="{{ route('customers.edit', $c) }}" class="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition" title="Edit Data & Paket">
+                                            <i class="fa-solid fa-pen-to-square"></i>
                                         </a>
-                                    @endif
+                                        <form action="{{ route('customers.destroy', $c) }}" method="POST" class="inline" onsubmit="return confirm('Hapus konsumen {{ addslashes($c->name) }} (tidak jadi ikut)? Seluruh riwayat akan dihapus permanen.');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition" title="Hapus konsumen (tidak jadi ikut)">
+                                                <i class="fa-solid fa-trash-can"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

@@ -18,7 +18,8 @@ class DashboardController extends Controller
         // 1. Ringkasan Finansial Utama
         $totalTarget = CustomerPackage::where('status', '!=', 'canceled')->sum('total_target');
         $totalVerifiedPaid = Payment::where('is_locked', true)->where('is_paid', true)->sum('amount');
-        $totalPendingDeposit = AgentDeposit::whereIn('status', ['pending', 'submitted'])->sum('total_amount');
+        // Hanya hitung setoran yang sudah diajukan oleh agen (status: submitted)
+        $totalPendingDeposit = AgentDeposit::where('status', 'submitted')->sum('total_amount');
         $remainingReceivable = max(0, $totalTarget - $totalVerifiedPaid);
 
         // 2. Statistik Member & Paket
@@ -26,10 +27,9 @@ class DashboardController extends Controller
         $totalCompletedPackages = CustomerPackage::where('status', 'completed')->count();
         $totalCanceledPackages = CustomerPackage::where('status', 'canceled')->count();
 
-        // 3. Setoran Agen Menunggu Validasi Owner
+        // 3. Setoran Agen Menunggu Validasi Owner (Hanya berkas yang telah resmi diajukan agen)
         $pendingDeposits = AgentDeposit::with(['agent', 'payments.customerPackage.customer'])
-            ->whereIn('status', ['submitted', 'pending'])
-            ->orderBy('status', 'asc') // submitted first
+            ->where('status', 'submitted')
             ->latest()
             ->take(6)
             ->get();
@@ -41,8 +41,10 @@ class DashboardController extends Controller
             ->selectRaw('agent_id, SUM(amount) as total')
             ->pluck('total', 'agent_id');
 
+        // Uang setoran yang sudah diajukan agen tetapi belum disahkan owner
         $inCartSums = Payment::where('is_locked', false)
             ->where('is_paid', true)
+            ->whereHas('deposit', fn($q) => $q->where('status', 'submitted'))
             ->groupBy('agent_id')
             ->selectRaw('agent_id, SUM(amount) as total')
             ->pluck('total', 'agent_id');
