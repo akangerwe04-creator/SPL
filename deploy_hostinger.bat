@@ -13,7 +13,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo [2/2] Mengupdate Hostinger via SSH dan membersihkan cache...
-ssh -i "%~dp0.deploy_key" -p 65002 -o StrictHostKeyChecking=no u200447225@153.92.8.204 "cd domains/susiparsel.com/public_html && git pull origin main && php artisan optimize:clear"
+ssh -i "%~dp0.deploy_key" -p 65002 -o StrictHostKeyChecking=no u200447225@153.92.8.204 "cd domains/susiparsel.com/public_html && git pull origin main && php artisan migrate --force && php artisan optimize:clear"
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Gagal sinkronisasi ke Hostinger.
     pause
