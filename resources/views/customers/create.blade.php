@@ -598,7 +598,7 @@ function customerRegistration() {
         filterEcerOnlySelected: false,
         ecerSearch: '',
         customQuantities: (() => {
-            const oldItems = @json(old('custom_items', []));
+            const oldItems = {!! json_encode(old('custom_items', [])) !!};
             const res = {};
             if (oldItems && typeof oldItems === 'object') {
                 for (const k in oldItems) {

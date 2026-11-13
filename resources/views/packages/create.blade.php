@@ -1318,7 +1318,7 @@
 <script>
 function packageBuilder() {
     return {
-        name: @json(old('name', '')),
+        name: {!! json_encode(old('name', '')) !!},
         type: '{{ old('type', 'parsel') }}',
         periodType: '{{ old('period_type', 'harian') }}',
         startDate: '{{ old('start_date', $defaultStartDate) }}',
@@ -1342,7 +1342,7 @@ function packageBuilder() {
         ],
 
         // Data Multi-Tier Khusus Tabungan SPL (Preserved via old input)
-        tabunganTiers: @json(old('tabungan_tiers', [
+        tabunganTiers: {!! json_encode(old('tabungan_tiers', [
             [
                 'installment_amount' => 10000,
                 'target_nominal' => 300000,
@@ -1351,7 +1351,7 @@ function packageBuilder() {
                     [ 'item_id' => '', 'item_name' => '', 'quantity' => 1, 'unit' => 'pcs' ]
                 ]
             ]
-        ])),
+        ])) !!},
 
         addTabunganTier() {
             const lastTier = this.tabunganTiers[this.tabunganTiers.length - 1];
