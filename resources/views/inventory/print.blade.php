@@ -436,6 +436,19 @@
             </div>
         @endif
 
+        <!-- CATATAN ATURAN DAFTAR BELANJA SPL (TITIK AMAN & KETETAPAN BARANG OWNER) -->
+        <div class="p-3 bg-slate-50 border border-slate-300 rounded-xl text-[11px] text-slate-700 space-y-1">
+            <div class="font-bold uppercase tracking-wider text-slate-900 flex items-center">
+                <span>Catatan Kepatuhan Daftar Belanja SPL:</span>
+            </div>
+            <p class="leading-relaxed">
+                Daftar belanja ini disusun secara ketat berdasarkan aturan SPL: hanya memuat pesanan konsumen yang <strong>telah mencapai/melebihi titik aman</strong> serta <strong>konsumen tidak selesai yang alokasi barang penggantinya telah resmi disahkan oleh Owner</strong>.
+                @if(!empty($excludedIncompleteCustomers) && count($excludedIncompleteCustomers) > 0)
+                    Terdapat <strong>{{ count($excludedIncompleteCustomers) }} konsumen</strong> yang belum mencapai titik aman dan belum ditetapkan barangnya oleh Owner sehingga <em>dikecualikan dari lembar belanja ini</em>.
+                @endif
+            </p>
+        </div>
+
         <!-- FOOTER SIGNATURES -->
         <div class="grid grid-cols-3 gap-6 text-center text-xs pt-6 border-t-2 border-slate-900">
             <div>

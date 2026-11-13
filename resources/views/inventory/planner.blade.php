@@ -56,6 +56,38 @@
         </a>
     </div>
 
+    <!-- BANNER PERINGATAN KONSUMEN TIDAK SELESAI / BELUM TITIK AMAN -->
+    @if(count($excludedIncompleteCustomers) > 0)
+        <div class="p-4 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-2xs">
+            <div class="flex items-start space-x-3">
+                <span class="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 text-base shadow-xs">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </span>
+                <div>
+                    <div class="text-xs font-black uppercase tracking-wider text-amber-950 flex items-center gap-2">
+                        <span>Penyaringan Titik Aman & Ketetapan Barang Owner</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-200 text-amber-900 uppercase">
+                            {{ count($excludedIncompleteCustomers) }} Konsumen Belum Masuk Belanja
+                        </span>
+                    </div>
+                    <p class="text-xs text-amber-900 mt-1 leading-relaxed">
+                        Sesuai SOP SPL, yang masuk daftar belanja grosir hanyalah konsumen yang <strong>sudah melebihi/mencapai titik aman</strong> atau <strong>konsumen tidak selesai yang sudah ditentukan alokasi barangnya oleh Owner</strong>. Sebanyak <strong>{{ count($excludedIncompleteCustomers) }} konsumen</strong> yang belum aman dan belum ditentukan barangnya <em>dikecualikan dari daftar belanja</em> agar tidak terjadi pemborosan modal belanja kulakan.
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 shrink-0">
+                <button type="button" @click="activeTab = 'excluded'" class="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs shadow-xs transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-list-ul"></i>
+                    <span>Lihat {{ count($excludedIncompleteCustomers) }} Konsumen</span>
+                </button>
+                <a href="{{ route('owner.book-closing.index') }}" class="px-3.5 py-2 rounded-xl bg-white border border-amber-300 hover:bg-amber-100 text-amber-950 font-extrabold text-xs shadow-2xs transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Tentukan Barang di Tutup Buku</span>
+                </a>
+            </div>
+        </div>
+    @endif
+
     <!-- 6 EXECUTIVE STAT CARDS -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
         <!-- Card 0: Paket Harus Disiapkan -->
@@ -184,8 +216,13 @@
         <button type="button" @click="activeTab = 'cash'" :class="activeTab === 'cash' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white text-emerald-800 hover:bg-emerald-50 border border-emerald-200'" class="px-4 py-2 rounded-xl transition flex items-center shrink-0">
             <i class="fa-solid fa-money-bill-wave mr-1.5"></i> 5. Penyiapan Uang Tunai ({{ count($cashItems) }})
         </button>
+        @if(count($excludedIncompleteCustomers) > 0)
+            <button type="button" @click="activeTab = 'excluded'" :class="activeTab === 'excluded' ? 'bg-amber-600 text-white shadow-xs' : 'bg-white text-amber-900 hover:bg-amber-50 border border-amber-300'" class="px-4 py-2 rounded-xl transition flex items-center shrink-0">
+                <i class="fa-solid fa-user-xmark mr-1.5"></i> 6. Belum Ditetapkan Owner ({{ count($excludedIncompleteCustomers) }})
+            </button>
+        @endif
         <button type="button" @click="activeTab = 'all'" :class="activeTab === 'all' ? 'bg-slate-800 text-white shadow-xs' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'" class="px-4 py-2 rounded-xl transition flex items-center shrink-0">
-            <i class="fa-solid fa-layer-group mr-1.5"></i> Tampilkan Semua (5 Bagian Lengkap)
+            <i class="fa-solid fa-layer-group mr-1.5"></i> Tampilkan Semua
         </button>
     </div>
 
@@ -445,6 +482,11 @@
                                                                 <td class="py-1.5 px-2 font-bold text-slate-900">
                                                                     {{ $c['customer_name'] }}
                                                                     <span class="text-[9px] font-normal text-slate-400 font-mono ml-1">({{ $c['customer_code'] }})</span>
+                                                                    <div class="mt-0.5">
+                                                                        <span class="px-1.5 py-0.2 rounded text-[8px] font-bold {{ !empty($c['has_owner_decision']) ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200' }}">
+                                                                            {{ $c['eligibility_label'] ?? 'Lolos Titik Aman' }}
+                                                                        </span>
+                                                                    </div>
                                                                 </td>
                                                                 <td class="py-1.5 px-2 font-semibold text-slate-700">
                                                                     {{ $c['agent_name'] }}
@@ -915,6 +957,106 @@
                                 <td colspan="7" class="py-10 text-center text-slate-400">
                                     <i class="fa-solid fa-money-bill-wave text-2xl text-slate-300 mb-2 block"></i>
                                     Belum ada pesanan aktif yang memerlukan penyiapan uang tunai.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= TABEL 6: KONSUMEN TIDAK SELESAI / BELUM TITIK AMAN (BELUM DITETAPKAN OWNER) ================= -->
+    <div x-show="activeTab === 'excluded'" x-transition class="space-y-4">
+        <div class="bg-white rounded-2xl border-2 border-amber-300 shadow-xs p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-gradient-to-r from-amber-50/60 to-white">
+            <div class="space-y-1">
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 rounded-full bg-amber-500 inline-block animate-pulse"></span>
+                    <h3 class="font-heading font-extrabold text-amber-950 text-base">
+                        Daftar Konsumen Belum Masuk Belanja (Menunggu Ketetapan Barang Owner)
+                    </h3>
+                </div>
+                <p class="text-xs text-amber-900/90 leading-relaxed max-w-3xl">
+                    Konsumen berikut <strong>tidak dimasukkan ke daftar belanja</strong> karena belum mencapai titik aman atau berhenti di tengah jalan dan Owner belum menetapkan alokasi barang penggantinya. Silakan klik tombol <strong>"Tetapkan Barang"</strong> untuk memutuskan apa yang akan diterima konsumen agar otomatis masuk ke daftar belanja kulakan.
+                </p>
+            </div>
+            <a href="{{ route('owner.book-closing.index') }}" class="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition flex items-center space-x-1.5 shrink-0">
+                <i class="fa-solid fa-sliders"></i>
+                <span>Buka Menu Tutup Buku</span>
+            </a>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-amber-200 shadow-xs overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="border-b border-amber-200 text-amber-950 font-extrabold bg-amber-50/70">
+                            <th class="py-3 px-3 text-center w-12">No</th>
+                            <th class="py-3 px-4">Konsumen</th>
+                            <th class="py-3 px-4">Agen Penanggung Jawab</th>
+                            <th class="py-3 px-4">Paket Pilihan</th>
+                            <th class="py-3 px-4 text-right">Setoran Masuk</th>
+                            <th class="py-3 px-4">Kekurangan / Status</th>
+                            <th class="py-3 px-4 text-center">Tindakan Owner</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse($excludedIncompleteCustomers as $eIdx => $ex)
+                            <tr class="hover:bg-amber-50/30 transition">
+                                <td class="py-3 px-3 text-center font-mono text-slate-400">
+                                    {{ $eIdx + 1 }}
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="font-bold text-slate-900">
+                                        {{ $ex['customer_name'] }}
+                                    </div>
+                                    <div class="text-[10px] text-slate-400 font-mono">
+                                        {{ $ex['customer_code'] }} &bull; {{ $ex['customer_phone'] }}
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="font-bold text-slate-800 flex items-center space-x-1">
+                                        <i class="fa-solid fa-user-tie text-slate-400 mr-1 text-[10px]"></i>
+                                        <span>{{ $ex['agent_name'] }}</span>
+                                    </div>
+                                    <div class="text-[10px] text-slate-400 font-mono">{{ $ex['agent_phone'] }}</div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="font-bold text-slate-800">{{ $ex['package_name'] }}</div>
+                                    <div class="text-[10px] text-slate-400 uppercase font-semibold">
+                                        {{ $ex['package_type'] }} &bull; Target: Rp {{ number_format($ex['total_target'], 0, ',', '.') }}
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-right">
+                                    <div class="font-mono font-bold text-emerald-800 text-xs">
+                                        Rp {{ number_format($ex['total_paid'], 0, ',', '.') }}
+                                    </div>
+                                    <div class="text-[10px] text-slate-500">
+                                        {{ $ex['progress_percent'] }}% Lunas
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold {{ $ex['stop_status'] === 'pending' ? 'bg-orange-100 text-orange-900 border border-orange-200' : 'bg-amber-100 text-amber-900 border border-amber-200' }}">
+                                        {{ $ex['status_label'] }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    @if($ex['stop_status'] === 'pending')
+                                        <a href="{{ route('owner.customer-stops.review', $ex['customer_package_id']) }}" class="inline-flex items-center px-3 py-1.5 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-extrabold text-[11px] shadow-xs transition">
+                                            <i class="fa-solid fa-boxes-packing mr-1"></i> Tentukan Barang Stop
+                                        </a>
+                                    @else
+                                        <a href="{{ route('owner.book-closing.decision', $ex['customer_package_id']) }}" class="inline-flex items-center px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-[11px] shadow-xs transition">
+                                            <i class="fa-solid fa-sliders mr-1"></i> Tetapkan Barang Tutup Buku
+                                        </a>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="py-10 text-center text-slate-400">
+                                    <i class="fa-solid fa-circle-check text-2xl text-emerald-400 mb-2 block"></i>
+                                    Hebat! Seluruh konsumen telah mencapai titik aman atau telah ditetapkan alokasi barangnya oleh Owner.
                                 </td>
                             </tr>
                         @endforelse

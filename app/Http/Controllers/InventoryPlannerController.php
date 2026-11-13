@@ -24,6 +24,7 @@ class InventoryPlannerController extends Controller
         $summary = $result['summary'];
         $cashItems = $result['cash_items'];
         $cashByAgent = $result['cash_by_agent'];
+        $excludedIncompleteCustomers = $result['excluded_incomplete_customers'] ?? [];
 
         // Filter tipe paket jika diminta
         if ($request->filled('package_type')) {
@@ -66,9 +67,15 @@ class InventoryPlannerController extends Controller
                        str_contains(strtolower($c['package_name']), $s) ||
                        str_contains(strtolower($c['cash_description']), $s);
             });
+            $excludedIncompleteCustomers = array_filter($excludedIncompleteCustomers, function ($c) use ($s) {
+                return str_contains(strtolower($c['customer_name']), $s) ||
+                       str_contains(strtolower($c['customer_code']), $s) ||
+                       str_contains(strtolower($c['agent_name']), $s) ||
+                       str_contains(strtolower($c['package_name']), $s);
+            });
         }
 
-        return view('inventory.planner', compact('packagesToPrepare', 'items', 'bonusItems', 'packagingItems', 'summary', 'cashItems', 'cashByAgent'));
+        return view('inventory.planner', compact('packagesToPrepare', 'items', 'bonusItems', 'packagingItems', 'summary', 'cashItems', 'cashByAgent', 'excludedIncompleteCustomers'));
     }
 
     /**
@@ -84,7 +91,8 @@ class InventoryPlannerController extends Controller
         $summary = $result['summary'];
         $cashItems = $result['cash_items'];
         $cashByAgent = $result['cash_by_agent'];
+        $excludedIncompleteCustomers = $result['excluded_incomplete_customers'] ?? [];
 
-        return view('inventory.print', compact('packagesToPrepare', 'items', 'bonusItems', 'packagingItems', 'summary', 'cashItems', 'cashByAgent'));
+        return view('inventory.print', compact('packagesToPrepare', 'items', 'bonusItems', 'packagingItems', 'summary', 'cashItems', 'cashByAgent', 'excludedIncompleteCustomers'));
     }
 }

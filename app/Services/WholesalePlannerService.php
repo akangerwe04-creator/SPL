@@ -72,26 +72,92 @@ class WholesalePlannerService
             }
         }
 
-        // Ambil semua customer package yang aktif / belum dibatalkan
-        $activePackages = CustomerPackage::with([
+        // Ambil semua customer package yang relevan:
+        // 1. Paket aktif (status != 'canceled')
+        // 2. ATAU paket yang telah ditentukan barangnya oleh Owner (memiliki partialFulfillment dengan barang / dana, termasuk stop konsumen yang di-ACC)
+        $allPackages = CustomerPackage::with([
             'customer',
             'agent',
             'packaging',
             'package.packageItems.item',
             'customItems.item',
             'partialFulfillment.items.item',
-        ])->where('status', '!=', 'canceled')->get();
+        ])->where(function ($q) {
+            $q->where('status', '!=', 'canceled')
+              ->orWhere(function ($sq) {
+                  $sq->whereHas('partialFulfillment', function ($pfq) {
+                      $pfq->where(function ($cq) {
+                          $cq->whereHas('items')->orWhere('cash_payout', '>', 0);
+                      });
+                  });
+              });
+        })->get();
 
         $regularTotals = [];   // [item_id => ['qty' => 0, 'from_parsel' => 0, 'from_ecer' => 0]]
         $bonusTotals = [];     // [item_id => ['qty' => 0, 'packages' => []]]
         $packagingTotals = []; // [packaging_id => ['packaging' => ..., 'total_qty' => 0, ...]]
         $cashRequirements = []; // Rincian uang tunai per konsumen & agen
+        $excludedIncompleteCustomers = []; // Konsumen tidak selesai yang belum ditentukan barangnya oleh owner
+        $eligibleCustomersCount = 0;
 
-        foreach ($activePackages as $cp) {
+        foreach ($allPackages as $cp) {
             $pkg = $cp->package;
             if (!$pkg) continue;
 
             $pkgId = $pkg->id;
+
+            $custName = $cp->customer?->name ?? 'Konsumen Umum';
+            $custCode = $cp->customer?->code ?? '-';
+            $custPhone = $cp->customer?->phone ?? '-';
+            $custAddress = $cp->customer?->address ?? '-';
+            $agentName = $cp->agent?->name ?? 'Tanpa Agen';
+            $agentId = $cp->agent_id ?: 0;
+            $agentPhone = $cp->agent?->phone ?? '-';
+            $periodText = ($pkg->installment_label ?? 'Mingguan') . ' (' . $pkg->installment_count . ' ' . ($pkg->period_label ?? 'Minggu') . ')';
+
+            $isSafeReached = $cp->isSafeThresholdReached();
+            $hasOwnerDecision = (bool) ($cp->partialFulfillment && ($cp->partialFulfillment->items->isNotEmpty() || (float)$cp->partialFulfillment->cash_payout > 0));
+
+            // ATURAN RESMI OWNER SPL:
+            // 1. Yang masuk daftar belanja adalah konsumen yang sudah melebihi/mencapai titik aman ($isSafeReached == true).
+            // 2. Jika konsumennya TIDAK SELESAI (belum mencapai titik aman atau berhenti):
+            //    -> HANYA MASUK jika Owner sudah menentukan barang apa saja yang akan diterima ($hasOwnerDecision == true).
+            //    -> Jika belum ditentukan Owner, JANGAN dimasukkan ke daftar belanja!
+            $isEligibleForShopping = $isSafeReached || $hasOwnerDecision;
+
+            if (!$isEligibleForShopping) {
+                // Catat ke daftar konsumen tidak selesai yang belum ditentukan barangnya oleh Owner
+                $excludedIncompleteCustomers[] = [
+                    'customer_id' => $cp->customer_id,
+                    'customer_package_id' => $cp->id,
+                    'customer_name' => $custName,
+                    'customer_code' => $custCode,
+                    'customer_phone' => $custPhone,
+                    'customer_address' => $custAddress,
+                    'agent_id' => $agentId,
+                    'agent_name' => $agentName,
+                    'agent_phone' => $agentPhone,
+                    'package_id' => $pkg->id,
+                    'package_name' => $pkg->name,
+                    'package_code' => $pkg->code,
+                    'package_type' => $pkg->type,
+                    'period_text' => $periodText,
+                    'total_target' => (float) ($cp->total_target ?: $pkg->target_nominal),
+                    'total_paid' => (float) $cp->total_paid,
+                    'progress_percent' => (float) $cp->progress_percent,
+                    'safe_deficit' => (float) $cp->safe_deficit_nominal,
+                    'consecutive_unpaid' => (int) $cp->consecutive_unpaid_weeks,
+                    'stop_status' => $cp->stop_status,
+                    'status_label' => $cp->stop_status === 'pending'
+                        ? 'Pengajuan Stop Menunggu ACC Owner'
+                        : 'Belum Titik Aman (Kurang Rp ' . number_format($cp->safe_deficit_nominal, 0, ',', '.') . ')',
+                ];
+
+                continue; // LEWATI DARI DAFTAR BELANJA!
+            }
+
+            $eligibleCustomersCount++;
+
             if (!isset($packageSummaryMap[$pkgId])) {
                 $packageSummaryMap[$pkgId] = [
                     'package_id' => $pkg->id,
@@ -127,7 +193,7 @@ class WholesalePlannerService
                 ];
             }
 
-            // Update statistik order paket
+            // Update statistik order paket yang masuk belanja
             $packageSummaryMap[$pkgId]['total_orders'] += 1;
             if ($cp->fulfillment_status === 'fulfilled') {
                 $packageSummaryMap[$pkgId]['fulfilled_orders'] += 1;
@@ -136,15 +202,6 @@ class WholesalePlannerService
             }
             $packageSummaryMap[$pkgId]['total_target_amount'] += (float) ($cp->total_target ?: $pkg->target_nominal);
             $packageSummaryMap[$pkgId]['total_paid_amount'] += (float) $cp->total_paid;
-
-            $custName = $cp->customer?->name ?? 'Konsumen Umum';
-            $custCode = $cp->customer?->code ?? '-';
-            $custPhone = $cp->customer?->phone ?? '-';
-            $custAddress = $cp->customer?->address ?? '-';
-            $agentName = $cp->agent?->name ?? 'Tanpa Agen';
-            $agentId = $cp->agent_id ?: 0;
-            $agentPhone = $cp->agent?->phone ?? '-';
-            $periodText = ($pkg->installment_label ?? 'Mingguan') . ' (' . $pkg->installment_count . ' ' . ($pkg->period_label ?? 'Minggu') . ')';
 
             // Catat agen pemesan paket
             if (!isset($packageSummaryMap[$pkgId]['agents'][$agentId])) {
@@ -157,9 +214,15 @@ class WholesalePlannerService
             }
             $packageSummaryMap[$pkgId]['agents'][$agentId]['count'] += 1;
 
+            // Label kelayakan masuk belanja
+            $eligibilityLabel = $hasOwnerDecision
+                ? ($isSafeReached ? 'Lolos Titik Aman (Disesuaikan Owner)' : 'Keputusan Khusus Owner (Alokasi Sah)')
+                : 'Lolos Titik Aman (Jaminan Full Paket)';
+
             // Catat data konsumen pemesan paket
             $packageSummaryMap[$pkgId]['customers'][] = [
                 'customer_id' => $cp->customer_id,
+                'customer_package_id' => $cp->id,
                 'customer_name' => $custName,
                 'customer_code' => $custCode,
                 'customer_phone' => $custPhone,
@@ -170,6 +233,9 @@ class WholesalePlannerService
                 'total_paid' => (float) $cp->total_paid,
                 'progress_percent' => $cp->progress_percent,
                 'is_bonus_forfeited' => (bool) $cp->is_bonus_forfeited,
+                'is_safe_reached' => $isSafeReached,
+                'has_owner_decision' => $hasOwnerDecision,
+                'eligibility_label' => $eligibilityLabel,
             ];
 
             // 1. REKAP KEMASAN / WADAH (Koper, Keranjang, Box Hampers)
@@ -667,6 +733,7 @@ class WholesalePlannerService
             'cash_items' => $cashRequirements,
             'cash_requirements' => $cashRequirements,
             'cash_by_agent' => array_values($cashByAgent),
+            'excluded_incomplete_customers' => $excludedIncompleteCustomers,
             'summary' => [
                 'total_packages_count' => $totalPackagesCount,
                 'total_packages_pending' => $totalPackagesPending,
@@ -690,7 +757,9 @@ class WholesalePlannerService
                 'total_cash_agents' => count($cashByAgent),
                 'grand_total_goods_fund' => $totalEstimatedCost + $totalBonusCost + $totalPackagingCost,
                 'grand_total_fund' => $grandTotalFund,
-                'active_packages_count' => $activePackages->count(),
+                'total_eligible_customers' => $eligibleCustomersCount,
+                'total_excluded_incomplete' => count($excludedIncompleteCustomers),
+                'all_packages_count' => $allPackages->count(),
                 'categories' => array_values($categoryBreakdown),
             ],
         ];
