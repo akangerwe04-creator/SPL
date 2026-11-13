@@ -74,6 +74,15 @@ class CustomerController extends Controller
             }
         }
 
+        if ($request->filled('stop_status')) {
+            $st = $request->stop_status;
+            if ($st === 'pending') {
+                $query->whereHas('customerPackages', fn($q) => $q->where('stop_status', 'pending'));
+            } elseif ($st === 'approved') {
+                $query->whereHas('customerPackages', fn($q) => $q->where('stop_status', 'approved'));
+            }
+        }
+
         $customers = $query->latest()->paginate(15)->withQueryString();
         $agents = $user->isOwnerOrAdmin() ? User::where('role', 'agent')->select('id', 'name', 'phone')->get() : collect();
 

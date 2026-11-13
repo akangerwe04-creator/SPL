@@ -42,6 +42,14 @@
                 <a href="{{ route('owner.book-closing.index') }}" class="px-3.5 py-2 rounded-xl {{ $appSetting->is_book_closed ? 'bg-rose-700 hover:bg-rose-800' : 'bg-pink-700/80 hover:bg-pink-700' }} border border-white/20 text-white font-bold text-xs transition flex items-center">
                     <i class="fa-solid fa-lock mr-1.5 {{ $appSetting->is_book_closed ? 'animate-pulse' : '' }}"></i> Tutup Buku
                 </a>
+                <a href="{{ route('owner.customer-stops.index') }}" class="px-3.5 py-2 rounded-xl bg-amber-500/80 hover:bg-amber-600 border border-white/20 text-white font-bold text-xs transition flex items-center" title="Konfirmasi Stop Konsumen & Penetapan Barang">
+                    <i class="fa-solid fa-hand mr-1.5 text-amber-200"></i> Stop Konsumen
+                    @if(isset($pendingStopRequestsCount) && $pendingStopRequestsCount > 0)
+                        <span class="ml-1.5 bg-rose-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-extrabold animate-pulse">
+                            {{ $pendingStopRequestsCount }}
+                        </span>
+                    @endif
+                </a>
                 <a href="{{ route('owner.settings.index') }}" class="px-3.5 py-2 rounded-xl bg-emerald-900/60 hover:bg-emerald-900 border border-white/20 text-white font-bold text-xs transition flex items-center" title="Pengaturan Aplikasi & Reset">
                     <i class="fa-solid fa-sliders mr-1.5 text-emerald-200"></i> Pengaturan
                 </a>
@@ -52,6 +60,29 @@
             <i class="fa-solid fa-mosque"></i>
         </div>
     </div>
+
+    @if(isset($pendingStopRequestsCount) && $pendingStopRequestsCount > 0)
+        <!-- BANNER PERINGATAN PENGAJUAN STOP KONSUMEN DARI AGEN -->
+        <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-4 text-white shadow-md flex flex-col md:flex-row md:items-center md:justify-between gap-3 animate-pulse">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-hand"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-heading font-black">
+                        Perhatian: Terdapat {{ $pendingStopRequestsCount }} Pengajuan Stop Konsumen dari Agen
+                    </h3>
+                    <p class="text-xs text-amber-100 mt-0.5">
+                        Konsumen tidak ingin melanjutkan program. Owner wajib memeriksa total setoran dan <strong>menentukan alokasi barang pengganti</strong> sebelum menyetujui (ACC).
+                    </p>
+                </div>
+            </div>
+            <a href="{{ route('owner.customer-stops.index') }}" class="px-4 py-2 rounded-xl bg-white text-orange-950 font-black text-xs hover:bg-amber-50 transition shadow-sm flex items-center space-x-1.5 self-start md:self-auto shrink-0">
+                <i class="fa-solid fa-boxes-packing text-orange-600"></i>
+                <span>Periksa & Tentukan Barang Sekarang</span>
+            </a>
+        </div>
+    @endif
 
     <!-- 4 FINANCIAL KPI CARDS -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -80,6 +80,20 @@ class Payment extends Model
      */
     public function toggleChecklist(int $agentId): array
     {
+        if ($this->customerPackage?->stop_status === 'pending') {
+            return [
+                'success' => false,
+                'message' => 'Paket konsumen ini sedang dalam pengajuan Stop Konsumen dan menunggu konfirmasi Owner. Ceklis dibekukan sementara.',
+            ];
+        }
+
+        if ($this->customerPackage?->stop_status === 'approved') {
+            return [
+                'success' => false,
+                'message' => 'Konsumen ini telah resmi berhenti (di-ACC Owner). Ceklis setoran tidak dapat diubah.',
+            ];
+        }
+
         if ($this->is_locked || $this->status === 'verified' || ($this->deposit && $this->deposit->status === 'approved')) {
             return [
                 'success' => false,

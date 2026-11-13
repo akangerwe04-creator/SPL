@@ -29,6 +29,13 @@ class CustomerPackage extends Model
         'decided_by',
         'packaging_id',
         'packaging_price',
+        'stop_status', // none, pending, approved, rejected
+        'stop_reason',
+        'stop_requested_at',
+        'stop_requested_by',
+        'stop_approved_at',
+        'stop_approved_by',
+        'stop_rejection_reason',
     ];
 
     protected $casts = [
@@ -41,6 +48,8 @@ class CustomerPackage extends Model
         'consecutive_unpaid_weeks' => 'integer',
         'start_date' => 'date',
         'decided_at' => 'datetime',
+        'stop_requested_at' => 'datetime',
+        'stop_approved_at' => 'datetime',
     ];
 
     protected $appends = [
@@ -64,6 +73,31 @@ class CustomerPackage extends Model
     public function decidedBy()
     {
         return $this->belongsTo(User::class, 'decided_by');
+    }
+
+    public function stopRequestedBy()
+    {
+        return $this->belongsTo(User::class, 'stop_requested_by');
+    }
+
+    public function stopApprovedBy()
+    {
+        return $this->belongsTo(User::class, 'stop_approved_by');
+    }
+
+    public function isStopPending(): bool
+    {
+        return $this->stop_status === 'pending';
+    }
+
+    public function isStopApproved(): bool
+    {
+        return $this->stop_status === 'approved';
+    }
+
+    public function isStopRejected(): bool
+    {
+        return $this->stop_status === 'rejected';
     }
 
     public function isParsel(): bool

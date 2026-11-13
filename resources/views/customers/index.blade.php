@@ -30,6 +30,12 @@
                 <option value="unreached" {{ request('safe_status') === 'unreached' ? 'selected' : '' }}>⚠️ Belum Titik Aman</option>
             </select>
 
+            <select name="stop_status" onchange="this.form.submit()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium">
+                <option value="">Semua Status Stop</option>
+                <option value="pending" {{ request('stop_status') === 'pending' ? 'selected' : '' }}>⏳ Menunggu ACC Stop</option>
+                <option value="approved" {{ request('stop_status') === 'approved' ? 'selected' : '' }}>⛔ Berhenti (Barang Dialokasikan)</option>
+            </select>
+
             @if(auth()->user()->isOwner())
                 <select name="agent_id" onchange="this.form.submit()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium">
                     <option value="">Semua Agen</option>
@@ -138,7 +144,15 @@
                                             $isSafe = $pkg->isSafeThresholdReached();
                                         @endphp
                                         <div class="space-y-1">
-                                            @if($pkg->status === 'canceled')
+                                            @if($pkg->isStopApproved())
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black bg-slate-200 text-slate-800 border border-slate-300">
+                                                    <i class="fa-solid fa-hand mr-1 text-slate-600"></i> Berhenti (Barang Dialokasikan)
+                                                </span>
+                                            @elseif($pkg->isStopPending())
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                                                    <i class="fa-solid fa-clock mr-1 text-amber-600"></i> Menunggu ACC Stop
+                                                </span>
+                                            @elseif($pkg->status === 'canceled')
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">
                                                     Batal (10% Fee)
                                                 </span>
@@ -178,7 +192,16 @@
                                 </td>
                                 <td class="py-3.5 px-4 text-right">
                                     <div class="flex items-center justify-end space-x-1.5">
-                                        @if($pkg)
+                                        @if($pkg && $pkg->isStopApproved())
+                                            <a href="{{ route('owner.customer-stops.receipt', $pkg) }}" class="p-1.5 rounded-lg text-slate-700 hover:text-pink-600 hover:bg-pink-50 transition" title="Cetak Bukti Serah Terima Barang">
+                                                <i class="fa-solid fa-print"></i>
+                                            </a>
+                                        @elseif($pkg && $pkg->isStopPending() && auth()->user()->isOwner())
+                                            <a href="{{ route('owner.customer-stops.review', $pkg) }}" class="px-2 py-1 rounded-lg bg-pink-600 hover:bg-pink-700 text-white font-extrabold text-[10px] shadow-2xs transition flex items-center space-x-1" title="Tentukan barang & ACC Stop">
+                                                <i class="fa-solid fa-boxes-packing"></i>
+                                                <span>ACC</span>
+                                            </a>
+                                        @elseif($pkg && !$pkg->isStopPending() && $pkg->status !== 'canceled')
                                             <a href="{{ route('payments.checklist', $pkg) }}" class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-2xs" title="Buka Ceklis Tagihan">
                                                 <i class="fa-solid fa-list-check mr-1"></i> Ceklis
                                             </a>

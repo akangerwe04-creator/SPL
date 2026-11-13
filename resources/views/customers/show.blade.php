@@ -10,7 +10,7 @@
 @endsection
 
 @section('content')
-<div class="space-y-6 max-w-5xl mx-auto" x-data="{ previewPhoto: null, previewTitle: '' }">
+<div class="space-y-6 max-w-5xl mx-auto" x-data="{ previewPhoto: null, previewTitle: '', stopModal: false }">
 
     <!-- TOP BREADCRUMB -->
     <div class="flex items-center justify-between text-xs text-slate-500">
@@ -18,6 +18,13 @@
             <i class="fa-solid fa-arrow-left mr-1.5"></i> Kembali ke Daftar Konsumen
         </a>
         <div class="flex items-center space-x-2">
+            @if($activePackage && $activePackage->status !== 'canceled' && !$activePackage->isStopPending())
+                <button type="button" @click="stopModal = true" class="px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold border border-amber-300 transition flex items-center space-x-1" title="Ajukan berhenti jika konsumen tidak ingin melanjutkan">
+                    <i class="fa-solid fa-hand"></i>
+                    <span>Ajukan Stop Konsumen</span>
+                </button>
+            @endif
+
             <a href="{{ route('customers.edit', $customer) }}" class="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 transition">
                 <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Data & Paket
             </a>
@@ -53,14 +60,91 @@
             <!-- SMART CHECKLIST CTA BUTTON -->
             @if($activePackage)
                 <div class="flex-shrink-0">
-                    <a href="{{ route('payments.checklist', $activePackage) }}" class="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition flex items-center justify-center">
-                        <i class="fa-solid fa-list-check mr-2 text-sm"></i> Buka Lembar Ceklis Tagihan
-                    </a>
+                    @if($activePackage->isStopApproved())
+                        <a href="{{ route('owner.customer-stops.receipt', $activePackage) }}" class="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md transition flex items-center justify-center">
+                            <i class="fa-solid fa-print mr-2 text-sm"></i> Cetak Tanda Terima Barang
+                        </a>
+                    @elseif($activePackage->isStopPending())
+                        @if(auth()->user()->isOwner())
+                            <a href="{{ route('owner.customer-stops.review', $activePackage) }}" class="px-5 py-3 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center">
+                                <i class="fa-solid fa-boxes-packing mr-2 text-sm"></i> Tentukan Barang & ACC Stop
+                            </a>
+                        @else
+                            <span class="px-4 py-2.5 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs flex items-center">
+                                <i class="fa-solid fa-hourglass-half mr-2 text-amber-600 animate-spin"></i> Menunggu Konfirmasi Owner
+                            </span>
+                        @endif
+                    @else
+                        <a href="{{ route('payments.checklist', $activePackage) }}" class="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition flex items-center justify-center">
+                            <i class="fa-solid fa-list-check mr-2 text-sm"></i> Buka Lembar Ceklis Tagihan
+                        </a>
+                    @endif
                 </div>
             @endif
         </div>
 
         @if($activePackage)
+            <!-- NOTIFIKASI STATUS STOP KONSUMEN -->
+            @if($activePackage->isStopPending())
+                <div class="mt-4 p-4 rounded-xl bg-amber-50 border-2 border-amber-300 text-amber-950 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-2xs">
+                    <div class="space-y-1">
+                        <div class="flex items-center space-x-2">
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-200 text-amber-950 border border-amber-400/50 animate-pulse">
+                                <i class="fa-solid fa-clock mr-1 text-amber-700"></i> Menunggu ACC Owner
+                            </span>
+                            <strong class="text-xs text-amber-950 font-heading font-black">Pengajuan Stop Konsumen Sedang Diproses</strong>
+                        </div>
+                        <p class="text-xs text-amber-900 italic font-medium">
+                            Alasan: "{{ $activePackage->stop_reason ?: 'Konsumen tidak melanjutkan' }}"
+                        </p>
+                        <div class="text-[10px] text-amber-800">
+                            Diajukan: {{ $activePackage->stop_requested_at?->format('d M Y, H:i') }} • Total setoran masuk: <strong class="font-mono text-emerald-800">{{ $activePackage->formatted_paid }}</strong>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 shrink-0">
+                        @if(auth()->user()->isOwner())
+                            <a href="{{ route('owner.customer-stops.review', $activePackage) }}" class="px-3.5 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-extrabold text-xs shadow-xs transition flex items-center space-x-1">
+                                <i class="fa-solid fa-boxes-packing mr-1"></i>
+                                <span>Tentukan Barang & ACC</span>
+                            </a>
+                        @endif
+                        <form action="{{ route('customers.package.cancel-stop-request', $activePackage) }}" method="POST" onsubmit="return confirm('Batalkan pengajuan stop ini? Konsumen akan kembali aktif.');">
+                            @csrf
+                            <button type="submit" class="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-amber-300 transition shadow-2xs">
+                                Batalkan Pengajuan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            @elseif($activePackage->isStopApproved())
+                <div class="mt-4 p-4 rounded-xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-2xs">
+                    <div class="space-y-1">
+                        <div class="flex items-center space-x-2">
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-200 text-emerald-900 border border-emerald-400">
+                                <i class="fa-solid fa-circle-check mr-1 text-emerald-700"></i> Di-ACC & Barang Ditetapkan
+                            </span>
+                            <strong class="text-xs text-emerald-950 font-heading font-black">Konsumen Berhenti (Selesai Serah Terima Barang)</strong>
+                        </div>
+                        <p class="text-xs text-emerald-900 font-medium">
+                            {{ $activePackage->fulfillment_notes }}
+                        </p>
+                    </div>
+                    <a href="{{ route('owner.customer-stops.receipt', $activePackage) }}" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition flex items-center space-x-1.5 shrink-0">
+                        <i class="fa-solid fa-print"></i>
+                        <span>Cetak Tanda Terima Barang</span>
+                    </a>
+                </div>
+            @elseif($activePackage->isStopRejected())
+                <div class="mt-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-circle-xmark text-rose-600 text-sm"></i>
+                        <span>Pengajuan stop ditolak Owner: <em>"{{ $activePackage->stop_rejection_reason }}"</em>. Status konsumen tetap berjalan normal.</span>
+                    </div>
+                    <button type="button" @click="stopModal = true" class="text-[11px] font-bold text-rose-700 underline hover:text-rose-900">
+                        Ajukan Ulang
+                    </button>
+                </div>
+            @endif
             <!-- PACKAGE STATUS & FINANCIAL PROGRESS -->
             <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
@@ -105,7 +189,15 @@
                 <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
                     <div class="text-[10px] font-bold text-slate-400 uppercase">Status & Kepatuhan</div>
                     <div class="mt-1">
-                        @if($activePackage->status === 'canceled')
+                        @if($activePackage->isStopApproved())
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-800 border border-slate-300">
+                                <i class="fa-solid fa-hand mr-1 text-slate-600"></i> Berhenti (Barang Dialokasikan)
+                            </span>
+                        @elseif($activePackage->isStopPending())
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                                <i class="fa-solid fa-clock mr-1 text-amber-600"></i> Menunggu ACC Stop
+                            </span>
+                        @elseif($activePackage->status === 'canceled')
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-700">
                                 Batal (Potongan 10%)
                             </span>
@@ -260,6 +352,67 @@
             </div>
         </div>
     </div>
+
+    @if($activePackage)
+        <!-- MODAL AJUKAN STOP KONSUMEN (AGEN & OWNER) -->
+        <div x-show="stopModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4" style="display: none;" @click.self="stopModal = false" @keydown.escape.window="stopModal = false">
+            <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-amber-200">
+                <div class="p-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white flex items-center justify-between">
+                    <div class="flex items-center space-x-2.5">
+                        <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-hand"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-heading font-black">Ajukan Stop Konsumen</h3>
+                            <p class="text-[11px] text-amber-100">{{ $customer->name }} ({{ $customer->code }})</p>
+                        </div>
+                    </div>
+                    <button type="button" @click="stopModal = false" class="text-white/80 hover:text-white text-lg">✕</button>
+                </div>
+
+                <form action="{{ route('customers.package.request-stop', $activePackage) }}" method="POST" class="p-5 space-y-4 text-xs">
+                    @csrf
+
+                    <!-- RINGKASAN SETORAN MASUK -->
+                    <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1">
+                        <div class="text-[10px] uppercase font-bold text-amber-800">Total Setoran yang Telah Masuk:</div>
+                        <div class="font-black text-amber-950 text-base font-mono">
+                            {{ $activePackage->formatted_paid }}
+                        </div>
+                        <p class="text-[10px] text-amber-900/80 leading-snug">
+                            Setoran ini akan dijadikan dasar bagi Owner untuk menentukan alokasi komoditas barang yang akan diserahkan kepada konsumen.
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-800 mb-1">
+                            Alasan Berhenti / Tidak Ingin Melanjutkan *
+                        </label>
+                        <textarea name="stop_reason" rows="3" required placeholder="Tuliskan alasan konsumen berhenti (contoh: Pindah tempat tinggal, kendala ekonomi, atau permintaan konsumen)..." class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:outline-none focus:border-amber-500"></textarea>
+                    </div>
+
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1">
+                        <div class="font-bold text-slate-800 flex items-center">
+                            <i class="fa-solid fa-info-circle mr-1 text-slate-500"></i> Ketentuan SOP SPL:
+                        </div>
+                        <p class="text-[10px] leading-relaxed">
+                            Setelah dikirim, status paket akan berubah menjadi <strong>Menunggu Konfirmasi Owner</strong>. Owner akan memeriksa dan <strong>menentukan barang apa saja yang diberikan sesuai nominal setoran</strong> sebelum penghentian resmi di-ACC.
+                        </p>
+                    </div>
+
+                    <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+                        <button type="button" @click="stopModal = false" class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold">
+                            Batal
+                        </button>
+                        <button type="submit" class="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold shadow-xs transition flex items-center space-x-1.5">
+                            <i class="fa-solid fa-paper-plane mr-1"></i>
+                            <span>Kirim Pengajuan ke Owner</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
 
 </div>
 @endsection

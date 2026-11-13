@@ -258,6 +258,20 @@
                         @endif
                     </a>
 
+                    <!-- Konfirmasi Stop Konsumen & Alokasi Barang -->
+                    <a href="{{ route('owner.customer-stops.index') }}" class="flex items-center justify-between px-3 py-2.5 rounded-lg transition {{ request()->routeIs('owner.customer-stops.*') ? 'bg-amber-50 text-amber-800 font-bold border-l-4 border-amber-600' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                        <div class="flex items-center">
+                            <i class="fa-solid fa-hand w-5 text-center mr-2.5 text-slate-400 {{ request()->routeIs('owner.customer-stops.*') ? '!text-amber-600' : '' }}"></i>
+                            <span>Stop Konsumen</span>
+                        </div>
+                        @php
+                            $pendingStopsNavCount = \App\Models\CustomerPackage::where('stop_status', 'pending')->count();
+                        @endphp
+                        @if($pendingStopsNavCount > 0)
+                            <span class="bg-amber-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse">{{ $pendingStopsNavCount }}</span>
+                        @endif
+                    </a>
+
                     <!-- 9. Pengaturan Aplikasi -->
                     <a href="{{ route('owner.settings.index') }}" class="flex items-center px-3 py-2.5 rounded-lg transition {{ request()->routeIs('owner.settings.*') || request()->routeIs('owner.reset.*') ? 'bg-emerald-50 text-emerald-700 font-semibold border-l-4 border-emerald-600' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
                         <i class="fa-solid fa-sliders w-5 text-center mr-2.5 text-slate-400 {{ request()->routeIs('owner.settings.*') || request()->routeIs('owner.reset.*') ? '!text-emerald-600' : '' }}"></i>

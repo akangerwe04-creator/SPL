@@ -90,6 +90,9 @@ class DashboardController extends Controller
         // 8. Pengaturan Aplikasi
         $appSetting = CatalogSetting::current();
 
+        // 9. Pengajuan Stop Konsumen Menunggu Konfirmasi Owner
+        $pendingStopRequestsCount = CustomerPackage::where('stop_status', 'pending')->count();
+
         return view('owner.dashboard', compact(
             'totalTarget',
             'totalVerifiedPaid',
@@ -105,6 +108,7 @@ class DashboardController extends Controller
             'safeReachedCount',
             'unreachedSafeCount',
             'pendingDecisionCount',
+            'pendingStopRequestsCount',
             'appSetting'
         ));
     }

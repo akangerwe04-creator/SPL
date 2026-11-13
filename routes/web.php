@@ -19,6 +19,7 @@ use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\PackagingController;
 use App\Http\Controllers\BookClosingController;
+use App\Http\Controllers\CustomerStopController;
 
 // Root Redirector
 Route::get('/', function () {
@@ -62,6 +63,8 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
     Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
     Route::post('/customers/package/{customerPackage}/cancel', [CustomerController::class, 'cancelPackage'])->name('customers.package.cancel');
+    Route::post('/customers/package/{customerPackage}/request-stop', [CustomerStopController::class, 'requestStop'])->name('customers.package.request-stop');
+    Route::post('/customers/package/{customerPackage}/cancel-stop-request', [CustomerStopController::class, 'cancelRequest'])->name('customers.package.cancel-stop-request');
 
     // 4. Smart Payment Checklist
     Route::get('/payments/{customerPackage}/checklist', [PaymentController::class, 'checklist'])->name('payments.checklist');
@@ -129,6 +132,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/owner/book-closing/bulk-approve-safe', [BookClosingController::class, 'bulkApproveSafe'])->name('owner.book-closing.bulk-approve-safe');
         Route::post('/owner/book-closing/update-thresholds', [BookClosingController::class, 'updatePackageThresholds'])->name('owner.book-closing.update-thresholds');
         Route::get('/owner/book-closing/{customerPackage}/receipt', [BookClosingController::class, 'printDecisionReceipt'])->name('owner.book-closing.receipt');
+
+        // Konfirmasi Stop Konsumen & Penetapan Barang Sesuai Nominal Setoran (ACC Owner)
+        Route::get('/owner/customer-stops', [CustomerStopController::class, 'index'])->name('owner.customer-stops.index');
+        Route::get('/owner/customer-stops/{customerPackage}/review', [CustomerStopController::class, 'review'])->name('owner.customer-stops.review');
+        Route::post('/owner/customer-stops/{customerPackage}/approve', [CustomerStopController::class, 'approve'])->name('owner.customer-stops.approve');
+        Route::post('/owner/customer-stops/{customerPackage}/reject', [CustomerStopController::class, 'reject'])->name('owner.customer-stops.reject');
+        Route::get('/owner/customer-stops/{customerPackage}/receipt', [CustomerStopController::class, 'receipt'])->name('owner.customer-stops.receipt');
 
         // Penyesuaian Parsel & Tabungan Magol / Partial Fulfillment (Mini-POS Kasir)
         Route::get('/owner/mini-pos', [MiniPosController::class, 'index'])->name('mini-pos.index');
