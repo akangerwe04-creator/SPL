@@ -405,7 +405,9 @@
                         </div>
                         <div class="font-bold text-slate-700">
                             Binaan: <span class="text-blue-800 font-extrabold">{{ $agent->customers->count() }} Konsumen</span> | 
-                            Pesanan: <span class="text-emerald-800 font-extrabold">{{ $agent->total_orders }} Paket</span>
+                            Pesanan: <span class="text-emerald-800 font-extrabold">{{ $agent->total_orders }} Paket</span> | 
+                            Aman: <span class="text-emerald-700 font-black">{{ $agent->safe_customers_count }}</span> | 
+                            Belum: <span class="text-amber-800 font-black">{{ $agent->unreached_customers_count }}</span>
                         </div>
                     </div>
 
@@ -414,13 +416,14 @@
                         <thead>
                             <tr class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                                 <th class="py-1.5 px-2.5 w-8 text-center">No</th>
-                                <th class="py-1.5 px-2.5 w-44">Nama Konsumen</th>
+                                <th class="py-1.5 px-2.5 w-40">Nama Konsumen</th>
                                 <th class="py-1.5 px-2.5 w-32">No. HP</th>
                                 <th class="py-1.5 px-2.5">Alamat Konsumen</th>
-                                <th class="py-1.5 px-2.5 min-w-[200px]">Paket yang Dipilih</th>
-                                <th class="py-1.5 px-2.5 text-right w-28">Target Nominal</th>
-                                <th class="py-1.5 px-2.5 text-right w-28">Cicilan/Periode</th>
-                                <th class="py-1.5 px-2.5 text-center w-20">Progres</th>
+                                <th class="py-1.5 px-2.5 min-w-[180px]">Paket yang Dipilih</th>
+                                <th class="py-1.5 px-2.5 text-right w-24">Target</th>
+                                <th class="py-1.5 px-2.5 text-right w-24">Cicilan</th>
+                                <th class="py-1.5 px-2.5 text-center w-24">Titik Aman</th>
+                                <th class="py-1.5 px-2.5 text-center w-16">Progres</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-200">
@@ -464,6 +467,19 @@
                                     <td class="py-1.5 px-2.5 text-right text-emerald-800 font-semibold font-mono">
                                         @foreach($cust->customerPackages as $cp)
                                             <div>{{ $cp->package->formatted_installment }} / {{ strtolower($cp->package->period_label) }}</div>
+                                        @endforeach
+                                    </td>
+                                    <td class="py-1.5 px-2.5 text-center">
+                                        @foreach($cust->customerPackages as $cp)
+                                            @if($cp->progress_percent >= 100)
+                                                <span class="font-bold text-emerald-900 bg-emerald-100 px-1.5 py-0.2 rounded text-[8px]">Lunas</span>
+                                            @elseif($cp->isSafeThresholdReached())
+                                                <span class="font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded text-[8px]">Lolos Aman</span>
+                                            @elseif($cp->package && $cp->package->hasSafeThreshold())
+                                                <span class="font-bold text-amber-900 bg-amber-100 px-1 py-0.2 rounded text-[8px] whitespace-nowrap">Kurang {{ number_format($cp->safe_deficit_nominal, 0, ',', '.') }}</span>
+                                            @else
+                                                <span class="text-slate-400 text-[8px]">-</span>
+                                            @endif
                                         @endforeach
                                     </td>
                                     <td class="py-1.5 px-2.5 text-center font-bold text-slate-700">

@@ -118,6 +118,22 @@ class CustomerPackage extends Model
         return $this->getRecommendedCash();
     }
 
+    public function getSafeTargetNominalAttribute(): float
+    {
+        if ($this->hasSafeThreshold() && $this->package) {
+            return (float) $this->package->safe_threshold_nominal;
+        }
+        return (float) $this->total_target;
+    }
+
+    public function getSafeDeficitNominalAttribute(): float
+    {
+        if ($this->isSafeThresholdReached()) {
+            return 0.0;
+        }
+        return max(0.0, $this->safe_target_nominal - (float) $this->total_paid);
+    }
+
     public function getIsSafeReachedAttribute(): bool
     {
         return $this->isSafeThresholdReached();

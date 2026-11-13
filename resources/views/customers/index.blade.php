@@ -24,6 +24,12 @@
                 <option value="ecer" {{ request('package_type') === 'ecer' ? 'selected' : '' }}>Eceran Dinamis</option>
             </select>
 
+            <select name="safe_status" onchange="this.form.submit()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium">
+                <option value="">Semua Titik Aman</option>
+                <option value="safe" {{ request('safe_status') === 'safe' ? 'selected' : '' }}>✅ Lolos Titik Aman</option>
+                <option value="unreached" {{ request('safe_status') === 'unreached' ? 'selected' : '' }}>⚠️ Belum Titik Aman</option>
+            </select>
+
             @if(auth()->user()->isOwner())
                 <select name="agent_id" onchange="this.form.submit()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium">
                     <option value="">Semua Agen</option>
@@ -37,7 +43,7 @@
                 <i class="fa-solid fa-magnifying-glass"></i>
             </button>
 
-            @if(request()->hasAny(['search', 'package_type', 'agent_id']))
+            @if(request()->hasAny(['search', 'package_type', 'agent_id', 'safe_status']))
                 <a href="{{ route('customers.index') }}" class="px-3 py-2 text-slate-500 hover:text-slate-800">
                     <i class="fa-solid fa-xmark mr-1"></i> Reset
                 </a>
@@ -95,8 +101,12 @@
                                         <span class="text-slate-400 italic">Tidak ada paket aktif</span>
                                     @endif
                                 </td>
-                                <td class="py-3.5 px-4 text-slate-600 font-medium">
-                                    {{ $c->agent->name }}
+                                <td class="py-3.5 px-4">
+                                    <div class="font-bold text-slate-800 flex items-center space-x-1">
+                                        <i class="fa-solid fa-user-tie text-emerald-600 text-xs mr-1"></i>
+                                        <span>{{ $c->agent->name }}</span>
+                                    </div>
+                                    <div class="text-[10px] text-slate-400 font-mono">{{ $c->agent->phone ?: '-' }}</div>
                                 </td>
                                 <td class="py-3.5 px-4">
                                     @if($pkg)
@@ -124,27 +134,46 @@
                                 </td>
                                 <td class="py-3.5 px-4">
                                     @if($pkg)
-                                        @if($pkg->status === 'canceled')
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">
-                                                Batal (10% Fee)
-                                            </span>
-                                        @elseif($pkg->status === 'completed')
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                                <i class="fa-solid fa-circle-check mr-1"></i> Lunas 100%
-                                            </span>
-                                        @elseif($pkg->is_bonus_forfeited)
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800 border border-red-200" title="{{ $pkg->forfeit_reason }}">
-                                                <i class="fa-solid fa-ban mr-1"></i> Bonus Hangus
-                                            </span>
-                                        @elseif($pkg->consecutive_unpaid_weeks > 0)
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-                                                {{ $pkg->consecutive_unpaid_weeks }} {{ ($pkg->package && $pkg->package->isHarian()) ? 'Hari' : 'Mgg' }} Bolong
-                                            </span>
-                                        @else
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700">
-                                                Setoran Lancar
-                                            </span>
-                                        @endif
+                                        @php
+                                            $isSafe = $pkg->isSafeThresholdReached();
+                                        @endphp
+                                        <div class="space-y-1">
+                                            @if($pkg->status === 'canceled')
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">
+                                                    Batal (10% Fee)
+                                                </span>
+                                            @elseif($pkg->status === 'completed')
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                                    <i class="fa-solid fa-circle-check mr-1"></i> Lunas 100%
+                                                </span>
+                                            @elseif($isSafe)
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200" title="Konsumen lolos titik aman. Berhak full paket saat tutup buku.">
+                                                    <i class="fa-solid fa-shield-check mr-1 text-[9px]"></i> Lolos Titik Aman
+                                                </span>
+                                            @elseif($pkg->package && $pkg->package->hasSafeThreshold())
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200" title="Belum mencapai titik aman. Kurang Rp {{ number_format($pkg->safe_deficit_nominal, 0, ',', '.') }}">
+                                                    <i class="fa-solid fa-triangle-exclamation mr-1 text-[9px]"></i> Belum Aman (-Rp {{ number_format($pkg->safe_deficit_nominal, 0, ',', '.') }})
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
+                                                    Tanpa Titik Aman
+                                                </span>
+                                            @endif
+
+                                            @if($pkg->is_bonus_forfeited)
+                                                <div>
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800 border border-red-200" title="{{ $pkg->forfeit_reason }}">
+                                                        <i class="fa-solid fa-ban mr-1"></i> Bonus Hangus
+                                                    </span>
+                                                </div>
+                                            @elseif($pkg->consecutive_unpaid_weeks > 0)
+                                                <div>
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                                                        {{ $pkg->consecutive_unpaid_weeks }} {{ ($pkg->package && $pkg->package->isHarian()) ? 'Hari' : 'Mgg' }} Bolong
+                                                    </span>
+                                                </div>
+                                            @endif
+                                        </div>
                                     @endif
                                 </td>
                                 <td class="py-3.5 px-4 text-right">

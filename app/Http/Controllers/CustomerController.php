@@ -41,6 +41,39 @@ class CustomerController extends Controller
             $query->whereHas('activePackage.package', fn($q) => $q->where('type', $type));
         }
 
+        if ($request->filled('safe_status')) {
+            $status = $request->safe_status;
+            if ($status === 'safe') {
+                $query->whereHas('customerPackages', function ($q) {
+                    $q->where('status', '!=', 'canceled')
+                      ->where(function ($sq) {
+                          $sq->where('status', 'completed')
+                             ->orWhereRaw('total_paid >= total_target')
+                             ->orWhereHas('package', function ($pq) {
+                                 $pq->whereNotNull('safe_threshold')
+                                    ->where('safe_threshold', '>', 0)
+                                    ->whereRaw('customer_packages.total_paid >= packages.safe_threshold * packages.installment_amount');
+                             });
+                      });
+                });
+            } elseif ($status === 'unreached') {
+                $query->whereHas('customerPackages', function ($q) {
+                    $q->where('status', '!=', 'canceled')
+                      ->where('status', '!=', 'completed')
+                      ->whereRaw('total_paid < total_target')
+                      ->where(function ($sq) {
+                          $sq->whereDoesntHave('package', function ($pq) {
+                              $pq->whereNotNull('safe_threshold')->where('safe_threshold', '>', 0);
+                          })->orWhereHas('package', function ($pq) {
+                              $pq->whereNotNull('safe_threshold')
+                                 ->where('safe_threshold', '>', 0)
+                                 ->whereRaw('customer_packages.total_paid < packages.safe_threshold * packages.installment_amount');
+                          });
+                      });
+                });
+            }
+        }
+
         $customers = $query->latest()->paginate(15)->withQueryString();
         $agents = $user->isOwnerOrAdmin() ? User::where('role', 'agent')->select('id', 'name', 'phone')->get() : collect();
 

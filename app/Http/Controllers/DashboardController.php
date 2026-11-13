@@ -76,12 +76,15 @@ class DashboardController extends Controller
         // 7. Statistik Tutup Buku & Titik Aman (Cached 60s agar dasbor super ringan saat diakses bersamaan)
         $closingStats = \Illuminate\Support\Facades\Cache::remember('spl_dashboard_closing_stats', 60, function () {
             $activeForClosing = CustomerPackage::with('package')->where('status', '!=', 'canceled')->get();
+            $safe = $activeForClosing->filter(fn($cp) => $cp->isSafeThresholdReached())->count();
             return [
-                'safe' => $activeForClosing->filter(fn($cp) => $cp->isSafeThresholdReached())->count(),
+                'safe' => $safe,
+                'unreached' => $activeForClosing->count() - $safe,
                 'pending' => $activeForClosing->filter(fn($cp) => !$cp->isDecisionMade())->count(),
             ];
         });
         $safeReachedCount = $closingStats['safe'];
+        $unreachedSafeCount = $closingStats['unreached'];
         $pendingDecisionCount = $closingStats['pending'];
 
         // 8. Pengaturan Aplikasi
@@ -100,6 +103,7 @@ class DashboardController extends Controller
             'laggingCustomers',
             'packageStats',
             'safeReachedCount',
+            'unreachedSafeCount',
             'pendingDecisionCount',
             'appSetting'
         ));

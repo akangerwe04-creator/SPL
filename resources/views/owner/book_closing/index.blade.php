@@ -163,6 +163,12 @@
                     <span>Perlu Diputuskan ({{ $pendingCount }})</span>
                 </a>
 
+                <a href="{{ route('owner.book-closing.index', ['tab' => 'by_agent']) }}" 
+                   class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 {{ $currentTab === 'by_agent' ? 'bg-indigo-600 text-white shadow-xs' : 'text-indigo-900 bg-indigo-50 hover:bg-indigo-100' }}">
+                    <i class="fa-solid fa-users-rectangle text-xs"></i>
+                    <span>Kelompokkan per Agen ({{ $agentsGrouped->count() }})</span>
+                </a>
+
                 <a href="{{ route('owner.book-closing.index', ['tab' => 'packages']) }}" 
                    class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 {{ $currentTab === 'packages' ? 'bg-purple-600 text-white shadow-xs' : 'text-purple-900 bg-purple-50 hover:bg-purple-100' }}">
                     <i class="fa-solid fa-sliders text-xs"></i>
@@ -287,6 +293,208 @@
                     </div>
                 </form>
             </div>
+        @elseif($currentTab === 'by_agent')
+            <!-- ========================================== -->
+            <!-- TAB: KELOMPOKKAN KONSUMEN TITIK AMAN PER AGEN -->
+            <!-- ========================================== -->
+            <div class="p-4 sm:p-6 space-y-6" x-data="{ searchAgentGroup: '' }">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-indigo-50/70 p-4 rounded-2xl border border-indigo-200">
+                    <div>
+                        <h3 class="font-heading font-extrabold text-indigo-950 text-base flex items-center">
+                            <i class="fa-solid fa-users-rectangle text-indigo-600 mr-2"></i>
+                            Rekapitulasi Konsumen Titik Aman Dikelompokkan per Agen
+                        </h3>
+                        <p class="text-xs text-indigo-800 mt-0.5">
+                            Mempermudah Owner melihat siapa saja agen yang bertanggung jawab, serta memisahkan secara jelas konsumen yang <strong>sudah lolos titik aman</strong> vs konsumen yang <strong>belum lolos titik aman</strong> pada tiap agen.
+                        </p>
+                    </div>
+                    <div class="relative w-full sm:w-64">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-indigo-400 text-xs"></i>
+                        <input type="text" x-model="searchAgentGroup" placeholder="Cari nama agen / konsumen..." class="w-full pl-8 pr-3 py-1.5 bg-white border border-indigo-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs">
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    @forelse($agentsGrouped as $agent)
+                        @php
+                            $searchKey = strtolower($agent->name . ' ' . $agent->phone . ' ' . $agent->address . ' ' . $agent->safe_packages->pluck('customer_name')->implode(' ') . ' ' . $agent->unreached_packages->pluck('customer_name')->implode(' '));
+                        @endphp
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden transition"
+                             x-show="!searchAgentGroup || '{{ addslashes($searchKey) }}'.includes(searchAgentGroup.toLowerCase().trim())">
+                            
+                            <!-- AGENT BANNER -->
+                            <div class="p-4 sm:p-5 bg-gradient-to-r from-slate-50 via-white to-indigo-50/30 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                <div class="flex items-center space-x-3.5">
+                                    <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-black flex items-center justify-center text-lg shadow-sm shrink-0">
+                                        {{ strtoupper(substr($agent->name, 0, 2)) }}
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center space-x-2">
+                                            <h4 class="font-heading font-extrabold text-slate-900 text-base">{{ $agent->name }}</h4>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 font-mono">
+                                                {{ $agent->phone }}
+                                            </span>
+                                        </div>
+                                        <div class="text-xs text-slate-500 mt-0.5 flex items-center">
+                                            <i class="fa-solid fa-location-dot text-slate-400 mr-1 text-[11px]"></i>
+                                            <span>{{ $agent->address ?: 'Alamat belum diisi' }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- STATS BADGES PER AGENT -->
+                                <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                                    <div class="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-right">
+                                        <div class="text-[9px] font-bold uppercase text-slate-500">Total Pesanan</div>
+                                        <div class="text-xs font-black text-slate-800">{{ $agent->total_packages_count }} Paket</div>
+                                    </div>
+                                    <div class="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-300 text-right">
+                                        <div class="text-[9px] font-bold uppercase text-emerald-800 flex items-center justify-end space-x-1">
+                                            <i class="fa-solid fa-shield-check text-[9px]"></i>
+                                            <span>Lolos Titik Aman</span>
+                                        </div>
+                                        <div class="text-xs font-black text-emerald-900">{{ $agent->safe_count }} Konsumen</div>
+                                    </div>
+                                    <div class="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-300 text-right">
+                                        <div class="text-[9px] font-bold uppercase text-amber-900 flex items-center justify-end space-x-1">
+                                            <i class="fa-solid fa-triangle-exclamation text-[9px]"></i>
+                                            <span>Belum Titik Aman</span>
+                                        </div>
+                                        <div class="text-xs font-black text-amber-950">{{ $agent->unreached_count }} Konsumen</div>
+                                    </div>
+                                    <div class="px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-right">
+                                        <div class="text-[9px] font-bold uppercase text-indigo-700">Tingkat Aman</div>
+                                        <div class="text-xs font-black text-indigo-950">{{ $agent->safe_percentage }}%</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- DUA KELOMPOK TERPISAH: SUDAH TITIK AMAN VS BELUM TITIK AMAN -->
+                            <div class="p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-2 gap-5 bg-slate-50/40">
+                                
+                                <!-- KELOMPOK 1: SUDAH MENCAPAI TITIK AMAN -->
+                                <div class="bg-white rounded-2xl border-2 border-emerald-200 overflow-hidden shadow-2xs flex flex-col justify-between">
+                                    <div>
+                                        <div class="p-3.5 bg-gradient-to-r from-emerald-100/80 to-emerald-50 border-b border-emerald-200 flex items-center justify-between">
+                                            <div class="flex items-center space-x-2">
+                                                <i class="fa-solid fa-shield-check text-emerald-600 text-base"></i>
+                                                <h5 class="font-heading font-extrabold text-emerald-950 text-xs uppercase tracking-wide">
+                                                    1. Sudah Mencapai Titik Aman ({{ $agent->safe_count }})
+                                                </h5>
+                                            </div>
+                                            <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white">Full Parsel Dijamin</span>
+                                        </div>
+
+                                        @if($agent->safe_packages->isEmpty())
+                                            <div class="p-6 text-center text-slate-400 text-xs">
+                                                <i class="fa-solid fa-shield-slash text-2xl text-slate-300 mb-1"></i>
+                                                <div>Belum ada konsumen agen ini yang mencapai titik aman.</div>
+                                            </div>
+                                        @else
+                                            <div class="divide-y divide-slate-100 max-h-[480px] overflow-y-auto text-xs">
+                                                @foreach($agent->safe_packages as $sCp)
+                                                    <div class="p-3 hover:bg-emerald-50/30 transition flex items-center justify-between gap-3">
+                                                        <div class="min-w-0">
+                                                            <div class="font-extrabold text-slate-900 truncate">{{ $sCp->customer_name }}</div>
+                                                            <div class="text-[10px] text-slate-400">{{ $sCp->customer_phone ?: '-' }} &bull; {{ $sCp->customer_address ?: '-' }}</div>
+                                                            <div class="text-[11px] font-semibold text-slate-700 mt-1 flex items-center space-x-1.5">
+                                                                <span class="font-bold text-pink-700">{{ $sCp->package?->name }}</span>
+                                                                <span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 font-mono text-slate-600">{{ $sCp->package?->installment_count }} {{ $sCp->package?->period_label }}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="text-right shrink-0">
+                                                            <div class="font-black text-emerald-700 font-mono text-xs">Rp {{ number_format($sCp->total_paid, 0, ',', '.') }}</div>
+                                                            <div class="text-[9px] text-slate-400 font-medium">dari target Rp {{ number_format($sCp->total_target, 0, ',', '.') }}</div>
+                                                            <div class="mt-1 flex items-center justify-end space-x-1">
+                                                                @if($sCp->progress_percent >= 100)
+                                                                    <span class="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-600 text-white">Lunas 100%</span>
+                                                                @else
+                                                                    <span class="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">Lolos Aman ({{ $sCp->progress_percent }}%)</span>
+                                                                @endif
+                                                                @if($sCp->isDecisionMade())
+                                                                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-100 text-blue-800">Sah</span>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <!-- KELOMPOK 2: BELUM MENCAPAI TITIK AMAN -->
+                                <div class="bg-white rounded-2xl border-2 border-amber-200 overflow-hidden shadow-2xs flex flex-col justify-between">
+                                    <div>
+                                        <div class="p-3.5 bg-gradient-to-r from-amber-100/80 to-amber-50 border-b border-amber-200 flex items-center justify-between">
+                                            <div class="flex items-center space-x-2">
+                                                <i class="fa-solid fa-triangle-exclamation text-amber-600 text-base"></i>
+                                                <h5 class="font-heading font-extrabold text-amber-950 text-xs uppercase tracking-wide">
+                                                    2. Belum Mencapai Titik Aman ({{ $agent->unreached_count }})
+                                                </h5>
+                                            </div>
+                                            <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-white">Perlu Penyesuaian</span>
+                                        </div>
+
+                                        @if($agent->unreached_packages->isEmpty())
+                                            <div class="p-6 text-center text-slate-400 text-xs">
+                                                <i class="fa-solid fa-circle-check text-2xl text-emerald-300 mb-1"></i>
+                                                <div class="font-bold text-emerald-700">Luar biasa! Seluruh konsumen agen ini sudah mencapai titik aman.</div>
+                                            </div>
+                                        @else
+                                            <div class="divide-y divide-slate-100 max-h-[480px] overflow-y-auto text-xs">
+                                                @foreach($agent->unreached_packages as $uCp)
+                                                    <div class="p-3 hover:bg-amber-50/30 transition flex items-center justify-between gap-3">
+                                                        <div class="min-w-0">
+                                                            <div class="font-extrabold text-slate-900 truncate">{{ $uCp->customer_name }}</div>
+                                                            <div class="text-[10px] text-slate-400">{{ $uCp->customer_phone ?: '-' }} &bull; {{ $uCp->customer_address ?: '-' }}</div>
+                                                            <div class="text-[11px] font-semibold text-slate-700 mt-1 flex items-center space-x-1.5">
+                                                                <span class="font-bold text-amber-800">{{ $uCp->package?->name }}</span>
+                                                                <span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 font-mono text-slate-600">{{ $uCp->package?->installment_count }} {{ $uCp->package?->period_label }}</span>
+                                                            </div>
+                                                            @if($uCp->consecutive_unpaid_weeks > 0)
+                                                                <div class="text-[10px] font-bold text-amber-700 mt-0.5">
+                                                                    <i class="fa-solid fa-clock-rotate-left mr-0.5"></i> {{ $uCp->consecutive_unpaid_weeks }} {{ ($uCp->package && $uCp->package->isHarian()) ? 'Hari' : 'Mgg' }} Bolong
+                                                                </div>
+                                                            @endif
+                                                        </div>
+
+                                                        <div class="text-right shrink-0">
+                                                            <div class="font-black text-slate-900 font-mono text-xs">Rp {{ number_format($uCp->total_paid, 0, ',', '.') }}</div>
+                                                            <div class="text-[10px] text-amber-800 font-black mt-0.5">
+                                                                Kurang: Rp {{ number_format($uCp->safe_deficit_nominal, 0, ',', '.') }}
+                                                            </div>
+                                                            <div class="mt-1 flex items-center justify-end space-x-1">
+                                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300">
+                                                                    {{ $uCp->progress_percent }}% Lunas
+                                                                </span>
+                                                                @if($uCp->isDecisionMade())
+                                                                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-100 text-blue-800">Sudah Diputuskan</span>
+                                                                @else
+                                                                    <a href="{{ route('owner.book-closing.decision', $uCp) }}" class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-pink-600 hover:bg-pink-700 text-white transition shadow-2xs">
+                                                                        Sesuaikan &rarr;
+                                                                    </a>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    @empty
+                        <div class="p-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
+                            <i class="fa-solid fa-user-tie text-3xl mb-2 text-slate-300"></i>
+                            <div>Belum ada data agen terdaftar.</div>
+                        </div>
+                    @endforelse
+                </div>
+            </div>
         @else
             <!-- ========================================== -->
             <!-- TAB: DAFTAR KONSUMEN & KEPUTUSAN TUTUP BUKU -->
@@ -323,9 +531,11 @@
                                     <div class="text-[10px] text-slate-500 font-mono mt-0.5">
                                         {{ $cp->customer?->code ?? '-' }} • {{ $cp->customer?->phone ?? '-' }}
                                     </div>
-                                    <div class="text-[10px] font-bold text-pink-700 mt-1 flex items-center">
-                                        <i class="fa-solid fa-user-tie text-[9px] mr-1"></i>
-                                        <span>Agen: {{ $cp->agent?->name ?? 'Tanpa Agen' }}</span>
+                                    <div class="mt-1.5 pt-1 border-t border-slate-100 flex items-center space-x-1.5">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-pink-50 text-pink-800 border border-pink-200 inline-flex items-center">
+                                            <i class="fa-solid fa-user-tie text-[9px] mr-1 text-pink-600"></i>
+                                            <strong>Agen:</strong>&nbsp;{{ $cp->agent?->name ?? 'Tanpa Agen' }}
+                                        </span>
                                     </div>
                                 </td>
 

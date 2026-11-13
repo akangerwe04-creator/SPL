@@ -120,6 +120,39 @@
         </div>
     </div>
 
+    <!-- MONITORING TITIK AMAN KONSUMEN & REKAP PER AGEN -->
+    <div class="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 rounded-2xl p-4 sm:p-5 text-white shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                <span class="text-xs uppercase tracking-wider font-extrabold text-purple-200">Monitoring Titik Aman Parsel SPL</span>
+            </div>
+            <h3 class="font-heading font-extrabold text-lg text-white">
+                Kelompok Konsumen Lolos Titik Aman vs Belum Aman
+            </h3>
+            <p class="text-xs text-purple-200/90 max-w-xl">
+                Pantau konsumen tiap agen yang berhak mendapatkan jaminan full parsel dan konsumen yang membutuhkan penyesuaian belanja barang kulakan saat tutup buku.
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 shrink-0">
+            <div class="px-3.5 py-2 rounded-xl bg-white/10 border border-white/20 backdrop-blur-xs text-right">
+                <div class="text-[9px] font-bold uppercase text-emerald-300">Lolos Titik Aman</div>
+                <div class="text-lg font-black text-white">{{ $safeReachedCount }} Konsumen</div>
+            </div>
+
+            <div class="px-3.5 py-2 rounded-xl bg-white/10 border border-white/20 backdrop-blur-xs text-right">
+                <div class="text-[9px] font-bold uppercase text-amber-300">Belum Aman</div>
+                <div class="text-lg font-black text-white">{{ $unreachedSafeCount }} Konsumen</div>
+            </div>
+
+            <a href="{{ route('owner.book-closing.index', ['tab' => 'by_agent']) }}" class="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-users-rectangle"></i>
+                <span>Lihat Kelompok Tiap Agen &rarr;</span>
+            </a>
+        </div>
+    </div>
+
     <!-- MAIN TWO-COLUMN SECTION -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 

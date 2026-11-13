@@ -613,6 +613,8 @@ class AgentManagementController extends Controller
         $totalEcerOrdersCount = 0;
         $totalTabunganCustomersCount = 0;
         $totalTabunganOrdersCount = 0;
+        $totalSafeCustomersCount = 0;
+        $totalUnreachedCustomersCount = 0;
 
         // 5. Rekapitulasi per agen & per paket
         foreach ($agents as $agent) {
@@ -778,6 +780,28 @@ class AgentManagementController extends Controller
             $agent->ecer_item_qty = $agentEcerItemQty;
             $agent->total_ecer_orders = $agentEcerOrdersCount;
 
+            // Pengelompokan Status Titik Aman Konsumen untuk Agen ini
+            $safeCusts = collect();
+            $unreachedCusts = collect();
+
+            foreach ($agent->customers as $customer) {
+                if ($customer->isSafeThresholdReached()) {
+                    $customer->is_safe = true;
+                    $safeCusts->push($customer);
+                } else {
+                    $customer->is_safe = false;
+                    $unreachedCusts->push($customer);
+                }
+            }
+
+            $agent->safe_customers = $safeCusts;
+            $agent->unreached_customers = $unreachedCusts;
+            $agent->safe_customers_count = $safeCusts->count();
+            $agent->unreached_customers_count = $unreachedCusts->count();
+            $agent->safe_rate = $agent->total_customers > 0 
+                ? round(($agent->safe_customers_count / $agent->total_customers) * 100, 1) 
+                : 0;
+
             $totalCustomersCount += $agent->total_customers;
             $totalTargetNominalSum += $agentTargetSum;
             $totalPaidSum += $agentPaidSum;
@@ -786,6 +810,8 @@ class AgentManagementController extends Controller
             $totalMingguanCustomersCount += $agent->mingguan_customers_count;
             $totalEcerCustomersCount += $agent->ecer_customers_count;
             $totalTabunganCustomersCount += $agent->tabungan_customers_count;
+            $totalSafeCustomersCount += $agent->safe_customers_count;
+            $totalUnreachedCustomersCount += $agent->unreached_customers_count;
         }
 
         $allAgentsList = User::where('role', 'agent')->orderBy('name')->get();
@@ -817,6 +843,8 @@ class AgentManagementController extends Controller
             'totalEcerOrdersCount',
             'totalTabunganCustomersCount',
             'totalTabunganOrdersCount',
+            'totalSafeCustomersCount',
+            'totalUnreachedCustomersCount',
             'appSetting'
         );
     }

@@ -115,6 +115,51 @@ class BookClosingController extends Controller
 
         $agents = \App\Models\User::where('role', 'agent')->orderBy('name')->get();
 
+        // Pengelompokan Konsumen Titik Aman per Agen (Siapa yang lolos vs belum lolos titik aman)
+        $agentsGrouped = \App\Models\User::where('role', 'agent')
+            ->with([
+                'customers' => function ($cq) {
+                    $cq->with([
+                        'customerPackages' => function ($pq) {
+                            $pq->with(['package.packageItems.item', 'packaging', 'partialFulfillment.items.item', 'decidedBy'])
+                              ->where('status', '!=', 'canceled')
+                              ->orderBy('consecutive_unpaid_weeks', 'desc');
+                        }
+                    ])->orderBy('name');
+                }
+            ])
+            ->orderBy('name')
+            ->get()
+            ->map(function ($agent) {
+                $safeList = collect();
+                $unreachedList = collect();
+
+                foreach ($agent->customers as $cust) {
+                    foreach ($cust->customerPackages as $cp) {
+                        $cp->customer_name = $cust->name;
+                        $cp->customer_phone = $cust->phone;
+                        $cp->customer_address = $cust->address;
+
+                        if ($cp->isSafeThresholdReached()) {
+                            $safeList->push($cp);
+                        } else {
+                            $unreachedList->push($cp);
+                        }
+                    }
+                }
+
+                $agent->safe_packages = $safeList;
+                $agent->unreached_packages = $unreachedList;
+                $agent->safe_count = $safeList->count();
+                $agent->unreached_count = $unreachedList->count();
+                $agent->total_packages_count = $safeList->count() + $unreachedList->count();
+                $agent->safe_percentage = $agent->total_packages_count > 0 
+                    ? round(($agent->safe_count / $agent->total_packages_count) * 100, 1) 
+                    : 0;
+
+                return $agent;
+            });
+
         return view('owner.book_closing.index', compact(
             'appSetting',
             'customerPackages',
@@ -122,6 +167,7 @@ class BookClosingController extends Controller
             'masterItems',
             'categories',
             'agents',
+            'agentsGrouped',
             'totalOrders',
             'totalTarget',
             'totalPaid',

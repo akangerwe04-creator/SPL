@@ -38,6 +38,26 @@ class Customer extends Model
         return $this->hasOne(CustomerPackage::class)->where('status', 'active')->latestOfMany();
     }
 
+    /**
+     * Apakah konsumen ini telah mencapai titik aman
+     */
+    public function isSafeThresholdReached(): bool
+    {
+        $pkg = $this->activePackage ?: $this->customerPackages->where('status', '!=', 'canceled')->first();
+        return $pkg ? $pkg->isSafeThresholdReached() : false;
+    }
+
+    public function getIsSafeReachedAttribute(): bool
+    {
+        return $this->isSafeThresholdReached();
+    }
+
+    public function getSafeDeficitNominalAttribute(): float
+    {
+        $pkg = $this->activePackage ?: $this->customerPackages->where('status', '!=', 'canceled')->first();
+        return $pkg ? $pkg->safe_deficit_nominal : 0.0;
+    }
+
     public static function generateNextCode(): string
     {
         $prefix = 'KNS-' . date('ym') . '-';

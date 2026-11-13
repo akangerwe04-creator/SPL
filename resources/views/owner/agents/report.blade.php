@@ -67,8 +67,8 @@
         </div>
     </div>
 
-    <!-- 4 KPI SUMMARY CARDS -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- 5 KPI SUMMARY CARDS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <!-- 1. TOTAL AGEN -->
         <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
             <div>
@@ -120,6 +120,22 @@
             </div>
             <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-xl">
                 <i class="fa-solid fa-sack-dollar"></i>
+            </div>
+        </div>
+
+        <!-- 5. STATUS TITIK AMAN SE-SPL -->
+        <div class="bg-white rounded-2xl p-4 border-2 border-purple-200 shadow-xs flex items-center justify-between">
+            <div>
+                <div class="text-[10px] font-bold text-purple-700 uppercase tracking-wider">Status Titik Aman</div>
+                <div class="text-xl font-heading font-extrabold text-emerald-700 mt-1">
+                    {{ $totalSafeCustomersCount }} <span class="text-xs text-slate-500 font-normal">Aman</span>
+                </div>
+                <div class="text-[10px] text-amber-800 font-extrabold mt-0.5">
+                    Belum Aman: {{ $totalUnreachedCustomersCount }} Konsumen
+                </div>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center text-xl">
+                <i class="fa-solid fa-shield-halved"></i>
             </div>
         </div>
     </div>
@@ -910,6 +926,7 @@
             <div 
                 class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden transition"
                 x-show="!searchDetail || '{{ addslashes($agentSearchPayload) }}'.includes(searchDetail.toLowerCase().trim())"
+                x-data="{ filterSafe: 'all', viewMode: 'grouped' }"
             >
                 <!-- AGENT HEADER BANNER -->
                 <div class="bg-gradient-to-r from-slate-50 via-white to-emerald-50/30 p-4 sm:p-5 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -935,23 +952,66 @@
                     </div>
 
                     <!-- AGENT TOTALS PILLS -->
-                    <div class="flex items-center space-x-2.5 shrink-0 flex-wrap">
+                    <div class="flex items-center space-x-2 shrink-0 flex-wrap">
                         <div class="text-right px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200">
                             <div class="text-[9px] font-bold uppercase text-slate-600">Total Binaan</div>
-                            <div class="text-sm font-heading font-extrabold text-slate-900">{{ $agent->customers->count() }} Orang</div>
+                            <div class="text-xs font-heading font-extrabold text-slate-900">{{ $agent->customers->count() }} Orang</div>
                         </div>
-                        <div class="text-right px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200">
-                            <div class="text-[9px] font-bold uppercase text-emerald-700">Parsel Harian</div>
-                            <div class="text-sm font-heading font-extrabold text-emerald-950">{{ $agent->total_harian_orders }} Paket</div>
+                        <div class="text-right px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-300">
+                            <div class="text-[9px] font-bold uppercase text-emerald-800 flex items-center justify-end space-x-1">
+                                <i class="fa-solid fa-shield-check text-[9px]"></i>
+                                <span>Lolos Aman</span>
+                            </div>
+                            <div class="text-xs font-heading font-black text-emerald-950">{{ $agent->safe_customers_count }} Orang</div>
                         </div>
-                        <div class="text-right px-3 py-1.5 rounded-xl bg-purple-50 border border-purple-200">
-                            <div class="text-[9px] font-bold uppercase text-purple-700">Mingguan Lainnya</div>
-                            <div class="text-sm font-heading font-extrabold text-purple-950">{{ $agent->total_mingguan_orders }} Paket</div>
+                        <div class="text-right px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-300">
+                            <div class="text-[9px] font-bold uppercase text-amber-900 flex items-center justify-end space-x-1">
+                                <i class="fa-solid fa-triangle-exclamation text-[9px]"></i>
+                                <span>Belum Aman</span>
+                            </div>
+                            <div class="text-xs font-heading font-black text-amber-950">{{ $agent->unreached_customers_count }} Orang</div>
                         </div>
-                        <div class="text-right px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200">
-                            <div class="text-[9px] font-bold uppercase text-blue-700">Parsel Eceran</div>
-                            <div class="text-sm font-heading font-extrabold text-blue-950">{{ $agent->total_ecer_orders }} Item</div>
+                        <div class="text-right px-2.5 py-1.5 rounded-xl bg-purple-50 border border-purple-200">
+                            <div class="text-[9px] font-bold uppercase text-purple-700">Tingkat Aman</div>
+                            <div class="text-xs font-heading font-black text-purple-950">{{ $agent->safe_rate }}%</div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- SUB-BAR: FILTER KELOMPOK TITIK AMAN & VIEW MODE TOGGLE -->
+                <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div class="flex items-center space-x-1.5">
+                        <span class="text-[11px] font-bold text-slate-500 mr-1">Tampilkan:</span>
+                        <button type="button" 
+                                @click="filterSafe = 'all'" 
+                                :class="filterSafe === 'all' ? 'bg-slate-800 text-white shadow-2xs' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'" 
+                                class="px-2.5 py-1 rounded-lg font-bold text-[11px] transition">
+                            Semua ({{ $agent->customers->count() }})
+                        </button>
+                        <button type="button" 
+                                @click="filterSafe = 'safe'" 
+                                :class="filterSafe === 'safe' ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-white text-emerald-800 hover:bg-emerald-50 border border-emerald-200'" 
+                                class="px-2.5 py-1 rounded-lg font-bold text-[11px] transition flex items-center space-x-1">
+                            <i class="fa-solid fa-shield-check text-[10px]"></i>
+                            <span>Sudah Titik Aman ({{ $agent->safe_customers_count }})</span>
+                        </button>
+                        <button type="button" 
+                                @click="filterSafe = 'unreached'" 
+                                :class="filterSafe === 'unreached' ? 'bg-amber-600 text-white shadow-2xs' : 'bg-white text-amber-900 hover:bg-amber-50 border border-amber-200'" 
+                                class="px-2.5 py-1 rounded-lg font-bold text-[11px] transition flex items-center space-x-1">
+                            <i class="fa-solid fa-triangle-exclamation text-[10px]"></i>
+                            <span>Belum Titik Aman ({{ $agent->unreached_customers_count }})</span>
+                        </button>
+                    </div>
+
+                    <div>
+                        <button type="button" 
+                                @click="viewMode = (viewMode === 'grouped' ? 'flat' : 'grouped')" 
+                                class="px-3 py-1 rounded-lg font-bold text-[11px] border transition flex items-center space-x-1.5"
+                                :class="viewMode === 'grouped' ? 'bg-indigo-50 border-indigo-300 text-indigo-900 shadow-2xs' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'">
+                            <i class="fa-solid fa-layer-group text-[10px]"></i>
+                            <span x-text="viewMode === 'grouped' ? 'Mode: Terkelompok (Sudah vs Belum)' : 'Mode: Tabel Biasa'"></span>
+                        </button>
                     </div>
                 </div>
 
@@ -962,157 +1022,127 @@
                         <div>Agen ini belum memiliki konsumen binaan terdaftar.</div>
                     </div>
                 @else
-                    <div class="overflow-x-auto">
+                    <!-- MODE 1: GROUPED VIEW (DUA KELOMPOK TERPISAH SECARA JELAS) -->
+                    <div x-show="viewMode === 'grouped' && filterSafe === 'all'" class="p-4 sm:p-5 space-y-5 bg-slate-50/50">
+                        
+                        <!-- KELOMPOK 1: SUDAH MENCAPAI TITIK AMAN -->
+                        <div class="bg-white rounded-2xl border-2 border-emerald-300 shadow-2xs overflow-hidden">
+                            <div class="p-3.5 bg-gradient-to-r from-emerald-100 to-emerald-50/60 border-b border-emerald-200 flex items-center justify-between">
+                                <div class="flex items-center space-x-2.5">
+                                    <span class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs">
+                                        <i class="fa-solid fa-shield-check"></i>
+                                    </span>
+                                    <div>
+                                        <h4 class="font-heading font-extrabold text-emerald-950 text-xs uppercase tracking-wide">
+                                            Kelompok I: Konsumen yang SUDAH Mencapai Titik Aman ({{ $agent->safe_customers_count }} Orang)
+                                        </h4>
+                                        <div class="text-[10px] text-emerald-700">Konsumen ini dijamin berhak mendapatkan 100% barang paket parsel saat Tutup Buku.</div>
+                                    </div>
+                                </div>
+                                <span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-600 text-white shadow-2xs">
+                                    Lolos Titik Aman
+                                </span>
+                            </div>
+
+                            @if($agent->safe_customers->isEmpty())
+                                <div class="p-6 text-center text-xs text-slate-400">
+                                    <i class="fa-solid fa-shield-slash text-2xl text-slate-300 mb-1"></i>
+                                    <div>Belum ada konsumen binaan yang mencapai titik aman pada agen ini.</div>
+                                </div>
+                            @else
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left border-collapse text-xs">
+                                        <thead>
+                                            <tr class="bg-emerald-50/40 text-emerald-900 font-bold border-b border-emerald-100 text-[11px]">
+                                                <th class="py-2.5 px-3 w-10 text-center">#</th>
+                                                <th class="py-2.5 px-3.5 min-w-[150px]">Nama Konsumen</th>
+                                                <th class="py-2.5 px-3.5 min-w-[130px]">Kontak &amp; Alamat</th>
+                                                <th class="py-2.5 px-3.5 min-w-[220px]">Paket &amp; Barang</th>
+                                                <th class="py-2.5 px-3.5 min-w-[130px] text-right">Target &amp; Cicilan</th>
+                                                <th class="py-2.5 px-3.5 min-w-[140px] text-center">Status Titik Aman</th>
+                                                <th class="py-2.5 px-3.5 min-w-[140px]">Progres Pembayaran</th>
+                                                <th class="py-2.5 px-3 text-center w-20">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100">
+                                            @foreach($agent->safe_customers as $cIdx => $customer)
+                                                @include('owner.agents._customer_row', ['customer' => $customer, 'cIdx' => $cIdx, 'agent' => $agent])
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
+                        </div>
+
+                        <!-- KELOMPOK 2: BELUM MENCAPAI TITIK AMAN -->
+                        <div class="bg-white rounded-2xl border-2 border-amber-300 shadow-2xs overflow-hidden">
+                            <div class="p-3.5 bg-gradient-to-r from-amber-100 to-amber-50/60 border-b border-amber-200 flex items-center justify-between">
+                                <div class="flex items-center space-x-2.5">
+                                    <span class="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs">
+                                        <i class="fa-solid fa-triangle-exclamation"></i>
+                                    </span>
+                                    <div>
+                                        <h4 class="font-heading font-extrabold text-amber-950 text-xs uppercase tracking-wide">
+                                            Kelompok II: Konsumen yang BELUM Mencapai Titik Aman ({{ $agent->unreached_customers_count }} Orang)
+                                        </h4>
+                                        <div class="text-[10px] text-amber-800">Konsumen ini belum mencapai batas minimal atau menunggak setoran (perlu perhatian / penyesuaian barang).</div>
+                                    </div>
+                                </div>
+                                <span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-500 text-white shadow-2xs">
+                                    Perlu Penyesuaian
+                                </span>
+                            </div>
+
+                            @if($agent->unreached_customers->isEmpty())
+                                <div class="p-6 text-center text-xs text-slate-400">
+                                    <i class="fa-solid fa-circle-check text-2xl text-emerald-300 mb-1"></i>
+                                    <div class="font-bold text-emerald-700">Luar biasa! Seluruh konsumen binaan agen ini telah mencapai titik aman.</div>
+                                </div>
+                            @else
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left border-collapse text-xs">
+                                        <thead>
+                                            <tr class="bg-amber-50/40 text-amber-900 font-bold border-b border-amber-100 text-[11px]">
+                                                <th class="py-2.5 px-3 w-10 text-center">#</th>
+                                                <th class="py-2.5 px-3.5 min-w-[150px]">Nama Konsumen</th>
+                                                <th class="py-2.5 px-3.5 min-w-[130px]">Kontak &amp; Alamat</th>
+                                                <th class="py-2.5 px-3.5 min-w-[220px]">Paket &amp; Barang</th>
+                                                <th class="py-2.5 px-3.5 min-w-[130px] text-right">Target &amp; Cicilan</th>
+                                                <th class="py-2.5 px-3.5 min-w-[140px] text-center">Status Titik Aman</th>
+                                                <th class="py-2.5 px-3.5 min-w-[140px]">Progres Pembayaran</th>
+                                                <th class="py-2.5 px-3 text-center w-20">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100">
+                                            @foreach($agent->unreached_customers as $cIdx => $customer)
+                                                @include('owner.agents._customer_row', ['customer' => $customer, 'cIdx' => $cIdx, 'agent' => $agent])
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
+                        </div>
+
+                    </div>
+
+                    <!-- MODE 2: FLAT TABLE VIEW / FILTERED VIEW -->
+                    <div x-show="viewMode === 'flat' || filterSafe !== 'all'" class="overflow-x-auto">
                         <table class="w-full text-left border-collapse text-xs">
                             <thead>
                                 <tr class="bg-slate-50/50 text-slate-500 font-semibold border-b border-slate-100 text-[11px]">
-                                    <th class="py-2.5 px-4 w-10 text-center">#</th>
-                                    <th class="py-2.5 px-4 min-w-[160px]">Nama Konsumen</th>
-                                    <th class="py-2.5 px-4 min-w-[140px]">Kontak &amp; Alamat Konsumen</th>
-                                    <th class="py-2.5 px-4 min-w-[240px]">Paket &amp; Barang yang Dipilih</th>
-                                    <th class="py-2.5 px-4 min-w-[150px] text-right">Target &amp; Cicilan</th>
-                                    <th class="py-2.5 px-4 min-w-[160px]">Progres Pembayaran</th>
-                                    <th class="py-2.5 px-4 text-center w-24">Aksi</th>
+                                    <th class="py-2.5 px-3 w-10 text-center">#</th>
+                                    <th class="py-2.5 px-3.5 min-w-[150px]">Nama Konsumen</th>
+                                    <th class="py-2.5 px-3.5 min-w-[130px]">Kontak &amp; Alamat</th>
+                                    <th class="py-2.5 px-3.5 min-w-[220px]">Paket &amp; Barang yang Dipilih</th>
+                                    <th class="py-2.5 px-3.5 min-w-[130px] text-right">Target &amp; Cicilan</th>
+                                    <th class="py-2.5 px-3.5 min-w-[140px] text-center">Status Titik Aman</th>
+                                    <th class="py-2.5 px-3.5 min-w-[140px]">Progres Pembayaran</th>
+                                    <th class="py-2.5 px-3 text-center w-20">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
                                 @foreach($agent->customers as $cIdx => $customer)
-                                    @php
-                                        $custSearchPayload = strtolower(
-                                            $agent->name . ' ' . 
-                                            $customer->name . ' ' . 
-                                            $customer->address . ' ' . 
-                                            $customer->phone . ' ' . 
-                                            $customer->customerPackages->pluck('package.name')->implode(' ')
-                                        );
-                                    @endphp
-                                    <tr 
-                                        class="hover:bg-slate-50/70 transition"
-                                        x-show="!searchDetail || '{{ addslashes($custSearchPayload) }}'.includes(searchDetail.toLowerCase().trim())"
-                                    >
-                                        <td class="py-3 px-4 text-center font-mono text-slate-400 text-[11px]">
-                                            {{ $cIdx + 1 }}
-                                        </td>
-                                        <td class="py-3 px-4 font-bold text-slate-900">
-                                            <a href="{{ route('customers.show', $customer) }}" class="hover:text-emerald-700 hover:underline flex items-center space-x-1.5">
-                                                <span>{{ $customer->name }}</span>
-                                            </a>
-                                            <div class="text-[10px] text-slate-400 font-mono">{{ $customer->code ?: 'KONS-'.str_pad($customer->id, 4, '0', STR_PAD_LEFT) }}</div>
-                                        </td>
-                                        <td class="py-3 px-4 text-slate-600 text-[11px]">
-                                            <div class="flex items-center space-x-1">
-                                                <i class="fa-solid fa-phone text-slate-400 text-[9px]"></i>
-                                                <span>{{ $customer->phone ?: '-' }}</span>
-                                            </div>
-                                            <div class="text-slate-500 line-clamp-1 mt-0.5">
-                                                <i class="fa-solid fa-map-pin text-slate-400 text-[9px] mr-0.5"></i>
-                                                {{ $customer->address ?: 'Paseh' }}
-                                            </div>
-                                        </td>
-
-                                        <!-- PAKET YANG DIPILIH KONSUMEN -->
-                                        <td class="py-3 px-4">
-                                            @forelse($customer->customerPackages as $cp)
-                                                @php
-                                                    $pkgTheme = $cp->package->isEcer() 
-                                                        ? 'bg-blue-50/60 border-blue-200 text-blue-900' 
-                                                        : ($cp->package->isTabungan() 
-                                                            ? 'bg-amber-50/60 border-amber-200 text-amber-900' 
-                                                            : ($cp->package->isMingguan() 
-                                                                ? 'bg-purple-50/60 border-purple-200 text-purple-900' 
-                                                                : 'bg-emerald-50/60 border-emerald-200 text-emerald-900'));
-                                                    
-                                                    $badgeColor = $cp->package->isEcer() 
-                                                        ? 'bg-blue-600 text-white' 
-                                                        : ($cp->package->isTabungan() 
-                                                            ? 'bg-amber-600 text-white' 
-                                                            : ($cp->package->isMingguan() 
-                                                                ? 'bg-purple-600 text-white' 
-                                                                : 'bg-emerald-600 text-white'));
-                                                @endphp
-                                                <div class="p-2.5 rounded-xl border {{ $pkgTheme }} mb-1.5 last:mb-0">
-                                                    <div class="flex items-center justify-between">
-                                                        <span class="font-mono text-[9px] font-extrabold px-1.5 py-0.2 rounded {{ $badgeColor }}">
-                                                            {{ $cp->package->code }}
-                                                        </span>
-                                                        <span class="text-[10px] font-bold text-slate-600">
-                                                            {{ $cp->package->installment_count }} {{ $cp->package->period_label }}
-                                                        </span>
-                                                    </div>
-                                                    <div class="font-extrabold text-slate-900 text-xs mt-1">
-                                                        {{ $cp->package->name }}
-                                                    </div>
-
-                                                    <!-- RINCIAN BARANG ECERAN PILIHAN KONSUMEN -->
-                                                    @if($cp->package->isEcer())
-                                                        @if($cp->customItems->isNotEmpty())
-                                                            <div class="mt-1.5 pt-1.5 border-t border-blue-200/80 flex flex-wrap gap-1">
-                                                                @foreach($cp->customItems as $ci)
-                                                                    <span class="px-2 py-0.5 rounded-md bg-white border border-blue-200 text-blue-900 text-[10px] font-bold shadow-2xs">
-                                                                        <i class="fa-solid fa-cube text-blue-600 mr-1 text-[8px]"></i>
-                                                                        {{ $ci->item ? $ci->item->name : 'Item' }} ({{ $ci->quantity }} pcs)
-                                                                    </span>
-                                                                @endforeach
-                                                            </div>
-                                                        @elseif($cp->package->packageItems->isNotEmpty())
-                                                            <div class="mt-1.5 pt-1.5 border-t border-blue-200/80 flex flex-wrap gap-1">
-                                                                @foreach($cp->package->packageItems as $pi)
-                                                                    <span class="px-2 py-0.5 rounded-md bg-white border border-blue-200 text-blue-900 text-[10px] font-bold shadow-2xs">
-                                                                        <i class="fa-solid fa-cube text-blue-600 mr-1 text-[8px]"></i>
-                                                                        {{ $pi->item ? $pi->item->name : 'Item' }} ({{ $pi->quantity }} pcs)
-                                                                    </span>
-                                                                @endforeach
-                                                            </div>
-                                                        @endif
-                                                    @endif
-                                                </div>
-                                            @empty
-                                                <span class="text-slate-400 italic text-[11px]">Belum memilih paket</span>
-                                            @endforelse
-                                        </td>
-
-                                        <!-- TARGET & CICILAN PERIODE -->
-                                        <td class="py-3 px-4 text-right">
-                                            @forelse($customer->customerPackages as $cp)
-                                                <div class="mb-1.5 last:mb-0">
-                                                    <div class="font-extrabold text-slate-900 text-xs">{{ $cp->formatted_target }}</div>
-                                                    <div class="text-[10px] text-emerald-700 font-semibold">
-                                                        {{ $cp->package->formatted_installment }} / {{ strtolower($cp->package->period_label) }}
-                                                    </div>
-                                                </div>
-                                            @empty
-                                                <span class="text-slate-300">-</span>
-                                            @endforelse
-                                        </td>
-
-                                        <!-- PROGRESS PEMBAYARAN -->
-                                        <td class="py-3 px-4">
-                                            @forelse($customer->customerPackages as $cp)
-                                                <div class="mb-2 last:mb-0 space-y-1">
-                                                    <div class="flex justify-between text-[10px] font-semibold">
-                                                        <span class="text-emerald-700 font-bold">{{ $cp->formatted_paid }}</span>
-                                                        <span class="text-slate-500">{{ $cp->progress_percent }}%</span>
-                                                    </div>
-                                                    <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                                                        <div class="bg-emerald-600 h-1.5 rounded-full" style="width: {{ $cp->progress_percent }}%"></div>
-                                                    </div>
-                                                </div>
-                                            @empty
-                                                <span class="text-slate-300">-</span>
-                                            @endforelse
-                                        </td>
-
-                                        <!-- AKSI CEKLIS KONSUMEN -->
-                                        <td class="py-3 px-4 text-center">
-                                            @if($customer->customerPackages->isNotEmpty())
-                                                <a href="{{ route('payments.checklist', $customer->customerPackages->first()) }}" class="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[10px] transition inline-flex items-center">
-                                                    <i class="fa-solid fa-list-check mr-1"></i> Ceklis
-                                                </a>
-                                            @else
-                                                <span class="text-slate-300">-</span>
-                                            @endif
-                                        </td>
-                                    </tr>
+                                    @include('owner.agents._customer_row', ['customer' => $customer, 'cIdx' => $cIdx, 'agent' => $agent])
                                 @endforeach
                             </tbody>
                         </table>
