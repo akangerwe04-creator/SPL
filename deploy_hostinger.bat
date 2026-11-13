@@ -25,3 +25,4 @@ echo ========================================================
 echo   SUKSES! Aplikasi di https://susiparsel.com sudah terupdate.
 echo ========================================================
 pause
+

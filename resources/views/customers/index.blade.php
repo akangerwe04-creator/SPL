@@ -138,7 +138,7 @@
                                             </span>
                                         @elseif($pkg->consecutive_unpaid_weeks > 0)
                                             <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-                                                {{ $pkg->consecutive_unpaid_weeks }} Mgg Bolong
+                                                {{ $pkg->consecutive_unpaid_weeks }} {{ ($pkg->package && $pkg->package->isHarian()) ? 'Hari' : 'Mgg' }} Bolong
                                             </span>
                                         @else
                                             <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700">

@@ -227,7 +227,8 @@
                     <div class="p-2 rounded-lg border text-center text-xs
                         {{ $p->is_locked ? 'bg-emerald-600 border-emerald-600 text-white font-bold' : '' }}
                         {{ ($p->is_paid && !$p->is_locked) ? 'bg-amber-400 border-amber-400 text-amber-950 font-bold' : '' }}
-                        {{ (!$p->is_paid) ? 'bg-slate-50 border-slate-200 text-slate-500' : '' }}">
+                        {{ (!$p->is_paid) ? 'bg-slate-50 border-slate-200 text-slate-500' : '' }}"
+                        title="{{ ($activePackage->package->isHarian() ? 'Hari ke-' : 'Minggu ke-') . $p->period_number }} ({{ $p->formatted_amount }})">
                         <div class="text-[10px] opacity-80">{{ $activePackage->package->isHarian() ? 'H' : 'M' }}-{{ $p->period_number }}</div>
                         <div class="text-[11px] font-extrabold mt-0.5">
                             @if($p->is_locked)

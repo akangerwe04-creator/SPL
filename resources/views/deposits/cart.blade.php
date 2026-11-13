@@ -48,7 +48,7 @@
             <div class="p-12 text-center text-slate-400">
                 <i class="fa-solid fa-basket-shopping text-4xl mb-3 text-slate-300"></i>
                 <div class="font-bold text-slate-700">Keranjang Setoran Masih Kosong (Rp 0)</div>
-                <div class="text-xs text-slate-400 mt-1">Buka menu data konsumen lalu centang kotak minggu tagihan di lapangan.</div>
+                <div class="text-xs text-slate-400 mt-1">Buka menu data konsumen lalu centang kotak tagihan (harian/mingguan) di lapangan.</div>
                 <a href="{{ route('customers.index') }}" class="inline-block mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow-xs hover:bg-emerald-700 transition">
                     Pilih Konsumen & Mulai Ceklis
                 </a>
@@ -61,7 +61,7 @@
                             <th class="py-3 px-4">#</th>
                             <th class="py-3 px-4">Konsumen</th>
                             <th class="py-3 px-4">Paket</th>
-                            <th class="py-3 px-4">Periode</th>
+                            <th class="py-3 px-4">Periode Tagihan</th>
                             <th class="py-3 px-4">Nominal</th>
                             <th class="py-3 px-4">Waktu Ceklis</th>
                             <th class="py-3 px-4 text-right">Aksi</th>
@@ -69,6 +69,9 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @foreach($cart->payments as $idx => $p)
+                            @php
+                                $isHarian = $p->customerPackage?->package?->isHarian();
+                            @endphp
                             <tr class="hover:bg-slate-50/80 transition">
                                 <td class="py-3 px-4 text-slate-400 font-mono">{{ $idx + 1 }}</td>
                                 <td class="py-3 px-4">
@@ -76,11 +79,15 @@
                                     <div class="text-[10px] text-slate-400">{{ $p->customerPackage->customer->phone }}</div>
                                 </td>
                                 <td class="py-3 px-4 text-slate-600 font-medium">
-                                    {{ $p->customerPackage->package->name }}
+                                    <div class="font-bold text-slate-800">{{ $p->customerPackage->package->name }}</div>
+                                    <div class="text-[10px] {{ $isHarian ? 'text-sky-600 font-semibold' : 'text-slate-400' }}">
+                                        {{ $isHarian ? 'Model Harian' : 'Model Mingguan' }}
+                                    </div>
                                 </td>
                                 <td class="py-3 px-4">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-                                        Minggu ke-{{ $p->period_number }}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold {{ $isHarian ? 'bg-sky-100 text-sky-800 border border-sky-200' : 'bg-amber-100 text-amber-800' }}">
+                                        <i class="fa-solid {{ $isHarian ? 'fa-calendar-day' : 'fa-calendar-week' }} mr-1 text-[9px]"></i>
+                                        {{ $isHarian ? 'Hari ke-' : 'Minggu ke-' }}{{ $p->period_number }}
                                     </span>
                                 </td>
                                 <td class="py-3 px-4 font-bold text-emerald-700">

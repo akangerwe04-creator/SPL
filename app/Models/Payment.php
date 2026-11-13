@@ -50,6 +50,32 @@ class Payment extends Model
     }
 
     /**
+     * Label periode dinamis (Hari ke-X atau Minggu ke-X)
+     */
+    public function getPeriodLabelAttribute(): string
+    {
+        $unit = ($this->customerPackage?->package?->isHarian()) ? 'Hari' : 'Minggu';
+        return $unit . ' ke-' . $this->period_number;
+    }
+
+    /**
+     * Format periode singkat (Hari X atau Minggu X)
+     */
+    public function getPeriodBadgeAttribute(): string
+    {
+        $unit = ($this->customerPackage?->package?->isHarian()) ? 'Hari' : 'Minggu';
+        return $unit . ' ' . $this->period_number;
+    }
+
+    /**
+     * Apakah pembayaran ini untuk paket harian
+     */
+    public function isHarian(): bool
+    {
+        return (bool) ($this->customerPackage?->package?->isHarian());
+    }
+
+    /**
      * Agen men-ceklis atau membatalkan ceklis (hanya jika belum disahkan owner)
      */
     public function toggleChecklist(int $agentId): array
@@ -86,6 +112,8 @@ class Payment extends Model
                 // Perbarui data paket konsumen & cek aturan bonus
                 $this->customerPackage->recalculatePaidAmount();
 
+                $periodUnit = ($this->customerPackage?->package?->isHarian()) ? 'Hari' : 'Minggu';
+
                 return [
                     'success' => true,
                     'action' => 'checked',
@@ -94,7 +122,7 @@ class Payment extends Model
                     'customer_paid' => $this->customerPackage->total_paid,
                     'formatted_customer_paid' => $this->customerPackage->formatted_paid,
                     'customer_progress' => $this->customerPackage->progress_percent,
-                    'message' => 'Tagihan Minggu ' . $this->period_number . ' berhasil diceklis dan masuk ke keranjang setoran.',
+                    'message' => 'Tagihan ' . $periodUnit . ' ke-' . $this->period_number . ' berhasil diceklis dan masuk ke keranjang setoran.',
                 ];
             } else {
                 // Batalkan ceklis jika status belum verified / locked
@@ -112,6 +140,8 @@ class Payment extends Model
 
                 $this->customerPackage->recalculatePaidAmount();
 
+                $periodUnit = ($this->customerPackage?->package?->isHarian()) ? 'Hari' : 'Minggu';
+
                 return [
                     'success' => true,
                     'action' => 'unchecked',
@@ -120,7 +150,7 @@ class Payment extends Model
                     'customer_paid' => $this->customerPackage->total_paid,
                     'formatted_customer_paid' => $this->customerPackage->formatted_paid,
                     'customer_progress' => $this->customerPackage->progress_percent,
-                    'message' => 'Ceklis Minggu ' . $this->period_number . ' dibatalkan.',
+                    'message' => 'Ceklis ' . $periodUnit . ' ke-' . $this->period_number . ' dibatalkan.',
                 ];
             }
         });

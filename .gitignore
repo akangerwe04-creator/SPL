@@ -26,4 +26,7 @@ yarn-error.log
 !/storage/framework/views/.gitignore
 !/storage/logs/.gitignore
 /.deploy_key*
+/SPL_HOSTINGER_DEPLOY
+/scratch
+
 

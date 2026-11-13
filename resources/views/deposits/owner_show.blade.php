@@ -91,8 +91,9 @@
 
     <!-- TABLE OF PAYMENTS INSIDE THIS DEPOSIT -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div class="p-4 md:p-5 border-b border-slate-100 bg-slate-50/50">
+        <div class="p-4 md:p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
             <h3 class="font-heading font-bold text-slate-800 text-sm">Lembar Rincian Tagihan Konsumen</h3>
+            <span class="text-[11px] font-semibold text-slate-500">{{ $deposit->payments->count() }} transaksi tagihan</span>
         </div>
 
         <div class="overflow-x-auto">
@@ -102,13 +103,16 @@
                         <th class="py-3 px-4">#</th>
                         <th class="py-3 px-4">Konsumen</th>
                         <th class="py-3 px-4">Paket Pilihan</th>
-                        <th class="py-3 px-4">Minggu Ke-</th>
+                        <th class="py-3 px-4">Periode Tagihan</th>
                         <th class="py-3 px-4">Nominal Tagihan</th>
                         <th class="py-3 px-4">Status Penguncian</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @foreach($deposit->payments as $idx => $p)
+                        @php
+                            $isHarian = $p->customerPackage?->package?->isHarian();
+                        @endphp
                         <tr class="hover:bg-slate-50/80 transition">
                             <td class="py-3.5 px-4 text-slate-400 font-mono">{{ $idx + 1 }}</td>
                             <td class="py-3.5 px-4">
@@ -116,11 +120,15 @@
                                 <div class="text-[10px] text-slate-400">{{ $p->customerPackage->customer->phone }} • {{ $p->customerPackage->customer->address }}</div>
                             </td>
                             <td class="py-3.5 px-4 text-slate-700 font-medium">
-                                {{ $p->customerPackage->package->name }}
+                                <div class="font-bold text-slate-800">{{ $p->customerPackage->package->name }}</div>
+                                <div class="text-[10px] {{ $isHarian ? 'text-sky-600 font-semibold' : 'text-slate-400' }}">
+                                    {{ $isHarian ? 'Model Harian' : 'Model Mingguan' }}
+                                </div>
                             </td>
                             <td class="py-3.5 px-4">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
-                                    Minggu {{ $p->period_number }}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold {{ $isHarian ? 'bg-sky-100 text-sky-800 border border-sky-200' : 'bg-slate-100 text-slate-700' }}">
+                                    <i class="fa-solid {{ $isHarian ? 'fa-calendar-day' : 'fa-calendar-week' }} mr-1 text-[9px]"></i>
+                                    {{ $isHarian ? 'Hari ke-' : 'Minggu ke-' }}{{ $p->period_number }}
                                 </span>
                             </td>
                             <td class="py-3.5 px-4 font-bold text-emerald-700 text-sm">

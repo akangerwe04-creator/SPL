@@ -232,9 +232,10 @@ class CustomerPackage extends Model
 
         $this->consecutive_unpaid_weeks = $maxConsecutive;
 
+        $unit = ($this->package && $this->package->isHarian()) ? 'hari' : 'minggu';
         if ($maxConsecutive >= 3 && !$this->is_bonus_forfeited) {
             $this->is_bonus_forfeited = true;
-            $this->forfeit_reason = "Tidak menyetor 3 minggu berturut-turut ({$maxConsecutive} minggu bolong). Sesuai aturan SPL, bonus barang hangus.";
+            $this->forfeit_reason = "Tidak menyetor 3 {$unit} berturut-turut ({$maxConsecutive} {$unit} bolong). Sesuai aturan SPL, bonus barang hangus.";
         }
     }
 
