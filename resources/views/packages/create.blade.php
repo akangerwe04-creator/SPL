@@ -550,7 +550,7 @@
                                     <span class="w-6 h-6 rounded-full bg-amber-600 text-white font-black text-xs flex items-center justify-center shadow-xs" x-text="tIdx + 1"></span>
                                     <h5 class="font-extrabold text-amber-950 text-sm" x-text="tier.title ? tier.title : `Pilihan Jenis Tabungan #${tIdx + 1}`"></h5>
                                     <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-900 border border-amber-300"
-                                        x-text="`Setor: ${formatRupiah(tier.installment_amount)}/mgg → Cair: ${formatRupiah(tier.target_nominal)}`">
+                                        x-text="`Setor: ${formatRupiah(tier.installment_amount)}/${periodType === 'harian' ? 'hari' : 'mgg'} → Cair: ${formatRupiah(tier.target_nominal)}`">
                                     </span>
                                 </div>
                                 <template x-if="tabunganTiers.length > 1">
@@ -569,21 +569,22 @@
                                     :name="'tabungan_tiers[' + tIdx + '][title]'"
                                     :disabled="type !== 'tabungan'"
                                     x-model="tier.title"
-                                    :placeholder="`Contoh: Tabungan SPL ${formatRupiah(tier.installment_amount)} / Mgg`"
+                                    :placeholder="`Contoh: Tabungan SPL ${formatRupiah(tier.installment_amount)} / ${periodType === 'harian' ? 'Hari' : 'Mgg'}`"
                                     class="w-full p-2.5 bg-white border border-amber-300 rounded-lg text-xs font-bold text-amber-950 focus:outline-none focus:border-amber-600 shadow-2xs placeholder:text-slate-400">
                                 <p class="text-[10px] text-amber-800 font-medium">Bisa dikosongkan. Jika kosong, sistem otomatis memberi nama berdasarkan nominal setor & cair.</p>
                             </div>
 
                             <!-- INPUT UTAMA: NOMINAL STOR & NOMINAL YANG AKAN DIDAPAT -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <!-- 1. NOMINAL STOR PER MINGGU -->
+                                <!-- 1. NOMINAL STOR PER HARI / MINGGU -->
                                 <div class="p-3.5 bg-white rounded-xl border border-amber-200 shadow-2xs space-y-2">
                                     <div class="flex items-center justify-between">
                                         <label class="block font-black text-amber-950 text-xs">
-                                            <i class="fa-solid fa-coins text-amber-600 mr-1"></i> Nominal Stor per Minggu (Rp) *
+                                            <i class="fa-solid fa-coins text-amber-600 mr-1"></i> Nominal Stor per <span x-text="periodType === 'harian' ? 'Hari' : 'Minggu'"></span> (Rp) *
                                         </label>
-                                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 uppercase">
-                                            Setoran
+                                        <span class="text-[9px] font-extrabold px-2 py-0.5 rounded uppercase"
+                                            :class="periodType === 'harian' ? 'bg-amber-200 text-amber-900' : 'bg-amber-100 text-amber-800'"
+                                            x-text="periodType === 'harian' ? 'Setoran Harian' : 'Setoran Mingguan'">
                                         </span>
                                     </div>
                                     <input type="number" step="any" min="0"
@@ -591,20 +592,33 @@
                                         :disabled="type !== 'tabungan'"
                                         :name="'tabungan_tiers[' + tIdx + '][installment_amount]'"
                                         x-model.number="tier.installment_amount"
-                                        placeholder="Contoh: 10000 atau 25000"
+                                        :placeholder="periodType === 'harian' ? 'Contoh: 2000, 5000, atau 10000' : 'Contoh: 10000 atau 25000'"
                                         class="w-full p-2.5 bg-amber-50/20 border-2 border-amber-300 rounded-lg focus:outline-none focus:border-amber-600 font-black text-amber-950 font-mono text-base shadow-2xs">
                                     
                                     <!-- PRESET CEPAT -->
                                     <div class="flex items-center gap-1.5 pt-1 flex-wrap">
                                         <span class="text-[10px] font-bold text-slate-400">Preset:</span>
-                                        <button type="button" @click="tier.installment_amount = 5000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">5rb</button>
-                                        <button type="button" @click="tier.installment_amount = 10000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">10rb</button>
-                                        <button type="button" @click="tier.installment_amount = 20000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">20rb</button>
-                                        <button type="button" @click="tier.installment_amount = 25000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">25rb</button>
-                                        <button type="button" @click="tier.installment_amount = 50000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">50rb</button>
+                                        <template x-if="periodType === 'harian'">
+                                            <div class="flex items-center gap-1.5 flex-wrap">
+                                                <button type="button" @click="tier.installment_amount = 2000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">2rb</button>
+                                                <button type="button" @click="tier.installment_amount = 3000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">3rb</button>
+                                                <button type="button" @click="tier.installment_amount = 5000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">5rb</button>
+                                                <button type="button" @click="tier.installment_amount = 10000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">10rb</button>
+                                                <button type="button" @click="tier.installment_amount = 20000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">20rb</button>
+                                            </div>
+                                        </template>
+                                        <template x-if="periodType !== 'harian'">
+                                            <div class="flex items-center gap-1.5 flex-wrap">
+                                                <button type="button" @click="tier.installment_amount = 5000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">5rb</button>
+                                                <button type="button" @click="tier.installment_amount = 10000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">10rb</button>
+                                                <button type="button" @click="tier.installment_amount = 20000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">20rb</button>
+                                                <button type="button" @click="tier.installment_amount = 25000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">25rb</button>
+                                                <button type="button" @click="tier.installment_amount = 50000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">50rb</button>
+                                            </div>
+                                        </template>
                                     </div>
                                     <div class="text-[11px] text-slate-600 font-medium">
-                                        Disetor nasabah: <strong class="text-amber-800 font-black" x-text="formatRupiah(tier.installment_amount)"></strong> / minggu.
+                                        Disetor nasabah: <strong class="text-amber-800 font-black" x-text="formatRupiah(tier.installment_amount)"></strong> / <span x-text="periodType === 'harian' ? 'hari' : 'minggu'"></span>.
                                     </div>
                                 </div>
 
@@ -993,15 +1007,16 @@
                             </div>
                         </div>
 
-                        <!-- 2. PERIODE TAGIHAN (MODEL HARIAN) -->
+                        <!-- 2. PERIODE TAGIHAN (MODEL HARIAN / MINGGUAN) -->
                         <div class="p-4 bg-blue-50/50 rounded-2xl border-2 border-blue-300 flex flex-col justify-between shadow-2xs">
                             <div>
                                 <div class="flex items-center justify-between mb-1.5">
                                     <label class="block font-black text-blue-950 text-xs">
-                                        Periode Tagihan (Model Harian) *
+                                        Periode Tagihan (Model <span x-text="periodType === 'harian' ? 'Harian' : 'Mingguan'"></span>) *
                                     </label>
-                                    <span class="text-[9px] font-extrabold px-2 py-0.5 rounded bg-blue-200 text-blue-900 uppercase">
-                                        Harian
+                                    <span class="text-[9px] font-extrabold px-2 py-0.5 rounded uppercase"
+                                        :class="periodType === 'harian' ? 'bg-blue-200 text-blue-900' : 'bg-pink-100 text-pink-900'"
+                                        x-text="periodType === 'harian' ? 'Harian' : 'Mingguan'">
                                     </span>
                                 </div>
                                 <div class="relative">
@@ -1014,31 +1029,42 @@
                                         min="1" 
                                         class="w-full pl-3 pr-14 py-2.5 bg-white border-2 border-blue-400 rounded-xl focus:outline-none focus:border-blue-600 font-black text-blue-950 font-mono text-base text-center shadow-xs"
                                     >
-                                    <span class="absolute inset-y-0 right-0 pr-3 flex items-center font-bold text-blue-700 text-xs pointer-events-none">Hari</span>
+                                    <span class="absolute inset-y-0 right-0 pr-3 flex items-center font-bold text-blue-700 text-xs pointer-events-none" x-text="periodType === 'harian' ? 'Hari' : 'Minggu'"></span>
                                 </div>
                                 <span class="text-[10px] text-blue-900/80 font-medium block mt-1.5 leading-snug">
-                                    Tagihan dilakukan rutin harian sampai lunas.
+                                    Tagihan dilakukan rutin <span x-text="periodType === 'harian' ? 'harian' : 'mingguan'"></span> sampai lunas.
                                 </span>
                             </div>
 
-                            <!-- PRESET HARI CEPAT -->
+                            <!-- PRESET HARI / MINGGU CEPAT -->
                             <div class="mt-2.5 pt-2 border-t border-blue-200/80">
-                                <div class="flex flex-wrap items-center gap-1">
-                                    <button type="button" @click="setInstallmentCount(60)" class="px-2 py-0.5 rounded bg-white hover:bg-blue-100 text-blue-900 border border-blue-200 text-[10px] font-bold transition">60 Hr</button>
-                                    <button type="button" @click="setInstallmentCount(90)" class="px-2 py-0.5 rounded bg-white hover:bg-blue-100 text-blue-900 border border-blue-200 text-[10px] font-bold transition">90 Hr</button>
-                                    <button type="button" @click="setInstallmentCount(100)" class="px-2 py-0.5 rounded bg-blue-600 text-white text-[10px] font-black shadow-xs">100 Hr</button>
-                                    <button type="button" @click="setInstallmentCount(120)" class="px-2 py-0.5 rounded bg-white hover:bg-blue-100 text-blue-900 border border-blue-200 text-[10px] font-bold transition">120 Hr</button>
-                                    <button type="button" @click="setInstallmentCount(150)" class="px-2 py-0.5 rounded bg-white hover:bg-blue-100 text-blue-900 border border-blue-200 text-[10px] font-bold transition">150 Hr</button>
-                                </div>
+                                <template x-if="periodType === 'harian'">
+                                    <div class="flex flex-wrap items-center gap-1">
+                                        <button type="button" @click="setInstallmentCount(60)" class="px-2 py-0.5 rounded bg-white hover:bg-blue-100 text-blue-900 border border-blue-200 text-[10px] font-bold transition">60 Hr</button>
+                                        <button type="button" @click="setInstallmentCount(90)" class="px-2 py-0.5 rounded bg-white hover:bg-blue-100 text-blue-900 border border-blue-200 text-[10px] font-bold transition">90 Hr</button>
+                                        <button type="button" @click="setInstallmentCount(100)" class="px-2 py-0.5 rounded bg-blue-600 text-white text-[10px] font-black shadow-xs">100 Hr</button>
+                                        <button type="button" @click="setInstallmentCount(120)" class="px-2 py-0.5 rounded bg-white hover:bg-blue-100 text-blue-900 border border-blue-200 text-[10px] font-bold transition">120 Hr</button>
+                                        <button type="button" @click="setInstallmentCount(150)" class="px-2 py-0.5 rounded bg-white hover:bg-blue-100 text-blue-900 border border-blue-200 text-[10px] font-bold transition">150 Hr</button>
+                                    </div>
+                                </template>
+                                <template x-if="periodType !== 'harian'">
+                                    <div class="flex flex-wrap items-center gap-1">
+                                        <button type="button" @click="setInstallmentCount(20)" class="px-2 py-0.5 rounded bg-white hover:bg-pink-100 text-pink-900 border border-pink-200 text-[10px] font-bold transition">20 Mgg</button>
+                                        <button type="button" @click="setInstallmentCount(25)" class="px-2 py-0.5 rounded bg-white hover:bg-pink-100 text-pink-900 border border-pink-200 text-[10px] font-bold transition">25 Mgg</button>
+                                        <button type="button" @click="setInstallmentCount(30)" class="px-2 py-0.5 rounded bg-pink-600 text-white text-[10px] font-black shadow-xs">30 Mgg</button>
+                                        <button type="button" @click="setInstallmentCount(35)" class="px-2 py-0.5 rounded bg-white hover:bg-pink-100 text-pink-900 border border-pink-200 text-[10px] font-bold transition">35 Mgg</button>
+                                        <button type="button" @click="setInstallmentCount(40)" class="px-2 py-0.5 rounded bg-white hover:bg-pink-100 text-pink-900 border border-pink-200 text-[10px] font-bold transition">40 Mgg</button>
+                                    </div>
+                                </template>
                             </div>
                         </div>
 
-                        <!-- 3. SETORAN PER HARI (PEMBULATAN SPL) -->
+                        <!-- 3. SETORAN PER HARI / MINGGU (PEMBULATAN SPL) -->
                         <div class="p-4 bg-pink-50/60 rounded-2xl border-2 border-pink-400 flex flex-col justify-between shadow-2xs">
                             <div>
                                 <div class="flex items-center justify-between mb-1.5">
                                     <label class="block font-black text-pink-950 text-xs">
-                                        Setoran per Hari (Konsumen) *
+                                        Setoran per <span x-text="periodType === 'harian' ? 'Hari' : 'Minggu'"></span> (Konsumen) *
                                     </label>
                                     <span class="text-[9px] font-extrabold px-2 py-0.5 rounded bg-pink-600 text-white uppercase">
                                         Auto Bulat SPL
@@ -1059,7 +1085,7 @@
                                     >
                                 </div>
                                 <span class="text-[10px] text-pink-950/80 font-medium block mt-1.5 leading-snug">
-                                    Rumus: Target &divide; <span class="font-bold" x-text="installmentCount || 1"></span> Hari (pembulatan ke 500/1000).
+                                    Rumus: Target &divide; <span class="font-bold" x-text="installmentCount || 1"></span> <span x-text="periodType === 'harian' ? 'Hari' : 'Minggu'"></span> (pembulatan ke 500/1000).
                                 </span>
                             </div>
 
@@ -1363,8 +1389,10 @@ function packageBuilder() {
 
         addTabunganTier() {
             const lastTier = this.tabunganTiers[this.tabunganTiers.length - 1];
-            const nextInstallment = lastTier ? (Number(lastTier.installment_amount) || 0) + 10000 : 10000;
-            const nextTarget = lastTier ? (Number(lastTier.target_nominal) || 0) + 300000 : 300000;
+            const stepInstallment = this.periodType === 'harian' ? 5000 : 10000;
+            const stepTarget = this.periodType === 'harian' ? 500000 : 300000;
+            const nextInstallment = lastTier ? (Number(lastTier.installment_amount) || 0) + stepInstallment : stepInstallment;
+            const nextTarget = lastTier ? (Number(lastTier.target_nominal) || 0) + stepTarget : stepTarget;
             this.tabunganTiers.push({
                 installment_amount: nextInstallment,
                 target_nominal: nextTarget,
@@ -1567,18 +1595,22 @@ function packageBuilder() {
                 if (!this.name || this.name.startsWith('Paket Parsel')) {
                     this.name = 'Tabungan SPL';
                 }
-                this.periodType = 'mingguan';
-                if (!this.installmentCount || this.installmentCount === 100) {
-                    this.installmentCount = 30;
+                if (!this.periodType) {
+                    this.periodType = 'mingguan';
+                }
+                if (!this.installmentCount) {
+                    this.installmentCount = this.periodType === 'harian' ? 100 : 30;
                 }
                 this.adminFee = 0;
             } else if (this.type === 'parsel') {
                 if (this.itemsList.length === 0) {
                     this.addRow();
                 }
-                this.periodType = 'harian';
-                if (this.installmentCount === 30) {
-                    this.installmentCount = 100;
+                if (!this.periodType) {
+                    this.periodType = 'harian';
+                }
+                if (!this.installmentCount) {
+                    this.installmentCount = this.periodType === 'harian' ? 100 : 30;
                 }
                 this.itemsList.forEach(r => r.is_bonus = false);
                 this.calculateInstallment();

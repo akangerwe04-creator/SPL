@@ -63,8 +63,8 @@
                         </span>
                     </div>
                     @if($package->isTabungan())
-                        <div class="text-[10px] font-bold text-slate-500 uppercase">Setoran per Minggu</div>
-                        <div class="text-2xl font-heading font-black text-amber-900">{{ $package->formatted_installment }} <span class="text-xs font-bold text-slate-500">/ minggu</span></div>
+                        <div class="text-[10px] font-bold text-slate-500 uppercase">Setoran per {{ $package->period_label }}</div>
+                        <div class="text-2xl font-heading font-black text-amber-900">{{ $package->formatted_installment }} <span class="text-xs font-bold text-slate-500">/ {{ strtolower($package->period_label) }}</span></div>
                         
                         <div class="mt-2 pt-2 border-t border-amber-200/60 space-y-1 text-[11px]">
                             <div class="flex justify-between items-center text-slate-700">

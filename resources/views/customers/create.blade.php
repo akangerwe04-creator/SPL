@@ -163,7 +163,7 @@
                                     </div>
                                 </template>
                                 <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-                                    <span x-text="selectedPackageInfo.type === 'tabungan' ? 'Nominal Stor per Minggu:' : 'Cicilan / Setoran:'"></span>
+                                    <span x-text="selectedPackageInfo.type === 'tabungan' ? ('Nominal Stor per ' + (selectedPackageInfo.label || 'Minggu') + ':') : 'Cicilan / Setoran:'"></span>
                                 </div>
                                 <div class="text-xl font-black" :class="selectedPackageInfo.type === 'tabungan' ? 'text-amber-900' : 'text-pink-700'">
                                     <span x-text="formatRupiah(currentInstallment)"></span>

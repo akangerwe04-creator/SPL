@@ -502,33 +502,47 @@
 
                     <!-- INPUT UTAMA: NOMINAL STOR & NOMINAL YANG AKAN DIDAPAT -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <!-- 1. NOMINAL STOR PER MINGGU -->
+                        <!-- 1. NOMINAL STOR PER HARI / MINGGU -->
                         <div class="p-4 bg-white rounded-xl border-2 border-amber-300 shadow-2xs space-y-2">
                             <div class="flex items-center justify-between">
                                 <label class="block font-black text-amber-950 text-xs">
-                                    <i class="fa-solid fa-coins text-amber-600 mr-1"></i> Nominal Stor per Minggu (Rp) *
+                                    <i class="fa-solid fa-coins text-amber-600 mr-1"></i> Nominal Stor per <span x-text="periodType === 'harian' ? 'Hari' : 'Minggu'"></span> (Rp) *
                                 </label>
-                                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 uppercase">
-                                    Setoran
+                                <span class="text-[9px] font-extrabold px-2 py-0.5 rounded uppercase"
+                                    :class="periodType === 'harian' ? 'bg-amber-200 text-amber-900' : 'bg-amber-100 text-amber-800'"
+                                    x-text="periodType === 'harian' ? 'Setoran Harian' : 'Setoran Mingguan'">
                                 </span>
                             </div>
                             <input type="number" step="any" min="0" required
                                 name="installment_amount"
                                 x-model.number="installmentAmount"
-                                placeholder="Contoh: 10000 atau 25000"
+                                :placeholder="periodType === 'harian' ? 'Contoh: 2000, 5000, atau 10000' : 'Contoh: 10000 atau 25000'"
                                 class="w-full p-2.5 bg-amber-50/20 border-2 border-amber-300 rounded-lg focus:outline-none focus:border-amber-600 font-black text-amber-950 font-mono text-base shadow-2xs">
                             
                             <!-- PRESET CEPAT -->
                             <div class="flex items-center gap-1.5 pt-1 flex-wrap">
                                 <span class="text-[10px] font-bold text-slate-400">Preset:</span>
-                                <button type="button" @click="installmentAmount = 5000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">5rb</button>
-                                <button type="button" @click="installmentAmount = 10000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">10rb</button>
-                                <button type="button" @click="installmentAmount = 20000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">20rb</button>
-                                <button type="button" @click="installmentAmount = 25000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">25rb</button>
-                                <button type="button" @click="installmentAmount = 50000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">50rb</button>
+                                <template x-if="periodType === 'harian'">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <button type="button" @click="installmentAmount = 2000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">2rb</button>
+                                        <button type="button" @click="installmentAmount = 3000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">3rb</button>
+                                        <button type="button" @click="installmentAmount = 5000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">5rb</button>
+                                        <button type="button" @click="installmentAmount = 10000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">10rb</button>
+                                        <button type="button" @click="installmentAmount = 20000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">20rb</button>
+                                    </div>
+                                </template>
+                                <template x-if="periodType !== 'harian'">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <button type="button" @click="installmentAmount = 5000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">5rb</button>
+                                        <button type="button" @click="installmentAmount = 10000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">10rb</button>
+                                        <button type="button" @click="installmentAmount = 20000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">20rb</button>
+                                        <button type="button" @click="installmentAmount = 25000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">25rb</button>
+                                        <button type="button" @click="installmentAmount = 50000" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200">50rb</button>
+                                    </div>
+                                </template>
                             </div>
                             <div class="text-[11px] text-slate-600 font-medium">
-                                Disetor nasabah: <strong class="text-amber-800 font-black" x-text="formatRupiah(installmentAmount)"></strong> / minggu.
+                                Disetor nasabah: <strong class="text-amber-800 font-black" x-text="formatRupiah(installmentAmount)"></strong> / <span x-text="periodType === 'harian' ? 'hari' : 'minggu'"></span>.
                             </div>
                         </div>
 

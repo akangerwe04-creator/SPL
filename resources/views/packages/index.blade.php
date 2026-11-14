@@ -120,10 +120,10 @@
                                 <div class="flex justify-between items-center text-xs mt-1.5 pt-1.5 border-t border-amber-200/60">
                                     <span class="font-bold text-slate-800 flex items-center">
                                         <i class="fa-solid fa-coins text-amber-600 mr-1"></i>
-                                        Nominal Stor:
+                                        Nominal Stor ({{ $pkg->installment_label }}):
                                     </span>
                                     <span class="font-black text-sm text-amber-900">
-                                        {{ $pkg->formatted_installment }} <span class="text-[10px] font-bold text-slate-500">/ minggu</span>
+                                        {{ $pkg->formatted_installment }} <span class="text-[10px] font-bold text-slate-500">/ {{ strtolower($pkg->period_label) }}</span>
                                     </span>
                                 </div>
                             @else

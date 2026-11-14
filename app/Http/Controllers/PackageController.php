@@ -98,7 +98,8 @@ class PackageController extends Controller
                     if (!empty($customTitle)) {
                         $tierName = $customTitle;
                     } else {
-                        $tierName = $baseName . ' (Setor Rp ' . number_format($installment, 0, ',', '.') . ' - Cair Rp ' . number_format($targetDidapat, 0, ',', '.') . ')';
+                        $unitLabel = ($periodType === 'harian') ? '/hari' : '/mgg';
+                        $tierName = $baseName . ' (Setor Rp ' . number_format($installment, 0, ',', '.') . $unitLabel . ' - Cair Rp ' . number_format($targetDidapat, 0, ',', '.') . ')';
                     }
 
                     // Kumpulkan nama bonus untuk dicantumkan pada keterangan paket
@@ -297,7 +298,8 @@ class PackageController extends Controller
                         ->with('error', 'Nominal setoran dan nominal uang cair untuk paket Tabungan wajib diisi lebih dari 0.');
                 }
                 if ($validated['name'] === 'Tabungan SPL' || empty($validated['name'])) {
-                    $validated['name'] = 'Tabungan SPL (Setor Rp ' . number_format($validated['installment_amount'], 0, ',', '.') . ' - Cair Rp ' . number_format($targetNominal, 0, ',', '.') . ')';
+                    $unitLabel = ($validated['period_type'] === 'harian') ? '/hari' : '/mgg';
+                    $validated['name'] = 'Tabungan SPL (Setor Rp ' . number_format($validated['installment_amount'], 0, ',', '.') . $unitLabel . ' - Cair Rp ' . number_format($targetNominal, 0, ',', '.') . ')';
                 }
             }
         }
@@ -550,7 +552,8 @@ class PackageController extends Controller
                         ->with('error', 'Nominal setoran dan nominal uang cair untuk paket Tabungan wajib diisi lebih dari 0.');
                 }
                 if ($validated['name'] === 'Tabungan SPL' || empty($validated['name'])) {
-                    $validated['name'] = 'Tabungan SPL (Setor Rp ' . number_format($validated['installment_amount'], 0, ',', '.') . ' - Cair Rp ' . number_format($targetNominal, 0, ',', '.') . ')';
+                    $unitLabel = ($validated['period_type'] === 'harian') ? '/hari' : '/mgg';
+                    $validated['name'] = 'Tabungan SPL (Setor Rp ' . number_format($validated['installment_amount'], 0, ',', '.') . $unitLabel . ' - Cair Rp ' . number_format($targetNominal, 0, ',', '.') . ')';
                 }
             }
         }
