@@ -11,6 +11,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->trustProxies(at: '*');
+
         $middleware->web(prepend: [
             \App\Http\Middleware\EnsureDatabaseConnected::class,
         ]);
@@ -23,5 +25,14 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
+            if ($request->is('login') || $request->is('*/login') || $request->routeIs('login')) {
+                return redirect()->route('login')
+                    ->withInput($request->except('password', '_token'))
+                    ->with('error', 'Sesi login Anda telah disegarkan demi keamanan. Silakan masukkan kata sandi dan klik Masuk kembali.');
+            }
+            return redirect()->back()
+                ->withInput($request->except('password', '_token'))
+                ->with('error', 'Sesi halaman telah diperbarui demi keamanan. Silakan klik simpan kembali.');
+        });
     })->create();

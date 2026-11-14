@@ -290,8 +290,15 @@ class PackageController extends Controller
                 $validated['installment_amount'] = Package::roundInstallment($raw);
             }
 
-            if ($validated['type'] === 'tabungan' && ($validated['name'] === 'Tabungan SPL' || empty($validated['name']))) {
-                $validated['name'] = 'Tabungan SPL (Setor Rp ' . number_format($validated['installment_amount'], 0, ',', '.') . ' - Cair Rp ' . number_format($targetNominal, 0, ',', '.') . ')';
+            if ($validated['type'] === 'tabungan') {
+                if ($validated['installment_amount'] <= 0 && $targetNominal <= 0) {
+                    return redirect()->back()
+                        ->withInput()
+                        ->with('error', 'Nominal setoran dan nominal uang cair untuk paket Tabungan wajib diisi lebih dari 0.');
+                }
+                if ($validated['name'] === 'Tabungan SPL' || empty($validated['name'])) {
+                    $validated['name'] = 'Tabungan SPL (Setor Rp ' . number_format($validated['installment_amount'], 0, ',', '.') . ' - Cair Rp ' . number_format($targetNominal, 0, ',', '.') . ')';
+                }
             }
         }
 
@@ -536,8 +543,15 @@ class PackageController extends Controller
                 $validated['installment_amount'] = Package::roundInstallment($raw);
             }
 
-            if ($validated['type'] === 'tabungan' && ($validated['name'] === 'Tabungan SPL' || empty($validated['name']))) {
-                $validated['name'] = 'Tabungan SPL (Setor Rp ' . number_format($validated['installment_amount'], 0, ',', '.') . ' - Cair Rp ' . number_format($targetNominal, 0, ',', '.') . ')';
+            if ($validated['type'] === 'tabungan') {
+                if ($validated['installment_amount'] <= 0 && $targetNominal <= 0) {
+                    return redirect()->back()
+                        ->withInput()
+                        ->with('error', 'Nominal setoran dan nominal uang cair untuk paket Tabungan wajib diisi lebih dari 0.');
+                }
+                if ($validated['name'] === 'Tabungan SPL' || empty($validated['name'])) {
+                    $validated['name'] = 'Tabungan SPL (Setor Rp ' . number_format($validated['installment_amount'], 0, ',', '.') . ' - Cair Rp ' . number_format($targetNominal, 0, ',', '.') . ')';
+                }
             }
         }
 

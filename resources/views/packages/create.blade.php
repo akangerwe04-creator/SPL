@@ -517,7 +517,6 @@
                     <option value="{{ $it->name }}">{{ $it->category }}</option>
                 @endforeach
             </datalist>
-            </div>
 
             <!-- 4B. DYNAMIC ITEMS BUILDER KHUSUS PAKET TABUNGAN SPL -->
             <div x-show="type === 'tabungan'" class="space-y-4 pt-4 border-t border-slate-200">
