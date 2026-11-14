@@ -75,6 +75,11 @@ class ItemController extends Controller
             $validated['code'] = Item::generateNextCode($validated['category'] ?? null);
         }
 
+        // Pastikan cost_price tidak null jika user membiarkannya kosong
+        $validated['cost_price'] = (isset($validated['cost_price']) && $validated['cost_price'] !== null && $validated['cost_price'] !== '')
+            ? (float) $validated['cost_price']
+            : 0;
+
         if ($request->hasFile('image')) {
             $result = ImageOptimizer::optimizeAndSave($request->file('image'), 'items');
             $validated['image_path'] = $result['path'];
@@ -120,6 +125,9 @@ class ItemController extends Controller
         ]);
 
         $validated['is_active'] = $request->boolean('is_active');
+        $validated['cost_price'] = (isset($validated['cost_price']) && $validated['cost_price'] !== null && $validated['cost_price'] !== '')
+            ? (float) $validated['cost_price']
+            : 0;
 
         if ($request->hasFile('image')) {
             $result = ImageOptimizer::optimizeAndSave($request->file('image'), 'items');

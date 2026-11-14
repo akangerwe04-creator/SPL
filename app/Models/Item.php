@@ -29,6 +29,21 @@ class Item extends Model
         'is_active' => 'boolean',
     ];
 
+    protected static function booted()
+    {
+        static::saving(function ($item) {
+            if ($item->cost_price === null || $item->cost_price === '') {
+                $item->cost_price = 0;
+            }
+            if ($item->unit_price === null || $item->unit_price === '') {
+                $item->unit_price = 0;
+            }
+            if ($item->conversion_rate === null || $item->conversion_rate === '' || (float) $item->conversion_rate <= 0) {
+                $item->conversion_rate = 1;
+            }
+        });
+    }
+
     public function packageItems()
     {
         return $this->hasMany(PackageItem::class);
