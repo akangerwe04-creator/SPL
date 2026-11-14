@@ -133,11 +133,52 @@
                     <label class="block font-semibold text-slate-700">Pilih Paket Program Baru / Pengganti *</label>
                     <select name="package_id" x-model="selectedPackageId" @change="onPackageChange()" required class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-pink-500 text-sm font-bold text-slate-800">
                         <option value="">-- Pilih Paket Program --</option>
-                        @foreach($packages as $pkg)
-                            <option value="{{ $pkg->id }}">
-                                {{ $pkg->name }} ({{ strtoupper($pkg->type) }} &bull; {{ $pkg->installment_count }} {{ $pkg->period_label }} &bull; Setor: {{ $pkg->formatted_installment }}/{{ strtolower($pkg->period_label) }})
-                            </option>
-                        @endforeach
+                        
+                        <!-- 1. KELOMPOK PAKET PARSEL -->
+                        @php $parselPkgs = $packages->where('type', 'parsel'); @endphp
+                        @if($parselPkgs->isNotEmpty())
+                            <optgroup label="📦 Paket Parsel Sembako / Lebaran">
+                                @foreach($parselPkgs as $pkg)
+                                    <option value="{{ $pkg->id }}">
+                                        {{ $pkg->name }} ({{ $pkg->formatted_installment }}/{{ strtolower($pkg->period_label) }})
+                                    </option>
+                                @endforeach
+                            </optgroup>
+                        @endif
+
+                        <!-- 2. KELOMPOK PAKET TABUNGAN SPL DENGAN PILIHAN NOMINAL & HADIAH BONUS -->
+                        @php $tabunganPkgs = $packages->where('type', 'tabungan'); @endphp
+                        @if($tabunganPkgs->isNotEmpty())
+                            <optgroup label="💰 Pilihan Jenis Tabungan SPL (Uang Tunai Cair + Hadiah Bonus)">
+                                @foreach($tabunganPkgs as $pkg)
+                                    @php
+                                        $bonusList = $pkg->packageItems->where('is_bonus', true)->map(function($pi) {
+                                            return ($pi->item?->name ?? 'Bonus') . ($pi->quantity > 1 ? ' (' . $pi->quantity . ' ' . $pi->unit . ')' : '');
+                                        })->filter()->values();
+                                        $bonusText = $bonusList->isNotEmpty() ? ' + Hadiah: ' . $bonusList->join(', ') : '';
+                                    @endphp
+                                    <option value="{{ $pkg->id }}">
+                                        {{ $pkg->name }} — Setor: {{ $pkg->formatted_installment }}/{{ strtolower($pkg->period_label) }} (Cair: Rp {{ number_format($pkg->target_nominal ?: $pkg->base_price, 0, ',', '.') }}{{ $bonusText }})
+                                    </option>
+                                @endforeach
+                            </optgroup>
+                        @endif
+
+                        <!-- 3. KELOMPOK PAKET ECERAN DINAMIS -->
+                        @php $ecerPkgs = $packages->where('type', 'ecer'); @endphp
+                        @if($ecerPkgs->isNotEmpty())
+                            <optgroup label="🛒 Paket Eceran Dinamis">
+                                @foreach($ecerPkgs as $pkg)
+                                    <option value="{{ $pkg->id }}">
+                                        @if($pkg->installment_amount <= 0 && $pkg->packageItems->isEmpty())
+                                            {{ $pkg->name }} (Eceran Bebas - {{ $pkg->installment_count }} {{ $pkg->period_label }})
+                                        @else
+                                            {{ $pkg->name }} ({{ $pkg->formatted_installment }}/{{ strtolower($pkg->period_label) }})
+                                        @endif
+                                    </option>
+                                @endforeach
+                            </optgroup>
+                        @endif
                     </select>
                 </div>
 

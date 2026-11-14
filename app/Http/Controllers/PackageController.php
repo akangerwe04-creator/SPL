@@ -58,15 +58,16 @@ class PackageController extends Controller
         }
 
         // Pendaftaran multi-opsi jenis tabungan dengan nominal stor, nominal didapat, dan bonus masing-masing
-        if ($request->input('type') === 'tabungan' && $request->filled('tabungan_tiers') && is_array($request->input('tabungan_tiers'))) {
-            $tiers = $request->input('tabungan_tiers');
+        $tabunganTiers = $request->input('tabungan_tiers');
+        if ($request->input('type') === 'tabungan' && is_array($tabunganTiers) && !empty($tabunganTiers)) {
+            $tiers = $tabunganTiers;
             $periodType = $request->input('period_type', 'mingguan');
             $installmentCount = max(1, (int) ($request->input('installment_count') ?: 30));
             $baseName = trim($request->input('name') ?: 'Tabungan SPL');
             $startDate = $request->filled('start_date') ? $request->input('start_date') : null;
             $endDate = $request->filled('end_date') ? $request->input('end_date') : null;
             $safeThreshold = $request->filled('safe_threshold') ? (float) $request->input('safe_threshold') : null;
-            $description = $request->input('description') ?: 'Paket Tabungan SPL dengan pencairan uang tunai dan hadiah bonus gratis.';
+            $baseDescription = $request->input('description') ?: 'Paket Tabungan SPL dengan pencairan uang tunai dan hadiah bonus gratis.';
             $imagePath = null;
 
             if ($request->hasFile('image')) {
@@ -97,9 +98,30 @@ class PackageController extends Controller
                     if (!empty($customTitle)) {
                         $tierName = $customTitle;
                     } else {
-                        $tierName = count($tiers) > 1 
-                            ? ($baseName . ' (Setor Rp ' . number_format($installment, 0, ',', '.') . ' - Cair Rp ' . number_format($targetDidapat, 0, ',', '.') . ')')
-                            : $baseName;
+                        $tierName = $baseName . ' (Setor Rp ' . number_format($installment, 0, ',', '.') . ' - Cair Rp ' . number_format($targetDidapat, 0, ',', '.') . ')';
+                    }
+
+                    // Kumpulkan nama bonus untuk dicantumkan pada keterangan paket
+                    $bonusNames = [];
+                    if (!empty($tier['bonuses']) && is_array($tier['bonuses'])) {
+                        foreach ($tier['bonuses'] as $b) {
+                            $bName = trim($b['item_name'] ?? ($b['name'] ?? ''));
+                            $bId = $b['item_id'] ?? null;
+                            if (empty($bName) && !empty($bId)) {
+                                $existItm = Item::find($bId);
+                                if ($existItm) $bName = $existItm->name;
+                            }
+                            if (!empty($bName)) {
+                                $bQty = max(1, (int) ($b['quantity'] ?? ($b['qty'] ?? 1)));
+                                $bUnit = trim($b['unit'] ?? 'pcs') ?: 'pcs';
+                                $bonusNames[] = $bName . ($bQty > 1 ? " ({$bQty} {$bUnit})" : '');
+                            }
+                        }
+                    }
+
+                    $description = $baseDescription;
+                    if (!empty($bonusNames)) {
+                        $description .= ' | Hadiah Bonus: ' . implode(', ', $bonusNames);
                     }
 
                     $pkg = Package::create([
@@ -132,6 +154,7 @@ class PackageController extends Controller
                                 $existingItem = Item::whereRaw('LOWER(name) = ?', [strtolower($itemName)])->first();
                                 if ($existingItem) {
                                     $itemId = $existingItem->id;
+                                    if (empty($unit)) $unit = $existingItem->base_unit;
                                 } else {
                                     $codeItem = Item::generateNextCode('Hadiah Bonus');
                                     $newItem = Item::create([
@@ -265,6 +288,10 @@ class PackageController extends Controller
             if (empty($validated['installment_amount']) || (float) $validated['installment_amount'] <= 0) {
                 $raw = $targetNominal / max(1, (int) $validated['installment_count']);
                 $validated['installment_amount'] = Package::roundInstallment($raw);
+            }
+
+            if ($validated['type'] === 'tabungan' && ($validated['name'] === 'Tabungan SPL' || empty($validated['name']))) {
+                $validated['name'] = 'Tabungan SPL (Setor Rp ' . number_format($validated['installment_amount'], 0, ',', '.') . ' - Cair Rp ' . number_format($targetNominal, 0, ',', '.') . ')';
             }
         }
 
@@ -507,6 +534,10 @@ class PackageController extends Controller
             if (empty($validated['installment_amount']) || (float) $validated['installment_amount'] <= 0) {
                 $raw = $targetNominal / max(1, (int) $validated['installment_count']);
                 $validated['installment_amount'] = Package::roundInstallment($raw);
+            }
+
+            if ($validated['type'] === 'tabungan' && ($validated['name'] === 'Tabungan SPL' || empty($validated['name']))) {
+                $validated['name'] = 'Tabungan SPL (Setor Rp ' . number_format($validated['installment_amount'], 0, ',', '.') . ' - Cair Rp ' . number_format($targetNominal, 0, ',', '.') . ')';
             }
         }
 

@@ -16,7 +16,7 @@
             <p class="text-xs text-slate-400">Pilih jenis paket, tentukan skema periode tagihan (mingguan/harian), dan pilih barangnya.</p>
         </div>
 
-        <form action="{{ route('packages.store') }}" method="POST" enctype="multipart/form-data" class="mt-6 space-y-6 text-xs">
+        <form action="{{ route('packages.store') }}" method="POST" enctype="multipart/form-data" @submit="if(type === 'tabungan' && (!name || !name.trim())) { name = 'Tabungan SPL'; }" class="mt-6 space-y-6 text-xs">
             @csrf
 
             <!-- 1. TYPE SELECTION PILLS -->
@@ -261,7 +261,7 @@
                         Nama Paket *
                         <span x-show="type === 'tabungan'" class="text-[11px] font-normal text-amber-700 ml-1.5">(Otomatis: Tabungan SPL)</span>
                     </label>
-                    <input type="text" name="name" x-model="name" required :placeholder="type === 'tabungan' ? 'Tabungan SPL' : (type === 'ecer' ? 'Contoh: Paket Parsel Eceran Bebas (Mingguan)' : 'Contoh: Paket Parsel Mewah Sultan')" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-pink-500 text-sm">
+                    <input type="text" name="name" x-model="name" :required="type !== 'tabungan'" :placeholder="type === 'tabungan' ? 'Tabungan SPL' : (type === 'ecer' ? 'Contoh: Paket Parsel Eceran Bebas (Mingguan)' : 'Contoh: Paket Parsel Mewah Sultan')" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-pink-500 text-sm">
                     <span x-show="type === 'tabungan'" class="text-[10px] text-amber-700 font-medium block mt-1">
                         Cukup isi <strong>Tabungan SPL</strong>. Pilihan nominal storan, nominal uang yang didapat, dan hadiah bonus barang diatur pada formulir di bawah.
                     </span>
@@ -567,7 +567,8 @@
                                     <i class="fa-solid fa-tag text-amber-600 mr-1"></i> Nama / Label Pilihan Tabungan Ini (Opsional)
                                 </label>
                                 <input type="text"
-                                    :name="type === 'tabungan' ? `tabungan_tiers[${tIdx}][title]` : ''"
+                                    :name="'tabungan_tiers[' + tIdx + '][title]'"
+                                    :disabled="type !== 'tabungan'"
                                     x-model="tier.title"
                                     :placeholder="`Contoh: Tabungan SPL ${formatRupiah(tier.installment_amount)} / Mgg`"
                                     class="w-full p-2.5 bg-white border border-amber-300 rounded-lg text-xs font-bold text-amber-950 focus:outline-none focus:border-amber-600 shadow-2xs placeholder:text-slate-400">
@@ -586,8 +587,10 @@
                                             Setoran
                                         </span>
                                     </div>
-                                    <input type="number" step="any" min="0" required
-                                        :name="type === 'tabungan' ? `tabungan_tiers[${tIdx}][installment_amount]` : ''"
+                                    <input type="number" step="any" min="0"
+                                        :required="type === 'tabungan'"
+                                        :disabled="type !== 'tabungan'"
+                                        :name="'tabungan_tiers[' + tIdx + '][installment_amount]'"
                                         x-model.number="tier.installment_amount"
                                         placeholder="Contoh: 10000 atau 25000"
                                         class="w-full p-2.5 bg-amber-50/20 border-2 border-amber-300 rounded-lg focus:outline-none focus:border-amber-600 font-black text-amber-950 font-mono text-base shadow-2xs">
@@ -616,8 +619,10 @@
                                             Uang Cair
                                         </span>
                                     </div>
-                                    <input type="number" step="any" min="0" required
-                                        :name="type === 'tabungan' ? `tabungan_tiers[${tIdx}][target_nominal]` : ''"
+                                    <input type="number" step="any" min="0"
+                                        :required="type === 'tabungan'"
+                                        :disabled="type !== 'tabungan'"
+                                        :name="'tabungan_tiers[' + tIdx + '][target_nominal]'"
                                         x-model.number="tier.target_nominal"
                                         placeholder="Contoh: 300000 atau 750000"
                                         class="w-full p-2.5 bg-emerald-50/20 border-2 border-emerald-300 rounded-lg focus:outline-none focus:border-emerald-600 font-black text-emerald-950 font-mono text-base shadow-2xs">
@@ -656,7 +661,8 @@
 
                                             <!-- PILIH DARI MASTER BARANG ATAU INPUT KETIK LANGSUNG -->
                                             <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                <select :name="type === 'tabungan' ? `tabungan_tiers[${tIdx}][bonuses][${bIdx}][item_id]` : ''"
+                                                <select :name="'tabungan_tiers[' + tIdx + '][bonuses][' + bIdx + '][item_id]'"
+                                                    :disabled="type !== 'tabungan'"
                                                     x-model="bonus.item_id"
                                                     @change="onBonusItemSelect(bonus)"
                                                     class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:border-pink-500">
@@ -666,7 +672,8 @@
                                                     @endforeach
                                                 </select>
                                                 <input type="text"
-                                                    :name="type === 'tabungan' ? `tabungan_tiers[${tIdx}][bonuses][${bIdx}][item_name]` : ''"
+                                                    :name="'tabungan_tiers[' + tIdx + '][bonuses][' + bIdx + '][item_name]'"
+                                                    :disabled="type !== 'tabungan'"
                                                     x-model="bonus.item_name"
                                                     placeholder="Atau ketik nama barang bonus baru..."
                                                     class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:border-pink-500">
@@ -677,12 +684,14 @@
                                                 <div class="flex items-center space-x-1">
                                                     <span class="text-[10px] text-slate-400">Qty:</span>
                                                     <input type="number" min="1"
-                                                        :name="type === 'tabungan' ? `tabungan_tiers[${tIdx}][bonuses][${bIdx}][quantity]` : ''"
+                                                        :name="'tabungan_tiers[' + tIdx + '][bonuses][' + bIdx + '][quantity]'"
+                                                        :disabled="type !== 'tabungan'"
                                                         x-model.number="bonus.quantity"
                                                         class="w-16 p-2 text-center bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:border-pink-500" placeholder="1">
                                                 </div>
                                                 <input type="text"
-                                                    :name="type === 'tabungan' ? `tabungan_tiers[${tIdx}][bonuses][${bIdx}][unit]` : ''"
+                                                    :name="'tabungan_tiers[' + tIdx + '][bonuses][' + bIdx + '][unit]'"
+                                                    :disabled="type !== 'tabungan'"
                                                     x-model="bonus.unit"
                                                     class="w-16 p-2 text-center bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:border-pink-500" placeholder="pcs">
 
