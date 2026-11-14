@@ -103,8 +103,12 @@
                                     @if($pkg && $pkg->package)
                                         <div class="font-bold text-slate-800">{{ $pkg->package->name }}</div>
                                         <div class="text-[10px] text-slate-400 uppercase font-semibold">{{ $pkg->package->type }} &bull; {{ $pkg->package->installment_count }} {{ $pkg->package->period_label }} ({{ $pkg->package->installment_label }})</div>
+                                    @elseif($pkg)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300" title="Paket sebelumnya telah dibatalkan karena dihapus oleh Owner. Silakan pilih paket baru.">
+                                            <i class="fa-solid fa-triangle-exclamation mr-1 text-amber-600"></i> Wajib Pilih Paket Baru
+                                        </span>
                                     @else
-                                        <span class="text-slate-400 italic">Tidak ada paket aktif</span>
+                                        <span class="text-slate-400 italic text-[11px]">Belum memilih paket</span>
                                     @endif
                                 </td>
                                 <td class="py-3.5 px-4">
@@ -120,7 +124,7 @@
                                         @if(auth()->user()->isOwnerOrAdmin())
                                             <div class="text-[10px] text-slate-400">dari {{ $pkg->formatted_target }}</div>
                                         @else
-                                            <div class="text-[10px] text-slate-400">{{ $pkg->paid_count }}/{{ $pkg->package->installment_count }} setoran</div>
+                                            <div class="text-[10px] text-slate-400">{{ $pkg->paid_count }}/{{ $pkg->package ? $pkg->package->installment_count : '-' }} setoran</div>
                                         @endif
                                     @else
                                         -
@@ -201,9 +205,13 @@
                                                 <i class="fa-solid fa-boxes-packing"></i>
                                                 <span>ACC</span>
                                             </a>
-                                        @elseif($pkg && !$pkg->isStopPending() && $pkg->status !== 'canceled')
+                                        @elseif($pkg && $pkg->package && !$pkg->isStopPending() && $pkg->status !== 'canceled')
                                             <a href="{{ route('payments.checklist', $pkg) }}" class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-2xs" title="Buka Ceklis Tagihan">
                                                 <i class="fa-solid fa-list-check mr-1"></i> Ceklis
+                                            </a>
+                                        @elseif(!$pkg || !$pkg->package)
+                                            <a href="{{ route('customers.edit', $c) }}" class="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-bold bg-amber-500 hover:bg-amber-600 text-white transition shadow-2xs" title="Pilih Paket Kembali">
+                                                <i class="fa-solid fa-gift mr-1"></i> Pilih Paket
                                             </a>
                                         @endif
                                         <a href="{{ route('customers.edit', $c) }}" class="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition" title="Edit Data & Paket">

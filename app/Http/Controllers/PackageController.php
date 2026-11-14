@@ -632,18 +632,60 @@ class PackageController extends Controller
 
     public function destroy(Package $package)
     {
-        if ($package->customerPackages()->exists()) {
-            return back()->with('error', 'Paket ini tidak dapat dihapus karena sudah ada konsumen yang mendaftar paket ini.');
+        $packageName = $package->name;
+        $isTabungan = $package->isTabungan();
+        $affectedCount = $package->customerPackages()->count();
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            if ($affectedCount > 0) {
+                // Proses konsumen yang terdaftar di paket ini
+                foreach ($package->customerPackages as $cp) {
+                    $paidPayments = $cp->payments()->where('is_paid', true)->get();
+                    $hasPaid = $paidPayments->isNotEmpty();
+
+                    if ($hasPaid) {
+                        // Jika sudah ada cicilan yang disetor:
+                        // 1. Hapus kotak tagihan yang belum terbayar
+                        $cp->payments()->where('is_paid', false)->delete();
+                        // 2. Kosongkan package_id dan packaging_id, beri catatan resmi
+                        $cp->update([
+                            'package_id' => null,
+                            'packaging_id' => null,
+                            'status' => 'active',
+                            'fulfillment_notes' => 'Pilihan ' . ($isTabungan ? 'tabungan' : 'paket') . ' sebelumnya (' . $packageName . ') dibatalkan karena paket dihapus oleh Owner. Dana setoran Rp ' . number_format($cp->total_paid, 0, ',', '.') . ' tersimpan aman. Konsumen wajib memilih paket pengganti.',
+                        ]);
+                    } else {
+                        // Jika belum ada setoran yang masuk:
+                        // Hapus seluruh tagihan kosong & hapus relasi customerPackage
+                        $cp->payments()->delete();
+                        $cp->customItems()->delete();
+                        $cp->delete();
+                    }
+                }
+            }
+
+            if ($package->image_path && file_exists(public_path($package->image_path))) {
+                @unlink(public_path($package->image_path));
+            }
+
+            $package->packagings()->detach();
+            $package->packageItems()->delete();
+            $package->delete();
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            if ($affectedCount > 0) {
+                $message = "Paket \"{$packageName}\" berhasil dihapus. Sebanyak {$affectedCount} konsumen yang sebelumnya memilih " . ($isTabungan ? 'tabungan' : 'paket') . " ini otomatis dibatalkan pilihannya dan wajib memilih paket kembali.";
+            } else {
+                $message = "Paket \"{$packageName}\" berhasil dihapus.";
+            }
+
+            return redirect()->route('packages.index')->with('success', $message);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return back()->with('error', 'Gagal menghapus paket: ' . $e->getMessage());
         }
-
-        if ($package->image_path && file_exists(public_path($package->image_path))) {
-            @unlink(public_path($package->image_path));
-        }
-
-        $package->packageItems()->delete();
-        $package->delete();
-
-        return redirect()->route('packages.index')->with('success', 'Paket berhasil dihapus.');
     }
 
     /**

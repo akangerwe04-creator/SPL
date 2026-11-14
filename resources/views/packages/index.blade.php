@@ -245,7 +245,7 @@
                                 <a href="{{ route('packages.edit', $pkg) }}" class="p-2 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-100 transition">
                                     <i class="fa-solid fa-pen-to-square"></i>
                                 </a>
-                                <form action="{{ route('packages.destroy', $pkg) }}" method="POST" class="inline-block" onsubmit="return confirm('Hapus paket ini?');">
+                                <form action="{{ route('packages.destroy', $pkg) }}" method="POST" class="inline-block" onsubmit="return confirm('{{ $pkg->customer_packages_count > 0 ? 'Paket ini memiliki ' . $pkg->customer_packages_count . ' konsumen terdaftar. Jika dihapus, konsumen yang memilih ' . ($pkg->isTabungan() ? 'tabungan' : 'paket') . ' ini akan otomatis dibatalkan pilihannya dan wajib memilih paket kembali. Lanjutkan hapus?' : 'Hapus paket ini?' }}');">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition">

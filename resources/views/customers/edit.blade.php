@@ -27,9 +27,13 @@
                 <h3 class="font-heading font-extrabold text-slate-900 text-base">Edit Data Konsumen & Pilihan Paket</h3>
                 <p class="text-xs text-slate-400 mt-0.5">Perbarui informasi identitas, paket yang diambil, atau pilihan kemasan/wadah.</p>
             </div>
-            @if($activePackage)
+            @if($activePackage && $activePackage->package)
                 <span class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase {{ $activePackage->package->isParsel() ? 'bg-pink-100 text-pink-800 border border-pink-200' : ($activePackage->package->isTabungan() ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-blue-100 text-blue-900 border border-blue-200') }}">
                     Paket: {{ $activePackage->package->name }}
+                </span>
+            @elseif($activePackage)
+                <span class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase bg-amber-100 text-amber-900 border border-amber-300">
+                    Paket Sebelumnya Dihapus (Wajib Memilih Paket)
                 </span>
             @endif
         </div>
@@ -106,6 +110,23 @@
                         </span>
                     @endif
                 </div>
+
+                @if($activePackage && !$activePackage->package)
+                    <div class="p-4 rounded-xl bg-amber-50 border-2 border-amber-300 text-amber-950 flex items-start space-x-3">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-600 text-base mt-0.5"></i>
+                        <div>
+                            <strong class="font-bold text-xs">Pemberitahuan: Paket Sebelumnya Dihapus Oleh Owner</strong>
+                            <p class="text-xs text-amber-900 mt-0.5 leading-relaxed">
+                                Pilihan paket/tabungan konsumen ini otomatis dibatalkan.
+                                @if($activePackage->total_paid > 0)
+                                    Dana setoran yang telah terkumpul sebesar <strong class="font-mono text-emerald-800">{{ $activePackage->formatted_paid }}</strong> tersimpan aman dan akan otomatis memotong total tagihan paket baru yang Anda pilih di bawah.
+                                @else
+                                    Silakan pilih paket baru pengganti di bawah ini untuk mengaktifkan kembali konsumen.
+                                @endif
+                            </p>
+                        </div>
+                    </div>
+                @endif
 
                 <!-- DROPDOWN PILIH PAKET -->
                 <div class="space-y-1">

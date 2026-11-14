@@ -21,6 +21,11 @@ class PaymentController extends Controller
             abort(403, 'Anda hanya dapat menagih konsumen binaan Anda sendiri.');
         }
 
+        if (!$customerPackage->package_id) {
+            return redirect()->route('customers.show', $customerPackage->customer)
+                ->with('error', 'Pilihan paket sebelumnya telah dibatalkan karena paket dihapus oleh Owner. Silakan pilih paket baru terlebih dahulu.');
+        }
+
         $customerPackage->load([
             'customer',
             'package.packageItems.item',

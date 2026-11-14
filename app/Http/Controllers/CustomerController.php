@@ -420,13 +420,13 @@ class CustomerController extends Controller
 
             $customer->update([
                 'name' => $validated['name'],
-                'phone' => $validated['phone'],
-                'address' => $validated['address'],
-                'notes' => $validated['notes'],
+                'phone' => $validated['phone'] ?? null,
+                'address' => $validated['address'] ?? null,
+                'notes' => $validated['notes'] ?? null,
             ]);
 
             // Cek pembaruan paket & kemasan konsumen
-            $activePackage = $customer->customerPackages->where('status', '!=', 'canceled')->first();
+            $activePackage = $customer->customerPackages()->where('status', '!=', 'canceled')->latest()->first();
             if ($activePackage && $request->filled('package_id')) {
                 $newPackageId = (int) $validated['package_id'];
                 $newPackagingId = !empty($validated['packaging_id']) ? (int) $validated['packaging_id'] : null;
@@ -512,9 +512,64 @@ class CustomerController extends Controller
                         'packaging_id' => $newPackagingId,
                         'packaging_price' => $packagingPrice,
                         'total_target' => $targetNominal,
+                        'fulfillment_notes' => null,
                     ]);
 
                     $activePackage->recalculatePaidAmount();
+                }
+            } elseif (!$activePackage && $request->filled('package_id')) {
+                // Konsumen belum memiliki paket aktif (misal paket sebelumnya dihapus saat setoran masih 0)
+                $newPackageId = (int) $validated['package_id'];
+                $newPackage = Package::with(['packagings', 'packageItems'])->findOrFail($newPackageId);
+                $newPackagingId = !empty($validated['packaging_id']) ? (int) $validated['packaging_id'] : null;
+
+                $packagingPrice = 0;
+                if ($newPackagingId) {
+                    $pkgOption = $newPackage->packagings->where('id', $newPackagingId)->first();
+                    if ($pkgOption) {
+                        $packagingPrice = $pkgOption->pivot->custom_price !== null ? (float)$pkgOption->pivot->custom_price : (float)$pkgOption->price;
+                    } else {
+                        $masterKms = \App\Models\Packaging::find($newPackagingId);
+                        if ($masterKms) {
+                            $packagingPrice = (float) $masterKms->price;
+                        }
+                    }
+                }
+
+                $installmentCount = $newPackage->installment_count ?: 30;
+                if ((float) $newPackage->target_nominal > 0) {
+                    $targetNominal = (float) $newPackage->target_nominal + $packagingPrice;
+                    $rawInstallment = $installmentCount > 0 ? ($targetNominal / $installmentCount) : 0;
+                } else {
+                    $baseInstallment = (float) ($newPackage->installment_amount ?: 0);
+                    $rawInstallment = $baseInstallment + ($installmentCount > 0 ? ($packagingPrice / $installmentCount) : 0);
+                    $targetNominal = ($baseInstallment * $installmentCount) + $packagingPrice;
+                }
+                $installmentAmount = Package::roundInstallment($rawInstallment);
+
+                $newCp = CustomerPackage::create([
+                    'customer_id' => $customer->id,
+                    'package_id' => $newPackage->id,
+                    'agent_id' => $customer->agent_id,
+                    'packaging_id' => $newPackagingId,
+                    'packaging_price' => $packagingPrice,
+                    'start_date' => $customer->created_at ? $customer->created_at->format('Y-m-d') : date('Y-m-d'),
+                    'total_target' => $targetNominal,
+                    'total_paid' => 0,
+                    'status' => 'active',
+                    'fulfillment_status' => 'pending',
+                ]);
+
+                for ($week = 1; $week <= $installmentCount; $week++) {
+                    Payment::create([
+                        'customer_package_id' => $newCp->id,
+                        'agent_id' => $customer->agent_id,
+                        'period_number' => $week,
+                        'amount' => $installmentAmount,
+                        'is_paid' => false,
+                        'is_locked' => false,
+                        'status' => 'unpaid',
+                    ]);
                 }
             }
 

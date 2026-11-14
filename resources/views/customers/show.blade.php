@@ -74,14 +74,48 @@
                                 <i class="fa-solid fa-hourglass-half mr-2 text-amber-600 animate-spin"></i> Menunggu Konfirmasi Owner
                             </span>
                         @endif
+                    @elseif(!$activePackage->package)
+                        <a href="{{ route('customers.edit', $customer) }}" class="px-5 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center">
+                            <i class="fa-solid fa-gift mr-2 text-sm"></i> Pilih Paket Pengganti
+                        </a>
                     @else
                         <a href="{{ route('payments.checklist', $activePackage) }}" class="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition flex items-center justify-center">
                             <i class="fa-solid fa-list-check mr-2 text-sm"></i> Buka Lembar Ceklis Tagihan
                         </a>
                     @endif
                 </div>
+            @else
+                <div class="flex-shrink-0">
+                    <a href="{{ route('customers.edit', $customer) }}" class="px-5 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center">
+                        <i class="fa-solid fa-gift mr-2 text-sm"></i> Pilih Paket Program
+                    </a>
+                </div>
             @endif
         </div>
+
+        @if(!$activePackage || !$activePackage->package)
+            <div class="mt-4 p-4 rounded-xl bg-amber-50 border-2 border-amber-300 text-amber-950 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-2xs">
+                <div class="space-y-1">
+                    <div class="flex items-center space-x-2">
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-200 text-amber-950 border border-amber-400">
+                            <i class="fa-solid fa-triangle-exclamation mr-1 text-amber-700"></i> Pilihan Dibatalkan
+                        </span>
+                        <strong class="text-xs text-amber-950 font-heading font-black">Paket Dihapus &mdash; Konsumen Wajib Memilih Paket Kembali</strong>
+                    </div>
+                    <p class="text-xs text-amber-900 font-medium">
+                        @if($activePackage && $activePackage->total_paid > 0)
+                            Pilihan paket/tabungan sebelumnya dibatalkan karena paket telah dihapus oleh Owner. Dana setoran masuk sebesar <strong class="font-mono text-emerald-800">{{ $activePackage->formatted_paid }}</strong> tersimpan aman dan akan dialihkan ke paket baru yang dipilih.
+                        @else
+                            Pilihan paket program konsumen ini telah dibatalkan karena paket dihapus oleh Owner. Silakan pilih paket baru.
+                        @endif
+                    </p>
+                </div>
+                <a href="{{ route('customers.edit', $customer) }}" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition flex items-center space-x-1.5 shrink-0">
+                    <i class="fa-solid fa-gift"></i>
+                    <span>Pilih Paket Kembali</span>
+                </a>
+            </div>
+        @endif
 
         @if($activePackage)
             <!-- NOTIFIKASI STATUS STOP KONSUMEN -->
@@ -149,8 +183,14 @@
             <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
                     <div class="text-[10px] font-bold text-slate-400 uppercase">Paket Diambil</div>
-                    <div class="font-heading font-bold text-sm text-slate-900 mt-0.5">{{ $activePackage->package->name }}</div>
-                    <div class="text-[11px] text-slate-500 uppercase font-semibold mt-1">{{ $activePackage->package->type }} &bull; {{ $activePackage->package->installment_count }} {{ $activePackage->package->period_label }} ({{ $activePackage->package->installment_label }})</div>
+                    <div class="font-heading font-bold text-sm text-slate-900 mt-0.5">{{ $activePackage->package ? $activePackage->package->name : 'Paket Sebelumnya Dihapus' }}</div>
+                    <div class="text-[11px] text-slate-500 uppercase font-semibold mt-1">
+                        @if($activePackage->package)
+                            {{ $activePackage->package->type }} &bull; {{ $activePackage->package->installment_count }} {{ $activePackage->package->period_label }} ({{ $activePackage->package->installment_label }})
+                        @else
+                            <span class="text-amber-700 font-bold">Wajib Memilih Paket Pengganti</span>
+                        @endif
+                    </div>
                     @if($activePackage->packaging)
                         <div class="mt-2.5 pt-2 border-t border-slate-200/80 flex items-center space-x-2.5">
                             @if($activePackage->packaging->image_path && file_exists(public_path($activePackage->packaging->image_path)))
@@ -181,7 +221,7 @@
                         </div>
                     @else
                         <div class="text-[11px] text-emerald-800 mt-1">
-                            Terbayar: <strong>{{ $activePackage->paid_count }}x</strong> dari {{ $activePackage->package->installment_count }}x setoran ({{ $activePackage->package->period_label }})
+                            Terbayar: <strong>{{ $activePackage->paid_count }}x</strong> @if($activePackage->package) dari {{ $activePackage->package->installment_count }}x setoran ({{ $activePackage->package->period_label }}) @endif
                         </div>
                     @endif
                 </div>
@@ -230,7 +270,7 @@
             </div>
 
             <!-- SPECIAL TABUNGAN ALERT -->
-            @if($activePackage->package->isTabungan() && $activePackage->is_bonus_forfeited)
+            @if($activePackage->package && $activePackage->package->isTabungan() && $activePackage->is_bonus_forfeited)
                 <div class="mt-4 p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-900 flex items-start space-x-2.5">
                     <i class="fa-solid fa-triangle-exclamation text-red-600 mt-0.5 text-base"></i>
                     <div>
@@ -307,11 +347,17 @@
         <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-6">
             <div class="flex items-center justify-between pb-4 border-b border-slate-100">
                 <h3 class="font-heading font-bold text-slate-900 text-sm">
-                    Jadwal Ceklis Tagihan ({{ $activePackage->package->installment_count }} {{ $activePackage->package->period_label }})
+                    Jadwal Ceklis Tagihan ({{ $activePackage->package ? ($activePackage->package->installment_count . ' ' . $activePackage->package->period_label) : ($activePackage->payments->count() . ' Periode Terbayar') }})
                 </h3>
-                <a href="{{ route('payments.checklist', $activePackage) }}" class="text-xs font-bold text-emerald-600 hover:text-emerald-700">
-                    Buka Interaktif &rarr;
-                </a>
+                @if($activePackage->package)
+                    <a href="{{ route('payments.checklist', $activePackage) }}" class="text-xs font-bold text-emerald-600 hover:text-emerald-700">
+                        Buka Interaktif &rarr;
+                    </a>
+                @else
+                    <a href="{{ route('customers.edit', $customer) }}" class="text-xs font-bold text-amber-600 hover:text-amber-700">
+                        Pilih Paket Pengganti &rarr;
+                    </a>
+                @endif
             </div>
 
             <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10 gap-2 pt-4">
@@ -320,8 +366,8 @@
                         {{ $p->is_locked ? 'bg-emerald-600 border-emerald-600 text-white font-bold' : '' }}
                         {{ ($p->is_paid && !$p->is_locked) ? 'bg-amber-400 border-amber-400 text-amber-950 font-bold' : '' }}
                         {{ (!$p->is_paid) ? 'bg-slate-50 border-slate-200 text-slate-500' : '' }}"
-                        title="{{ ($activePackage->package->isHarian() ? 'Hari ke-' : 'Minggu ke-') . $p->period_number }} ({{ $p->formatted_amount }})">
-                        <div class="text-[10px] opacity-80">{{ $activePackage->package->isHarian() ? 'H' : 'M' }}-{{ $p->period_number }}</div>
+                        title="{{ (($activePackage->package && $activePackage->package->isHarian()) ? 'Hari ke-' : 'Minggu ke-') . $p->period_number }} ({{ $p->formatted_amount }})">
+                        <div class="text-[10px] opacity-80">{{ ($activePackage->package && $activePackage->package->isHarian()) ? 'H' : 'M' }}-{{ $p->period_number }}</div>
                         <div class="text-[11px] font-extrabold mt-0.5">
                             @if($p->is_locked)
                                 <i class="fa-solid fa-check"></i>
