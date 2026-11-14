@@ -27,6 +27,18 @@ class PackageController extends Controller
             $query->where('period_type', $request->period_type);
         }
 
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%")
+                  ->orWhereHas('packageItems.item', function ($iq) use ($search) {
+                      $iq->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
         $packages = $query->orderBy('type')->orderBy('name')->get();
 
         return view('packages.index', compact('packages'));
