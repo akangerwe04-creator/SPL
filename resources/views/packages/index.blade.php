@@ -14,6 +14,16 @@
     showImportModal: false,
     viewMode: localStorage.getItem('spl_package_view_mode') || 'grid',
     searchQuery: '{{ request('search', '') }}',
+    selectedPackages: [],
+    selectAll: false,
+    allPackages: [
+        @foreach($packages as $pkg)
+        {
+            id: {{ $pkg->id }},
+            search: '{{ addslashes(strtolower($pkg->name . ' ' . $pkg->code . ' ' . $pkg->type . ' ' . $pkg->period_type . ' ' . $pkg->installment_label . ' ' . ($pkg->description ?? '') . ' ' . $pkg->packageItems->map(fn($pi) => $pi->item?->name)->filter()->implode(' '))) }}'
+        },
+        @endforeach
+    ],
     setViewMode(mode) {
         this.viewMode = mode;
         localStorage.setItem('spl_package_view_mode', mode);
@@ -22,6 +32,29 @@
         if (!this.searchQuery) return true;
         const q = this.searchQuery.toLowerCase().trim();
         return dataStr.toLowerCase().includes(q);
+    },
+    toggleSelectAll() {
+        if (this.selectAll) {
+            const q = this.searchQuery.toLowerCase().trim();
+            this.selectedPackages = this.allPackages
+                .filter(p => !q || p.search.includes(q))
+                .map(p => p.id);
+        } else {
+            this.selectedPackages = [];
+        }
+    },
+    updateSelectAllState() {
+        const q = this.searchQuery.toLowerCase().trim();
+        const visible = this.allPackages.filter(p => !q || p.search.includes(q));
+        if (visible.length === 0) {
+            this.selectAll = false;
+            return;
+        }
+        this.selectAll = visible.every(p => this.selectedPackages.includes(p.id));
+    },
+    clearSelection() {
+        this.selectedPackages = [];
+        this.selectAll = false;
     }
 }">
 
@@ -99,9 +132,11 @@
                 </div>
 
                 <!-- IMPORT & BELANJA -->
-                <button type="button" @click="showImportModal = true" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition flex items-center shrink-0" title="Import Master Data Paket via Excel (.xlsx) atau CSV">
-                    <i class="fa-solid fa-file-arrow-up mr-1.5 text-emerald-200"></i> Import (.xlsx)
-                </button>
+                @if(auth()->user()->isOwnerOrAdmin())
+                    <button type="button" @click="showImportModal = true" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition flex items-center shrink-0" title="Import Master Data Paket via Excel (.xlsx) atau CSV">
+                        <i class="fa-solid fa-file-arrow-up mr-1.5 text-emerald-200"></i> Import (.xlsx)
+                    </button>
+                @endif
 
                 <a href="{{ route('inventory.planner') }}" class="px-3 py-2 bg-pink-50 hover:bg-pink-100 text-pink-700 font-bold rounded-xl border border-pink-200 transition flex items-center shrink-0">
                     <i class="fa-solid fa-clipboard-list mr-1.5 text-pink-600"></i> Rekap Belanja
@@ -150,6 +185,11 @@
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+                        @if(auth()->user()->isOwnerOrAdmin())
+                            <th class="py-3 px-3 w-10 text-center">
+                                <input type="checkbox" x-model="selectAll" @change="toggleSelectAll()" class="w-4 h-4 rounded border-slate-300 text-pink-600 focus:ring-pink-500 cursor-pointer" title="Pilih Semua Paket">
+                            </th>
+                        @endif
                         <th class="py-3 px-4">Paket &amp; Kode</th>
                         <th class="py-3 px-4">Tipe &amp; Skema</th>
                         <th class="py-3 px-4 text-right">Setoran / Cicilan</th>
@@ -166,8 +206,14 @@
                         @endphp
                         <tr 
                             x-show="matchesSearch('{{ addslashes($searchKey) }}')" 
-                            class="hover:bg-pink-50/30 transition group"
+                            :class="selectedPackages.includes({{ $pkg->id }}) ? 'bg-pink-50/70 font-semibold' : 'hover:bg-pink-50/30'"
+                            class="transition group"
                         >
+                            @if(auth()->user()->isOwnerOrAdmin())
+                                <td class="py-3 px-3 text-center whitespace-nowrap">
+                                    <input type="checkbox" :value="{{ $pkg->id }}" x-model="selectedPackages" @change="updateSelectAllState()" class="pkg-item-checkbox w-4 h-4 rounded border-slate-300 text-pink-600 focus:ring-pink-500 cursor-pointer">
+                                </td>
+                            @endif
                             <!-- 1. PAKET & KODE -->
                             <td class="py-3 px-4">
                                 <div class="flex items-center space-x-3">
@@ -304,7 +350,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="py-12 text-center text-slate-400">
+                            <td colspan="{{ auth()->user()->isOwnerOrAdmin() ? 8 : 7 }}" class="py-12 text-center text-slate-400">
                                 <i class="fa-solid fa-box-open text-4xl mb-3 text-slate-300"></i>
                                 <div class="font-bold text-slate-700">Belum Ada Master Paket</div>
                                 <div class="text-xs mt-1">Buat paket parsel atau tabungan untuk mulai menerima pesanan.</div>
@@ -324,13 +370,21 @@
             @endphp
             <div 
                 x-show="matchesSearch('{{ addslashes($searchKey) }}')" 
-                class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col justify-between hover:border-pink-500 hover:shadow-md transition group"
+                :class="selectedPackages.includes({{ $pkg->id }}) ? 'ring-2 ring-pink-500 border-pink-500 bg-pink-50/20' : 'hover:border-pink-500'"
+                class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col justify-between hover:shadow-md transition group relative"
             >
                 <div>
                     @if($pkg->image_path)
                         <div class="h-44 w-full bg-slate-100 overflow-hidden relative border-b border-slate-100">
                             <img src="{{ asset($pkg->image_path) }}" alt="{{ $pkg->name }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-                            <div class="absolute top-3 left-3">
+                            @if(auth()->user()->isOwnerOrAdmin())
+                                <div class="absolute top-3 left-3 z-10">
+                                    <label class="inline-flex items-center justify-center w-7 h-7 bg-white/95 backdrop-blur-xs rounded-lg shadow-sm border border-slate-200 cursor-pointer hover:bg-white hover:scale-105 transition" @click.stop title="Pilih Paket Ini">
+                                        <input type="checkbox" :value="{{ $pkg->id }}" x-model="selectedPackages" @change="updateSelectAllState()" class="pkg-item-checkbox w-4 h-4 rounded border-slate-300 text-pink-600 focus:ring-pink-500 cursor-pointer">
+                                    </label>
+                                </div>
+                            @endif
+                            <div class="absolute top-3 {{ auth()->user()->isOwnerOrAdmin() ? 'left-12' : 'left-3' }}">
                                 <span class="font-mono text-[10px] font-extrabold px-2.5 py-1 rounded-full shadow-xs {{ $pkg->isParsel() ? 'bg-pink-600 text-white' : ($pkg->isTabungan() ? 'bg-amber-600 text-white' : 'bg-blue-600 text-white') }}">
                                     {{ $pkg->code }} &bull; {{ strtoupper($pkg->type) }} &bull; {{ strtoupper($pkg->period_type ?? 'mingguan') }}
                                 </span>
@@ -347,9 +401,14 @@
                     <div class="p-5">
                         @if(!$pkg->image_path)
                             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                                <span class="font-mono text-[10px] font-bold px-2 py-0.5 rounded {{ $pkg->isParsel() ? 'bg-pink-100 text-pink-800 border border-pink-200' : ($pkg->isTabungan() ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800') }}">
-                                    {{ $pkg->code }} &bull; {{ strtoupper($pkg->type) }} &bull; {{ strtoupper($pkg->period_type ?? 'mingguan') }}
-                                </span>
+                                <div class="flex items-center space-x-2">
+                                    @if(auth()->user()->isOwnerOrAdmin())
+                                        <input type="checkbox" :value="{{ $pkg->id }}" x-model="selectedPackages" @change="updateSelectAllState()" class="pkg-item-checkbox w-4 h-4 rounded border-slate-300 text-pink-600 focus:ring-pink-500 cursor-pointer" title="Pilih Paket Ini">
+                                    @endif
+                                    <span class="font-mono text-[10px] font-bold px-2 py-0.5 rounded {{ $pkg->isParsel() ? 'bg-pink-100 text-pink-800 border border-pink-200' : ($pkg->isTabungan() ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800') }}">
+                                        {{ $pkg->code }} &bull; {{ strtoupper($pkg->type) }} &bull; {{ strtoupper($pkg->period_type ?? 'mingguan') }}
+                                    </span>
+                                </div>
                                 <span class="text-xs font-extrabold px-2.5 py-0.5 rounded-full {{ $pkg->isHarian() ? 'bg-amber-100 text-amber-900 border border-amber-200' : 'bg-pink-100 text-pink-900 border border-pink-200' }}">
                                     <i class="fa-solid {{ $pkg->isHarian() ? 'fa-calendar-day text-amber-600' : 'fa-calendar-week text-pink-600' }} mr-1"></i>
                                     {{ $pkg->installment_count }} {{ $pkg->period_label }}
@@ -522,6 +581,62 @@
         @endforelse
     </div>
 
+    <!-- ================= FLOATING BULK ACTION BAR (KHUSUS ADMIN / OWNER) ================= -->
+    @if(auth()->user()->isOwnerOrAdmin())
+        <div 
+            x-show="selectedPackages.length > 0" 
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 translate-y-8"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 translate-y-8"
+            x-cloak 
+            class="fixed bottom-6 inset-x-0 mx-auto max-w-xl z-50 px-4"
+        >
+            <div class="bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl p-4 border border-slate-700 flex items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <span class="w-9 h-9 rounded-xl bg-pink-600 flex items-center justify-center font-black text-sm text-white shadow-xs">
+                        <span x-text="selectedPackages.length"></span>
+                    </span>
+                    <div>
+                        <div class="font-bold text-sm text-white flex items-center">
+                            <span>Paket Dipilih</span>
+                            <span class="ml-2 text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700">Aksi Massal Admin</span>
+                        </div>
+                        <div class="text-[11px] text-slate-300">Siap untuk dihapus sekaligus</div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                    <button 
+                        type="button" 
+                        @click="clearSelection()" 
+                        class="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition"
+                    >
+                        Batal
+                    </button>
+                    
+                    <form 
+                        action="{{ route('packages.bulk-destroy') }}" 
+                        method="POST" 
+                        onsubmit="rememberScroll(); return confirm('PERINGATAN HAPUS SEKALIGUS:\n\nAnda yakin ingin menghapus ' + selectedPackages.length + ' paket yang dipilih sekaligus?\n\nJika ada konsumen yang sudah terdaftar, status pemilihan mereka akan dibatalkan otomatis dan saldo tabungan/angsuran mereka tetap aman tersimpan.\n\nLanjutkan penghapusan massal?');"
+                    >
+                        @csrf
+                        <input type="hidden" name="package_ids" :value="selectedPackages.join(',')">
+                        <button 
+                            type="submit" 
+                            class="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center space-x-1.5 cursor-pointer"
+                        >
+                            <i class="fa-solid fa-trash-can mr-1.5"></i>
+                            <span>Hapus Sekaligus (<span x-text="selectedPackages.length"></span>)</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- MODAL IMPORT DATA PAKET -->
     <div x-show="showImportModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full p-6 text-xs space-y-4" @click.away="showImportModal = false">
@@ -541,22 +656,67 @@
             </div>
 
             <!-- STEP 1: DOWNLOAD TEMPLATE RESMI -->
-            <div class="p-3.5 bg-pink-50/70 border border-pink-200 rounded-xl space-y-2">
-                <div class="font-bold text-pink-900 flex items-center justify-between">
-                    <span class="flex items-center">
-                        <i class="fa-solid fa-circle-info mr-1.5 text-pink-600"></i> Langkah 1: Unduh Format Template Resmi
+            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                <div class="font-bold text-slate-800 flex items-center justify-between">
+                    <span class="flex items-center text-xs">
+                        <i class="fa-solid fa-file-excel mr-1.5 text-emerald-600 text-sm"></i> Langkah 1: Unduh Format Template Resmi
                     </span>
+                    <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-200">5 Varian Lengkap</span>
                 </div>
-                <p class="text-[11px] text-pink-800 leading-relaxed">
-                    Template sudah dilengkapi contoh pengisian untuk jenis <strong>Parsel</strong>, <strong>Tabungan</strong>, dan <strong>Eceran</strong> agar tidak keliru saat mengisi data.
+                
+                <p class="text-[11px] text-slate-600 leading-relaxed">
+                    Template Excel telah dirancang khusus bebas kesalahan dan mencakup contoh nyata untuk <strong>5 variasi paket</strong>:
                 </p>
-                <div class="flex items-center gap-2 pt-1">
-                    <a href="{{ route('packages.import.template', ['format' => 'xlsx']) }}" class="px-3 py-1.5 bg-pink-600 hover:bg-pink-700 text-white font-bold rounded-lg transition inline-flex items-center text-[11px] shadow-xs">
-                        <i class="fa-solid fa-download mr-1.5"></i> Download Template Excel (.xlsx)
+
+                <!-- GRID 5 VARIAN CONTOH -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px]">
+                    <div class="p-2 bg-white rounded-lg border border-pink-100 shadow-2xs">
+                        <div class="font-bold text-pink-700 flex items-center">
+                            <i class="fa-solid fa-gift mr-1"></i> 1. Parsel Mingguan
+                        </div>
+                        <div class="text-slate-500 mt-0.5">30 Mgg, Rp 25rb/mgg, Target Rp 750rb, isi sembako & kue.</div>
+                    </div>
+                    <div class="p-2 bg-white rounded-lg border border-pink-100 shadow-2xs">
+                        <div class="font-bold text-pink-700 flex items-center">
+                            <i class="fa-solid fa-gift mr-1"></i> 2. Parsel Harian
+                        </div>
+                        <div class="text-slate-500 mt-0.5">100 Hari, Rp 7.500/hari, Target Rp 750rb, sembako praktis.</div>
+                    </div>
+                    <div class="p-2 bg-white rounded-lg border border-amber-100 shadow-2xs">
+                        <div class="font-bold text-amber-800 flex items-center">
+                            <i class="fa-solid fa-coins mr-1 text-amber-600"></i> 3. Tabungan Mingguan
+                        </div>
+                        <div class="text-slate-500 mt-0.5">30 Mgg, Rp 10rb/mgg, Cair Rp 300rb + hadiah bonus.</div>
+                    </div>
+                    <div class="p-2 bg-white rounded-lg border border-amber-100 shadow-2xs">
+                        <div class="font-bold text-amber-800 flex items-center">
+                            <i class="fa-solid fa-coins mr-1 text-amber-600"></i> 4. Tabungan Harian
+                        </div>
+                        <div class="text-slate-500 mt-0.5">100 Hari, Rp 5rb/hari, Cair Rp 500rb + hadiah bonus.</div>
+                    </div>
+                    <div class="p-2 bg-white rounded-lg border border-blue-100 shadow-2xs sm:col-span-2">
+                        <div class="font-bold text-blue-700 flex items-center">
+                            <i class="fa-solid fa-cubes mr-1 text-blue-500"></i> 5. Paket Eceran (Bebas Rakit)
+                        </div>
+                        <div class="text-slate-500 mt-0.5">Skema mingguan/harian untuk paket rakitan bebas pilihan konsumen.</div>
+                    </div>
+                </div>
+
+                <!-- DOWNLOAD BUTTONS -->
+                <div class="pt-2 border-t border-slate-200 flex flex-wrap items-center gap-2">
+                    <a href="{{ route('packages.import.template', ['format' => 'xlsx', 'type' => 'all']) }}" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition inline-flex items-center text-xs shadow-xs">
+                        <i class="fa-solid fa-file-excel mr-1.5 text-white"></i> Download Template Lengkap (.xlsx)
                     </a>
-                    <a href="{{ route('packages.import.template', ['format' => 'csv']) }}" class="px-3 py-1.5 bg-white hover:bg-pink-100 text-pink-800 border border-pink-300 font-bold rounded-lg transition inline-flex items-center text-[11px]">
-                        <i class="fa-solid fa-file-csv mr-1.5"></i> Template CSV
+                    <a href="{{ route('packages.import.template', ['format' => 'csv', 'type' => 'all']) }}" class="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold rounded-xl transition inline-flex items-center text-xs">
+                        <i class="fa-solid fa-file-csv mr-1.5 text-slate-500"></i> Format CSV
                     </a>
+                </div>
+
+                <div class="text-[10px] text-slate-500 flex items-center flex-wrap gap-1.5 pt-1">
+                    <span class="font-semibold text-slate-600">Download Template Spesifik:</span>
+                    <a href="{{ route('packages.import.template', ['format' => 'xlsx', 'type' => 'parsel']) }}" class="text-pink-600 hover:text-pink-800 font-bold underline">Parsel Saja</a> &bull;
+                    <a href="{{ route('packages.import.template', ['format' => 'xlsx', 'type' => 'tabungan']) }}" class="text-amber-600 hover:text-amber-800 font-bold underline">Tabungan Saja</a> &bull;
+                    <a href="{{ route('packages.import.template', ['format' => 'xlsx', 'type' => 'ecer']) }}" class="text-blue-600 hover:text-blue-800 font-bold underline">Eceran Saja</a>
                 </div>
             </div>
 

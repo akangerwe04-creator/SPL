@@ -111,6 +111,7 @@ Route::middleware(['auth'])->group(function () {
         // Menu 4: Menu Paket (Parsel, Tabungan, Eceran)
         Route::get('/packages/import-template', [PackageController::class, 'downloadImportTemplate'])->name('packages.import.template');
         Route::post('/packages/import', [PackageController::class, 'import'])->name('packages.import');
+        Route::post('/packages/bulk-delete', [PackageController::class, 'bulkDestroy'])->name('packages.bulk-destroy');
         Route::resource('packages', PackageController::class);
 
         // Menu 5: Rekonsiliasi Agen (Pengesahan Setoran Kas)

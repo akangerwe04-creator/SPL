@@ -749,10 +749,98 @@ class PackageController extends Controller
     }
 
     /**
+     * Hapus sekaligus banyak paket yang dipilih oleh Admin / Owner
+     */
+    public function bulkDestroy(Request $request)
+    {
+        if (!auth()->user()->isOwnerOrAdmin()) {
+            abort(403, 'Akses ditolak. Fitur hapus sekaligus hanya untuk Admin dan Owner.');
+        }
+
+        $packageIds = $request->input('package_ids', []);
+        if (is_string($packageIds)) {
+            $packageIds = explode(',', $packageIds);
+        }
+        $packageIds = array_filter(array_map('intval', (array) $packageIds));
+
+        if (empty($packageIds)) {
+            return redirect()->route('packages.index')->with('error', 'Tidak ada paket yang dipilih untuk dihapus.');
+        }
+
+        $packages = Package::whereIn('id', $packageIds)->get();
+        if ($packages->isEmpty()) {
+            return redirect()->route('packages.index')->with('error', 'Paket yang dipilih tidak ditemukan.');
+        }
+
+        $deletedCount = 0;
+        $totalAffectedCustomers = 0;
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            foreach ($packages as $package) {
+                $packageName = $package->name;
+                $isTabungan = $package->isTabungan();
+                $affectedCount = $package->customerPackages()->count();
+
+                if ($affectedCount > 0) {
+                    $totalAffectedCustomers += $affectedCount;
+                    foreach ($package->customerPackages as $cp) {
+                        $paidPayments = $cp->payments()->where('is_paid', true)->get();
+                        $hasPaid = $paidPayments->isNotEmpty();
+
+                        if ($hasPaid) {
+                            $cp->payments()->where('is_paid', false)->delete();
+                            $cp->update([
+                                'package_id' => null,
+                                'packaging_id' => null,
+                                'status' => 'active',
+                                'fulfillment_notes' => 'Pilihan ' . ($isTabungan ? 'tabungan' : 'paket') . ' sebelumnya (' . $packageName . ') dibatalkan karena paket dihapus massal oleh Admin/Owner. Dana setoran Rp ' . number_format($cp->total_paid, 0, ',', '.') . ' tersimpan aman. Konsumen wajib memilih paket pengganti.',
+                            ]);
+                        } else {
+                            $cp->payments()->delete();
+                            $cp->customItems()->delete();
+                            $cp->delete();
+                        }
+                    }
+                }
+
+                if ($package->image_path && file_exists(public_path($package->image_path))) {
+                    @unlink(public_path($package->image_path));
+                }
+
+                $package->packagings()->detach();
+                $package->packageItems()->delete();
+                $package->delete();
+
+                $deletedCount++;
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            $message = "Berhasil menghapus {$deletedCount} paket sekaligus.";
+            if ($totalAffectedCustomers > 0) {
+                $message .= " Sebanyak {$totalAffectedCustomers} konsumen terkait otomatis dibatalkan pilihannya dan diarahkan untuk memilih paket pengganti (saldo tersimpan aman).";
+            }
+
+            return redirect()->route('packages.index')->with('success', $message);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return redirect()->route('packages.index')->with('error', 'Gagal menghapus paket sekaligus: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Download format / template import data paket (.xlsx atau .csv)
+     * Menyediakan contoh lengkap untuk 5 varian:
+     * 1. Parsel Mingguan
+     * 2. Parsel Harian
+     * 3. Tabungan Mingguan
+     * 4. Tabungan Harian
+     * 5. Eceran (Bebas Rakit)
      */
     public function downloadImportTemplate(Request $request, \App\Services\SimpleExcelHelper $excelHelper)
     {
+        $type = strtolower($request->query('type', 'all'));
         $format = strtolower($request->query('format', 'xlsx'));
 
         $headers = [
@@ -762,17 +850,18 @@ class PackageController extends Controller
             'Skema Periode* (mingguan/harian)',
             'Jumlah Angsuran*',
             'Nominal Angsuran (Rp)*',
-            'Total Target Paket (Rp)',
+            'Total Target / Uang Cair (Rp)*',
             'Biaya Admin (Rp)',
             'Titik Aman Full Parsel (Rp)',
+            'Daftar Barang / Hadiah Bonus (Opsional)',
             'Keterangan / Deskripsi',
             'Status (Aktif/Nonaktif)',
         ];
 
-        $sampleRows = [
-            [
-                'PAR-01',
-                'Paket Parsel Silver Lebaran',
+        $allSamples = [
+            'parsel_mingguan' => [
+                'PAR-M01',
+                'Paket Parsel Silver Lebaran (Mingguan)',
                 'parsel',
                 'mingguan',
                 '30',
@@ -780,69 +869,120 @@ class PackageController extends Controller
                 '750000',
                 '0',
                 '600000',
-                'Paket parsel sembako dan biskuit kaleng premium pilihan.',
+                'Beras 2.5 Kg (1), Minyak Goreng 2L (1), Gula Pasir 1 Kg (1), Sirup Marjan (2), Biskuit Khong Guan (1)',
+                'Paket parsel sembako & biskuit mingguan (30x tagih @ Rp 25.000).',
                 'Aktif',
             ],
-            [
-                'PAR-02',
-                'Paket Parsel Gold Sultan',
+            'parsel_harian' => [
+                'PAR-H01',
+                'Paket Parsel Sultan Berkah (Harian)',
                 'parsel',
-                'mingguan',
-                '30',
-                '50000',
-                '1500000',
+                'harian',
+                '100',
+                '7500',
+                '750000',
                 '0',
-                '1200000',
-                'Paket parsel super mewah kaleng biskuit impor + sirup + kurma tunis.',
+                '600000',
+                'Beras 2.5 Kg (1), Minyak Goreng 2L (1), Sirup Marjan (2), Biskuit Kaleng (1)',
+                'Paket parsel harian praktis (100 hari @ Rp 7.500).',
                 'Aktif',
             ],
-            [
-                'TAB-01',
-                'Paket Tabungan Uang Tunai 1 Juta',
+            'tabungan_mingguan' => [
+                'TAB-M01',
+                'Tabungan SPL Lebaran (Mingguan)',
                 'tabungan',
                 'mingguan',
                 '30',
-                '35000',
-                '1000000',
+                '10000',
+                '300000',
                 '0',
                 '',
-                'Nabung Rp 35rb/minggu, saat lebaran cair uang tunai Rp 1.000.000 + hadiah sembako.',
+                'Minyak Goreng 2L (1), Sirup Marjan (1)',
+                'Nabung Rp 10.000/minggu x 30 minggu. Lebaran cair tunai Rp 300.000 + hadiah sembako gratis!',
                 'Aktif',
             ],
-            [
+            'tabungan_harian' => [
+                'TAB-H01',
+                'Tabungan SPL Berkah (Harian)',
+                'tabungan',
+                'harian',
+                '100',
+                '5000',
+                '500000',
+                '0',
+                '',
+                'Minyak Goreng 2L (1), Gula Pasir 1 Kg (1)',
+                'Nabung Rp 5.000/hari x 100 hari. Lebaran cair tunai Rp 500.000 + hadiah sembako gratis!',
+                'Aktif',
+            ],
+            'ecer_mingguan' => [
                 'ECR-01',
-                'Paket Eceran Mandiri Bebas Rakit',
+                'Paket Eceran Mandiri Bebas Rakit (Mingguan)',
                 'ecer',
                 'mingguan',
                 '30',
-                '0',
-                '0',
+                '10000',
+                '300000',
                 '0',
                 '',
-                'Paket rakitan pilihan eceran bebas sesuai keinginan konsumen.',
+                '',
+                'Paket eceran mingguan rakitan bebas pilihan konsumen.',
+                'Aktif',
+            ],
+            'ecer_harian' => [
+                'ECR-H01',
+                'Paket Eceran Harian Bebas Rakit (Harian)',
+                'ecer',
+                'harian',
+                '100',
+                '5000',
+                '500000',
+                '0',
+                '',
+                '',
+                'Paket eceran harian rakitan bebas pilihan konsumen.',
                 'Aktif',
             ],
         ];
 
+        if ($type === 'parsel') {
+            $sampleRows = [$allSamples['parsel_mingguan'], $allSamples['parsel_harian']];
+            $title = 'TEMPLATE IMPORT PAKET PARSEL (HARIAN & MINGGUAN)';
+            $filename = 'Template_Import_Paket_Parsel_SPL';
+        } elseif ($type === 'tabungan') {
+            $sampleRows = [$allSamples['tabungan_mingguan'], $allSamples['tabungan_harian']];
+            $title = 'TEMPLATE IMPORT PAKET TABUNGAN (HARIAN & MINGGUAN)';
+            $filename = 'Template_Import_Paket_Tabungan_SPL';
+        } elseif ($type === 'ecer') {
+            $sampleRows = [$allSamples['ecer_mingguan'], $allSamples['ecer_harian']];
+            $title = 'TEMPLATE IMPORT PAKET ECERAN (BEBAS RAKIT)';
+            $filename = 'Template_Import_Paket_Eceran_SPL';
+        } else {
+            $sampleRows = array_values($allSamples);
+            $title = 'TEMPLATE IMPORT MASTER DATA PAKET SPL (LENGKAP SEMUA VARIAN)';
+            $filename = 'Template_Import_Paket_Lengkap_SPL';
+        }
+
         $colWidths = [
             1 => 18,
-            2 => 34,
-            3 => 24,
+            2 => 38,
+            3 => 22,
             4 => 20,
             5 => 18,
             6 => 24,
-            7 => 24,
+            7 => 28,
             8 => 18,
             9 => 24,
-            10 => 40,
-            11 => 16,
+            10 => 45,
+            11 => 45,
+            12 => 16,
         ];
 
         if ($format === 'csv') {
             $csv = $excelHelper->createCsv($headers, $sampleRows);
             return response($csv, 200, [
                 'Content-Type' => 'text/csv; charset=UTF-8',
-                'Content-Disposition' => 'attachment; filename="Template_Import_Paket_SPL.csv"',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '.csv"',
             ]);
         }
 
@@ -850,14 +990,14 @@ class PackageController extends Controller
             'TEMPLATE IMPORT PAKET',
             $headers,
             $sampleRows,
-            'TEMPLATE IMPORT MASTER DATA PAKET SPL (PARSEL, TABUNGAN, ECER)',
-            'Petunjuk: Kolom bertanda (*) wajib diisi. Jenis Paket isi: "parsel", "tabungan", atau "ecer". Skema: "mingguan" atau "harian".',
+            $title,
+            'Petunjuk: Kolom bertanda (*) wajib diisi. Jenis Paket: "parsel", "tabungan", atau "ecer". Skema: "mingguan" atau "harian". Barang/Bonus dapat diisi koma-separated: misal Minyak Goreng 2L (1), Sirup (2).',
             $colWidths
         );
 
         return response($xlsx, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition' => 'attachment; filename="Template_Import_Paket_SPL.xlsx"',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '.xlsx"',
         ]);
     }
 
@@ -866,6 +1006,10 @@ class PackageController extends Controller
      */
     public function import(Request $request, \App\Services\SimpleExcelHelper $excelHelper)
     {
+        if (!auth()->user()->isOwnerOrAdmin()) {
+            abort(403, 'Akses ditolak. Fitur import paket hanya dapat dilakukan oleh Admin dan Owner.');
+        }
+
         $request->validate([
             'file' => 'required|file|max:10240',
             'duplicate_action' => 'nullable|string|in:update,skip',
@@ -897,6 +1041,53 @@ class PackageController extends Controller
             $headerRowIdx = 0;
         }
 
+        // Petakan kolom secara dinamis berdasarkan nama header
+        $headerMap = [
+            'code' => 0,
+            'name' => 1,
+            'type' => 2,
+            'period_type' => 3,
+            'installment_count' => 4,
+            'installment_amount' => 5,
+            'target_nominal' => 6,
+            'admin_fee' => 7,
+            'safe_threshold' => 8,
+            'items' => 9,
+            'description' => 10,
+            'status' => 11,
+        ];
+
+        if (isset($rows[$headerRowIdx])) {
+            foreach ($rows[$headerRowIdx] as $colIdx => $colName) {
+                $c = strtolower(trim((string)$colName));
+                if (str_contains($c, 'kode')) {
+                    $headerMap['code'] = $colIdx;
+                } elseif (str_contains($c, 'nama')) {
+                    $headerMap['name'] = $colIdx;
+                } elseif (str_contains($c, 'jenis') || str_contains($c, 'tipe')) {
+                    $headerMap['type'] = $colIdx;
+                } elseif (str_contains($c, 'skema') || str_contains($c, 'periode')) {
+                    $headerMap['period_type'] = $colIdx;
+                } elseif (str_contains($c, 'jumlah') && (str_contains($c, 'angsuran') || str_contains($c, 'cicilan') || str_contains($c, 'kali') || str_contains($c, 'minggu') || str_contains($c, 'hari'))) {
+                    $headerMap['installment_count'] = $colIdx;
+                } elseif (str_contains($c, 'nominal') || str_contains($c, 'setoran') || (str_contains($c, 'angsuran') && !isset($headerMap['installment_amount']))) {
+                    $headerMap['installment_amount'] = $colIdx;
+                } elseif (str_contains($c, 'target') || str_contains($c, 'cair') || str_contains($c, 'pokok')) {
+                    $headerMap['target_nominal'] = $colIdx;
+                } elseif (str_contains($c, 'admin')) {
+                    $headerMap['admin_fee'] = $colIdx;
+                } elseif (str_contains($c, 'aman') || str_contains($c, 'threshold')) {
+                    $headerMap['safe_threshold'] = $colIdx;
+                } elseif (str_contains($c, 'barang') || str_contains($c, 'bonus') || str_contains($c, 'isi') || str_contains($c, 'hadiah')) {
+                    $headerMap['items'] = $colIdx;
+                } elseif (str_contains($c, 'keterangan') || str_contains($c, 'deskripsi') || str_contains($c, 'catatan')) {
+                    $headerMap['description'] = $colIdx;
+                } elseif (str_contains($c, 'status') || str_contains($c, 'aktif')) {
+                    $headerMap['status'] = $colIdx;
+                }
+            }
+        }
+
         $created = 0;
         $updated = 0;
         $skipped = 0;
@@ -907,27 +1098,19 @@ class PackageController extends Controller
         foreach ($dataRows as $lineNo => $row) {
             $realLineNumber = $headerRowIdx + $lineNo + 2;
 
-            $code = trim($row[0] ?? '');
-            $name = trim($row[1] ?? '');
-            $typeStr = strtolower(trim($row[2] ?? 'parsel'));
-            $periodTypeStr = strtolower(trim($row[3] ?? 'mingguan'));
-            $installmentCount = (int) preg_replace('/[^0-9]/', '', (string)($row[4] ?? 30));
-            $installmentAmount = (float) preg_replace('/[^0-9.]/', '', str_replace(',', '.', (string)($row[5] ?? 0)));
-            $targetNominal = (float) preg_replace('/[^0-9.]/', '', str_replace(',', '.', (string)($row[6] ?? 0)));
-            $adminFee = (float) preg_replace('/[^0-9.]/', '', str_replace(',', '.', (string)($row[7] ?? 0)));
+            $code = trim($row[$headerMap['code']] ?? '');
+            $name = trim($row[$headerMap['name']] ?? '');
+            $typeStr = strtolower(trim($row[$headerMap['type']] ?? 'parsel'));
+            $periodTypeStr = strtolower(trim($row[$headerMap['period_type']] ?? 'mingguan'));
+            $installmentCount = (int) preg_replace('/[^0-9]/', '', (string)($row[$headerMap['installment_count']] ?? 30));
+            $installmentAmount = (float) preg_replace('/[^0-9.]/', '', str_replace(',', '.', (string)($row[$headerMap['installment_amount']] ?? 0)));
+            $targetNominal = (float) preg_replace('/[^0-9.]/', '', str_replace(',', '.', (string)($row[$headerMap['target_nominal']] ?? 0)));
+            $adminFee = (float) preg_replace('/[^0-9.]/', '', str_replace(',', '.', (string)($row[$headerMap['admin_fee']] ?? 0)));
             
-            $safeThreshold = null;
-            if (count($row) >= 11) {
-                $safeVal = trim($row[8] ?? '');
-                $safeThreshold = ($safeVal !== '' && is_numeric(str_replace(['.', ','], '', $safeVal)))
-                    ? (float) preg_replace('/[^0-9.]/', '', str_replace(',', '.', $safeVal))
-                    : null;
-                $description = trim($row[9] ?? '');
-                $statusStr = strtolower(trim($row[10] ?? 'aktif'));
-            } else {
-                $description = trim($row[8] ?? '');
-                $statusStr = strtolower(trim($row[9] ?? 'aktif'));
-            }
+            $safeVal = trim($row[$headerMap['safe_threshold']] ?? '');
+            $itemsStr = trim($row[$headerMap['items']] ?? '');
+            $description = trim($row[$headerMap['description']] ?? '');
+            $statusStr = strtolower(trim($row[$headerMap['status']] ?? 'aktif'));
 
             if ($name === '' && $code === '') {
                 continue;
@@ -963,13 +1146,20 @@ class PackageController extends Controller
             $basePrice = max(0, $targetNominal - $adminFee);
             $isActive = !in_array($statusStr, ['nonaktif', 'tidak aktif', '0', 'false', 'inactive']);
 
+            $safeThreshold = null;
+            if ($type === 'parsel' && $safeVal !== '') {
+                $cleaned = preg_replace('/[^0-9.]/', '', str_replace(',', '.', $safeVal));
+                if (is_numeric($cleaned) && (float)$cleaned > 0) {
+                    $safeThreshold = (float)$cleaned;
+                }
+            }
+
             if ($code === '') {
-                $prefix = strtoupper(substr($type, 0, 3));
-                $count = Package::where('type', $type)->count() + $created + 1;
-                $code = $prefix . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+                $code = Package::generateNextCode($type);
             }
 
             $existing = Package::where('code', $code)->first();
+            $package = null;
 
             if ($existing) {
                 if ($duplicateAction === 'skip') {
@@ -991,9 +1181,10 @@ class PackageController extends Controller
                     'is_active' => $isActive,
                 ]);
 
+                $package = $existing;
                 $updated++;
             } else {
-                Package::create([
+                $package = Package::create([
                     'code' => $code,
                     'name' => $name,
                     'type' => $type,
@@ -1009,6 +1200,58 @@ class PackageController extends Controller
                 ]);
 
                 $created++;
+            }
+
+            // Parse daftar barang atau hadiah bonus jika diisi di file import
+            if ($package && !empty($itemsStr)) {
+                $entries = array_filter(array_map('trim', explode(',', $itemsStr)));
+                foreach ($entries as $entry) {
+                    if ($entry === '') continue;
+                    $qty = 1;
+                    $unit = 'pcs';
+                    $itemName = $entry;
+
+                    if (preg_match('/^(\d+)\s*(?:x|buah|bks|pcs|kg|liter|dus|kaleng)?\s+(.+)$/i', $entry, $m)) {
+                        $qty = max(1, (int)$m[1]);
+                        $itemName = trim($m[2]);
+                    } elseif (preg_match('/^(.*?)\s*\(\s*(\d+)(?:\s*([a-zA-Z]+))?\s*\)$/', $entry, $m)) {
+                        $itemName = trim($m[1]);
+                        $qty = max(1, (int)$m[2]);
+                        if (!empty($m[3])) $unit = trim($m[3]);
+                    }
+
+                    if ($itemName === '') continue;
+
+                    $item = Item::whereRaw('LOWER(TRIM(name)) = ?', [strtolower($itemName)])->first();
+                    if (!$item) {
+                        $category = ($type === 'tabungan') ? 'Hadiah Bonus' : ($type === 'ecer' ? 'Barang Eceran' : 'Barang Parsel');
+                        $itemCode = Item::generateNextCode($category);
+                        $item = Item::create([
+                            'code' => $itemCode,
+                            'name' => $itemName,
+                            'category' => $category,
+                            'base_unit' => $unit ?: 'pcs',
+                            'wholesale_unit' => 'dus',
+                            'conversion_rate' => 1,
+                            'unit_price' => 0,
+                            'cost_price' => 0,
+                            'wholesale_price' => 0,
+                            'stock_units' => 0,
+                            'is_active' => true,
+                        ]);
+                    }
+
+                    // Hubungkan ke PackageItem jika belum ada di paket ini
+                    PackageItem::firstOrCreate([
+                        'package_id' => $package->id,
+                        'item_id' => $item->id,
+                    ], [
+                        'quantity' => $qty,
+                        'unit' => $item->base_unit ?: $unit,
+                        'installment_amount' => 0,
+                        'is_bonus' => ($type === 'tabungan'),
+                    ]);
+                }
             }
         }
 
