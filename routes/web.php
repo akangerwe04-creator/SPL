@@ -112,6 +112,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/packages/import-template', [PackageController::class, 'downloadImportTemplate'])->name('packages.import.template');
         Route::post('/packages/import', [PackageController::class, 'import'])->name('packages.import');
         Route::post('/packages/bulk-delete', [PackageController::class, 'bulkDestroy'])->name('packages.bulk-destroy');
+        Route::post('/packages/bulk-adjust-installments', [PackageController::class, 'bulkAdjustInstallments'])->name('packages.bulk-adjust-installments');
         Route::resource('packages', PackageController::class);
 
         // Menu 5: Rekonsiliasi Agen (Pengesahan Setoran Kas)

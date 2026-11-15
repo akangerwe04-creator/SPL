@@ -8,6 +8,8 @@ use App\Models\Package;
 use App\Models\PackageItem;
 use App\Models\Item;
 use App\Models\Packaging;
+use App\Models\CustomerPackage;
+use App\Models\Payment;
 use App\Services\ImageOptimizer;
 
 use App\Models\CatalogSetting;
@@ -826,6 +828,161 @@ class PackageController extends Controller
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\DB::rollBack();
             return redirect()->route('packages.index')->with('error', 'Gagal menghapus paket sekaligus: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Atur jumlah tagihan (installment_count) serentak untuk paket mingguan atau harian yang dipilih oleh Admin / Owner
+     */
+    public function bulkAdjustInstallments(Request $request)
+    {
+        if (!auth()->user()->isOwnerOrAdmin()) {
+            abort(403, 'Akses ditolak. Fitur ini hanya untuk Admin dan Owner.');
+        }
+
+        $request->validate([
+            'target_scope' => 'required|string|in:selected,all_mingguan,all_harian,all_parsel,all_tabungan,all',
+            'package_ids' => 'nullable',
+            'new_installment_count' => 'required|integer|min:1|max:500',
+            'adjustment_mode' => 'required|string|in:keep_target,keep_installment',
+            'sync_customers' => 'nullable|boolean',
+        ]);
+
+        $scope = $request->input('target_scope');
+        $newCount = (int) $request->input('new_installment_count');
+        $mode = $request->input('adjustment_mode', 'keep_target');
+        $syncCustomers = $request->boolean('sync_customers');
+
+        $query = Package::query();
+
+        if ($scope === 'selected') {
+            $ids = $request->input('package_ids', []);
+            if (is_string($ids)) {
+                $ids = explode(',', $ids);
+            }
+            $ids = array_filter(array_map('intval', (array) $ids));
+            if (empty($ids)) {
+                return redirect()->route('packages.index')->with('error', 'Tidak ada paket yang dipilih untuk diatur.');
+            }
+            $query->whereIn('id', $ids);
+        } elseif ($scope === 'all_mingguan') {
+            $query->where('period_type', 'mingguan');
+        } elseif ($scope === 'all_harian') {
+            $query->where('period_type', 'harian');
+        } elseif ($scope === 'all_parsel') {
+            $query->where('type', 'parsel');
+        } elseif ($scope === 'all_tabungan') {
+            $query->where('type', 'tabungan');
+        }
+
+        $packages = $query->get();
+
+        if ($packages->isEmpty()) {
+            return redirect()->route('packages.index')->with('error', 'Tidak ada paket yang sesuai dengan kriteria yang dipilih.');
+        }
+
+        $updatedCount = 0;
+        $syncedCustomersCount = 0;
+
+        DB::beginTransaction();
+        try {
+            foreach ($packages as $package) {
+                $targetNominal = (float) $package->target_nominal;
+                $installmentAmount = (float) $package->installment_amount;
+                $adminFee = (float) $package->admin_fee;
+                $basePrice = (float) $package->base_price;
+                $type = $package->type;
+                $periodType = $package->period_type;
+
+                if ($mode === 'keep_target') {
+                    // Mode A: Target nominal dipertahankan, cicilan dihitung ulang
+                    if ($targetNominal > 0) {
+                        $raw = $targetNominal / max(1, $newCount);
+                        $installmentAmount = Package::roundInstallment($raw);
+                        $basePrice = max(0, $targetNominal - $adminFee);
+                    } elseif ($installmentAmount > 0) {
+                        $targetNominal = $installmentAmount * $newCount;
+                        $basePrice = max(0, $targetNominal - $adminFee);
+                    }
+                } else {
+                    // Mode B: Nominal cicilan dipertahankan, target nominal dihitung ulang
+                    if ($installmentAmount > 0) {
+                        $targetNominal = $installmentAmount * $newCount;
+                        $basePrice = max(0, $targetNominal - $adminFee);
+                    } elseif ($targetNominal > 0) {
+                        $raw = $targetNominal / max(1, $newCount);
+                        $installmentAmount = Package::roundInstallment($raw);
+                        $basePrice = max(0, $targetNominal - $adminFee);
+                    }
+                }
+
+                // Nama Tabungan SPL jika pola otomatis: Tabungan SPL (Setor ... - Cair ...)
+                $name = $package->name;
+                if ($type === 'tabungan' && preg_match('/^Tabungan SPL\s*\(/i', $name)) {
+                    $unitLabel = ($periodType === 'harian') ? '/hari' : '/mgg';
+                    $name = 'Tabungan SPL (Setor Rp ' . number_format($installmentAmount, 0, ',', '.') . $unitLabel . ' - Cair Rp ' . number_format($targetNominal, 0, ',', '.') . ')';
+                }
+
+                $package->update([
+                    'installment_count' => $newCount,
+                    'installment_amount' => $installmentAmount,
+                    'target_nominal' => $targetNominal,
+                    'base_price' => $basePrice,
+                    'name' => $name,
+                ]);
+
+                // Sinkronkan ke konsumen aktif jika opsi dicentang
+                if ($syncCustomers) {
+                    $customerPackages = $package->customerPackages()->where('status', 'active')->get();
+                    foreach ($customerPackages as $cp) {
+                        $currentMaxPeriod = (int) ($cp->payments()->max('period_number') ?? 0);
+
+                        if ($newCount > $currentMaxPeriod) {
+                            for ($p = $currentMaxPeriod + 1; $p <= $newCount; $p++) {
+                                Payment::create([
+                                    'customer_package_id' => $cp->id,
+                                    'agent_id' => $cp->agent_id,
+                                    'period_number' => $p,
+                                    'amount' => $installmentAmount,
+                                    'is_paid' => false,
+                                    'is_locked' => false,
+                                    'status' => 'unpaid',
+                                ]);
+                            }
+                        } elseif ($newCount < $currentMaxPeriod) {
+                            $cp->payments()
+                                ->where('period_number', '>', $newCount)
+                                ->where('is_paid', false)
+                                ->delete();
+                        }
+
+                        if ($mode === 'keep_target') {
+                            $cp->payments()->where('is_paid', false)->update(['amount' => $installmentAmount]);
+                        }
+
+                        $cp->update([
+                            'total_target' => $targetNominal + (float)$cp->packaging_price,
+                        ]);
+
+                        $syncedCustomersCount++;
+                    }
+                }
+
+                $updatedCount++;
+            }
+
+            DB::commit();
+
+            $unitText = ($scope === 'all_harian') ? 'hari' : 'kali tagih';
+            $msg = "Berhasil mengatur jumlah tagihan menjadi {$newCount} {$unitText} untuk {$updatedCount} paket serentak.";
+            if ($syncedCustomersCount > 0) {
+                $msg .= " Sebanyak {$syncedCustomersCount} konsumen aktif berhasil disinkronkan jadwal tagihannya.";
+            }
+
+            return redirect()->route('packages.index')->with('success', $msg);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return redirect()->route('packages.index')->with('error', 'Gagal menyesuaikan jumlah tagihan serentak: ' . $e->getMessage());
         }
     }
 
