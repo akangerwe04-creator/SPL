@@ -572,7 +572,6 @@
                     <!-- HIDDEN SINKRONISASI BASE PRICE & ADMIN FEE KHUSUS TABUNGAN -->
                     <input type="hidden" name="base_price" :value="targetNominal">
                     <input type="hidden" name="admin_fee" value="0">
-                    <input type="hidden" name="period_type" value="mingguan">
 
                     <!-- HADIAH BONUS BARANG TABUNGAN (1 ATAU LEBIH BARANG) -->
                     <div class="p-4 sm:p-5 rounded-2xl bg-amber-50/50 border border-amber-300 space-y-3">
@@ -1214,6 +1213,7 @@
 function packageEditor() {
     return {
         isParsel: {{ $package->isParsel() ? 'true' : 'false' }},
+        isTabungan: {{ $package->isTabungan() ? 'true' : 'false' }},
         isEcer: {{ $package->isEcer() ? 'true' : 'false' }},
         periodType: '{{ old('period_type', $package->period_type ?? 'mingguan') }}',
         startDate: '{{ old('start_date', $defaultStartDate) }}',
@@ -1392,11 +1392,18 @@ function packageEditor() {
                     this.installmentAmount = 10000;
                 }
                 this.onEcerInstallmentChange();
-            } else {
+            } else if (this.isParsel) {
                 if (this.basePrice === 0 && this.targetNominal > 0) {
                     this.basePrice = Math.max(0, this.targetNominal - (Number(this.adminFee) || 0));
                 }
                 this.calculateInstallment();
+            } else {
+                // Tabungan SPL: targetNominal adalah uang tunai cair yang diterima nasabah
+                if (this.basePrice === 0 && this.targetNominal > 0) {
+                    this.basePrice = this.targetNominal;
+                } else if (this.targetNominal === 0 && this.basePrice > 0) {
+                    this.targetNominal = this.basePrice;
+                }
             }
         },
 
@@ -1437,14 +1444,21 @@ function packageEditor() {
 
         onPeriodTypeChange(val) {
             this.periodType = val;
-            this.calculateInstallment();
+            if (val === 'harian' && this.installmentCount <= 52) {
+                this.installmentCount = 100;
+            } else if (val === 'mingguan' && this.installmentCount > 52) {
+                this.installmentCount = 30;
+            }
+            if (this.isParsel) {
+                this.calculateInstallment();
+            }
         },
 
         setInstallmentCount(count) {
             this.installmentCount = count;
             if (this.isEcer) {
                 this.onEcerInstallmentChange();
-            } else {
+            } else if (this.isParsel) {
                 this.calculateInstallment();
             }
         },
@@ -1528,12 +1542,14 @@ function packageEditor() {
                 this.basePrice = this.totalItemsValue;
                 const fee = Number(this.adminFee) || 0;
                 this.targetNominal = this.basePrice + fee;
-            } else if (autoSetTarget && this.totalUangValue > 0 && !this.isParsel) {
+            } else if (autoSetTarget && this.totalUangValue > 0 && !this.isParsel && !this.isTabungan) {
                 this.basePrice = this.totalUangValue;
                 const fee = Number(this.adminFee) || 0;
                 this.targetNominal = this.basePrice + fee;
             }
-            this.calculateInstallment();
+            if (this.isParsel) {
+                this.calculateInstallment();
+            }
         },
 
         getItemUnitPrice(itemId) {
@@ -1549,6 +1565,7 @@ function packageEditor() {
         },
 
         calculateInstallment() {
+            if (!this.isParsel) return;
             if (this.targetNominal > 0 && this.installmentCount > 0) {
                 const raw = this.targetNominal / this.installmentCount;
                 this.installmentAmount = this.splRoundInstallment(raw);

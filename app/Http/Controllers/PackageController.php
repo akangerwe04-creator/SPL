@@ -311,7 +311,7 @@ class PackageController extends Controller
                         ->withInput()
                         ->with('error', 'Nominal setoran dan nominal uang cair untuk paket Tabungan wajib diisi lebih dari 0.');
                 }
-                if ($validated['name'] === 'Tabungan SPL' || empty($validated['name'])) {
+                if (empty($validated['name']) || $validated['name'] === 'Tabungan SPL' || preg_match('/^Tabungan SPL\s*\(/i', $validated['name'])) {
                     $unitLabel = ($validated['period_type'] === 'harian') ? '/hari' : '/mgg';
                     $validated['name'] = 'Tabungan SPL (Setor Rp ' . number_format($validated['installment_amount'], 0, ',', '.') . $unitLabel . ' - Cair Rp ' . number_format($targetNominal, 0, ',', '.') . ')';
                 }
@@ -565,7 +565,7 @@ class PackageController extends Controller
                         ->withInput()
                         ->with('error', 'Nominal setoran dan nominal uang cair untuk paket Tabungan wajib diisi lebih dari 0.');
                 }
-                if ($validated['name'] === 'Tabungan SPL' || empty($validated['name'])) {
+                if (empty($validated['name']) || $validated['name'] === 'Tabungan SPL' || preg_match('/^Tabungan SPL\s*\(/i', $validated['name'])) {
                     $unitLabel = ($validated['period_type'] === 'harian') ? '/hari' : '/mgg';
                     $validated['name'] = 'Tabungan SPL (Setor Rp ' . number_format($validated['installment_amount'], 0, ',', '.') . $unitLabel . ' - Cair Rp ' . number_format($targetNominal, 0, ',', '.') . ')';
                 }
