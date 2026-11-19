@@ -8,10 +8,20 @@
         $customer->customerPackages->pluck('packaging.name')->implode(' ')
     );
     $isSafeCust = $customer->is_safe ?? $customer->isSafeThresholdReached();
+
+    // Deteksi kategori & skema paket yang diambil konsumen
+    $hasParsel = $customer->customerPackages->contains(fn($cp) => $cp->package && $cp->package->isParsel());
+    $hasEcer = $customer->customerPackages->contains(fn($cp) => $cp->package && $cp->package->isEcer());
+    $hasTabungan = $customer->customerPackages->contains(fn($cp) => $cp->package && $cp->package->isTabungan());
+    $hasHarian = $customer->customerPackages->contains(fn($cp) => $cp->package && $cp->package->isHarian());
+    $hasMingguan = $customer->customerPackages->contains(fn($cp) => $cp->package && $cp->package->isMingguan());
 @endphp
 <tr 
     class="hover:bg-slate-50/80 transition"
-    x-show="(!searchDetail || '{{ addslashes($custSearchPayload) }}'.includes(searchDetail.toLowerCase().trim())) && (typeof filterSafe === 'undefined' || filterSafe === 'all' || (filterSafe === 'safe' && {{ $isSafeCust ? 'true' : 'false' }}) || (filterSafe === 'unreached' && {{ !$isSafeCust ? 'true' : 'false' }}))"
+    x-show="(!searchDetail || '{{ addslashes($custSearchPayload) }}'.includes(searchDetail.toLowerCase().trim())) 
+        && (typeof filterSafe === 'undefined' || filterSafe === 'all' || (filterSafe === 'safe' && {{ $isSafeCust ? 'true' : 'false' }}) || (filterSafe === 'unreached' && {{ !$isSafeCust ? 'true' : 'false' }}))
+        && (typeof filterPkgType === 'undefined' || filterPkgType === 'all' || (filterPkgType === 'parsel' && {{ $hasParsel ? 'true' : 'false' }}) || (filterPkgType === 'ecer' && {{ $hasEcer ? 'true' : 'false' }}) || (filterPkgType === 'tabungan' && {{ $hasTabungan ? 'true' : 'false' }}))
+        && (typeof filterPeriodType === 'undefined' || filterPeriodType === 'all' || (filterPeriodType === 'harian' && {{ $hasHarian ? 'true' : 'false' }}) || (filterPeriodType === 'mingguan' && {{ $hasMingguan ? 'true' : 'false' }}))"
 >
     <!-- 1. NOMOR URUT -->
     <td class="py-3 px-3 text-center font-mono text-slate-400 text-[11px]">
@@ -68,10 +78,15 @@
                             : 'bg-emerald-600 text-white'));
             @endphp
             <div class="p-2 rounded-xl border {{ $pkgTheme }} mb-1.5 last:mb-0">
-                <div class="flex items-center justify-between">
-                    <span class="font-mono text-[9px] font-extrabold px-1.5 py-0.2 rounded {{ $badgeColor }}">
-                        {{ $pkg->code }}
-                    </span>
+                <div class="flex items-center justify-between gap-1 flex-wrap">
+                    <div class="flex items-center space-x-1 flex-wrap">
+                        <span class="font-mono text-[9px] font-extrabold px-1.5 py-0.2 rounded {{ $badgeColor }}">
+                            {{ $pkg->code }}
+                        </span>
+                        <span class="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded {{ $pkg->isParsel() ? 'bg-emerald-100 text-emerald-800' : ($pkg->isEcer() ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800') }}">
+                            {{ $pkg->isParsel() ? 'Parsel' : ($pkg->isEcer() ? 'Eceran' : 'Tabungan') }} &bull; {{ $pkg->isHarian() ? 'Harian' : 'Mingguan' }}
+                        </span>
+                    </div>
                     <span class="text-[10px] font-bold text-slate-600">
                         {{ $pkg->installment_count }} {{ $pkg->period_label }}
                     </span>

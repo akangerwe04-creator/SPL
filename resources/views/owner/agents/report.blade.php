@@ -927,10 +927,10 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
                 <h3 class="font-heading font-extrabold text-slate-900 text-base flex items-center">
-                    <i class="fa-solid fa-sitemap text-emerald-600 mr-2"></i> Rincian Sub-Data Konsumen &amp; Paket per Agen
+                    <i class="fa-solid fa-sitemap text-emerald-600 mr-2"></i> II. Rincian Sub-Data Konsumen &amp; Paket yang Dipilih per Agen
                 </h3>
                 <p class="text-xs text-slate-500">
-                    Daftar nama konsumen binaan dari masing-masing agen beserta paket apa saja yang dipilih, rincian barang eceran, target, dan progres setoran.
+                    Daftar nama konsumen binaan dari masing-masing agen, disortir berdasarkan Agen, Jenis Paket (Parsel &rarr; Eceran &rarr; Tabungan), serta Skema Periode (Harian &rarr; Mingguan).
                 </p>
             </div>
 
@@ -971,7 +971,7 @@
             <div 
                 class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden transition"
                 x-show="!searchDetail || '{{ addslashes($agentSearchPayload) }}'.includes(searchDetail.toLowerCase().trim())"
-                x-data="{ filterSafe: 'all', viewMode: 'grouped' }"
+                x-data="{ filterSafe: 'all', filterPkgType: 'all', filterPeriodType: 'all', viewMode: 'grouped' }"
             >
                 <!-- AGENT HEADER BANNER -->
                 <div class="bg-gradient-to-r from-slate-50 via-white to-emerald-50/30 p-4 sm:p-5 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -1023,10 +1023,10 @@
                     </div>
                 </div>
 
-                <!-- SUB-BAR: FILTER KELOMPOK TITIK AMAN & VIEW MODE TOGGLE -->
+                <!-- SUB-BAR 1: FILTER KELOMPOK TITIK AMAN & VIEW MODE TOGGLE -->
                 <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <div class="flex items-center space-x-1.5">
-                        <span class="text-[11px] font-bold text-slate-500 mr-1">Tampilkan:</span>
+                    <div class="flex items-center space-x-1.5 flex-wrap">
+                        <span class="text-[11px] font-bold text-slate-500 mr-1">Status:</span>
                         <button type="button" 
                                 @click="filterSafe = 'all'" 
                                 :class="filterSafe === 'all' ? 'bg-slate-800 text-white shadow-2xs' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'" 
@@ -1056,6 +1056,47 @@
                                 :class="viewMode === 'grouped' ? 'bg-indigo-50 border-indigo-300 text-indigo-900 shadow-2xs' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'">
                             <i class="fa-solid fa-layer-group text-[10px]"></i>
                             <span x-text="viewMode === 'grouped' ? 'Mode: Terkelompok (Sudah vs Belum)' : 'Mode: Tabel Biasa'"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SUB-BAR 2: FILTER CEPAT JENIS PAKET & SKEMA -->
+                <div class="px-4 py-2 bg-slate-100/60 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <!-- FILTER JENIS PAKET: PARSEL, ECERAN, TABUNGAN -->
+                    <div class="flex items-center space-x-1 flex-wrap">
+                        <span class="text-[10px] font-extrabold uppercase text-slate-500 mr-1 flex items-center">
+                            <i class="fa-solid fa-boxes-stacked mr-1 text-slate-400"></i> Jenis:
+                        </span>
+                        <button type="button" @click="filterPkgType = 'all'" :class="filterPkgType === 'all' ? 'bg-slate-900 text-white shadow-2xs' : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'" class="px-2 py-0.5 rounded-lg font-bold text-[10px] transition">
+                            Semua
+                        </button>
+                        <button type="button" @click="filterPkgType = 'parsel'" :class="filterPkgType === 'parsel' ? 'bg-emerald-700 text-white shadow-2xs' : 'bg-white text-emerald-800 hover:bg-emerald-50 border border-emerald-200'" class="px-2 py-0.5 rounded-lg font-bold text-[10px] transition flex items-center space-x-1">
+                            <i class="fa-solid fa-gift text-[9px]"></i>
+                            <span>1. Parsel</span>
+                        </button>
+                        <button type="button" @click="filterPkgType = 'ecer'" :class="filterPkgType === 'ecer' ? 'bg-blue-700 text-white shadow-2xs' : 'bg-white text-blue-800 hover:bg-blue-50 border border-blue-200'" class="px-2 py-0.5 rounded-lg font-bold text-[10px] transition flex items-center space-x-1">
+                            <i class="fa-solid fa-basket-shopping text-[9px]"></i>
+                            <span>2. Eceran</span>
+                        </button>
+                        <button type="button" @click="filterPkgType = 'tabungan'" :class="filterPkgType === 'tabungan' ? 'bg-amber-700 text-white shadow-2xs' : 'bg-white text-amber-900 hover:bg-amber-50 border border-amber-200'" class="px-2 py-0.5 rounded-lg font-bold text-[10px] transition flex items-center space-x-1">
+                            <i class="fa-solid fa-piggy-bank text-[9px]"></i>
+                            <span>3. Tabungan</span>
+                        </button>
+                    </div>
+
+                    <!-- FILTER SKEMA: HARIAN, MINGGUAN -->
+                    <div class="flex items-center space-x-1 flex-wrap">
+                        <span class="text-[10px] font-extrabold uppercase text-slate-500 mr-1 flex items-center">
+                            <i class="fa-regular fa-calendar mr-1 text-slate-400"></i> Skema:
+                        </span>
+                        <button type="button" @click="filterPeriodType = 'all'" :class="filterPeriodType === 'all' ? 'bg-slate-900 text-white shadow-2xs' : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'" class="px-2 py-0.5 rounded-lg font-bold text-[10px] transition">
+                            Semua Skema
+                        </button>
+                        <button type="button" @click="filterPeriodType = 'harian'" :class="filterPeriodType === 'harian' ? 'bg-indigo-700 text-white shadow-2xs' : 'bg-white text-indigo-800 hover:bg-indigo-50 border border-indigo-200'" class="px-2 py-0.5 rounded-lg font-bold text-[10px] transition">
+                            Harian
+                        </button>
+                        <button type="button" @click="filterPeriodType = 'mingguan'" :class="filterPeriodType === 'mingguan' ? 'bg-purple-700 text-white shadow-2xs' : 'bg-white text-purple-800 hover:bg-purple-50 border border-purple-200'" class="px-2 py-0.5 rounded-lg font-bold text-[10px] transition">
+                            Mingguan
                         </button>
                     </div>
                 </div>

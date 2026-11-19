@@ -617,6 +617,26 @@ class AgentManagementController extends Controller
         $totalSafeCustomersCount = 0;
         $totalUnreachedCustomersCount = 0;
 
+        // Helper ranking prioritas jenis paket & skema periode:
+        // 1. Jenis Paket: Parsel (100) -> Eceran (200) -> Tabungan (300) -> Lainnya (400)
+        // 2. Skema Periode: Harian (10) -> Mingguan (20) -> Lainnya (30)
+        $getPackageSortRank = function ($pkg) {
+            if (!$pkg) return 999;
+
+            $typeRank = 400;
+            if ($pkg->isParsel()) {
+                $typeRank = 100;
+            } elseif ($pkg->isEcer()) {
+                $typeRank = 200;
+            } elseif ($pkg->isTabungan()) {
+                $typeRank = 300;
+            }
+
+            $periodRank = $pkg->isHarian() ? 10 : ($pkg->isMingguan() ? 20 : 30);
+
+            return $typeRank + $periodRank;
+        };
+
         // 5. Rekapitulasi per agen & per paket
         foreach ($agents as $agent) {
             $agentPackageCounts = [];
@@ -659,6 +679,35 @@ class AgentManagementController extends Controller
             $agentMingguanOrdersCount = 0;
             $agentEcerOrdersCount = 0;
             $agentTabunganOrdersCount = 0;
+
+            // Sortir paket yang diambil setiap konsumen (Parsel -> Eceran -> Tabungan; Harian -> Mingguan)
+            // Serta tentukan skor peringkat terbaik konsumen untuk sorting daftar konsumen
+            foreach ($agent->customers as $customer) {
+                $customer->customerPackages = $customer->customerPackages->sort(function ($a, $b) use ($getPackageSortRank) {
+                    $rankA = $getPackageSortRank($a->package);
+                    $rankB = $getPackageSortRank($b->package);
+                    if ($rankA !== $rankB) {
+                        return $rankA <=> $rankB;
+                    }
+                    $nameA = $a->package ? $a->package->name : '';
+                    $nameB = $b->package ? $b->package->name : '';
+                    return strcasecmp($nameA, $nameB);
+                })->values();
+
+                $customer->package_sort_rank = $customer->customerPackages->isNotEmpty()
+                    ? $customer->customerPackages->map(fn($cp) => $getPackageSortRank($cp->package))->min()
+                    : 999;
+            }
+
+            // Sortir daftar konsumen binaan agen berdasarkan:
+            // 1. Jenis Paket & Skema: Parsel Harian (110) -> Parsel Mingguan (120) -> Eceran Harian (210) -> Eceran Mingguan (220) -> Tabungan Harian (310) -> Tabungan Mingguan (320) -> Belum Pilih (999)
+            // 2. Nama Konsumen (A - Z)
+            $agent->customers = $agent->customers->sort(function ($a, $b) {
+                if ($a->package_sort_rank !== $b->package_sort_rank) {
+                    return $a->package_sort_rank <=> $b->package_sort_rank;
+                }
+                return strcasecmp($a->name, $b->name);
+            })->values();
 
             foreach ($agent->customers as $customer) {
                 foreach ($customer->customerPackages as $cp) {

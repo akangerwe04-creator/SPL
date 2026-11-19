@@ -387,11 +387,11 @@
             </div>
         @endif
 
-        <!-- BAGIAN V: RINCIAN HIERARKIS SUB-DATA KONSUMEN PER AGEN -->
+        <!-- BAGIAN II (DETAIL): RINCIAN HIERARKIS SUB-DATA KONSUMEN PER AGEN -->
         <div class="page-break mb-8">
             <div class="font-extrabold text-xs uppercase tracking-wider text-slate-900 mb-3 flex items-center justify-between">
-                <span>V. RINCIAN SUB-DATA KONSUMEN &amp; PAKET YANG DIPILIH PER AGEN</span>
-                <span class="text-[10px] text-slate-400 font-normal">Data detail konsumen binaan lapangan</span>
+                <span>II. RINCIAN SUB-DATA KONSUMEN &amp; PAKET YANG DIPILIH PER AGEN</span>
+                <span class="text-[9px] text-slate-500 font-semibold font-mono">Urutan: Parsel &rarr; Eceran &rarr; Tabungan | Harian &rarr; Mingguan</span>
             </div>
 
             @foreach($agents as $agent)
@@ -450,6 +450,9 @@
                                             <div class="font-bold text-slate-800">
                                                 <span class="font-mono text-[9px] font-bold px-1 rounded bg-slate-200 text-slate-800 mr-1">
                                                     {{ $pkg->code }}
+                                                </span>
+                                                <span class="text-[8px] font-bold uppercase px-1 rounded bg-slate-100 text-slate-700 mr-1">
+                                                    {{ $pkg->isParsel() ? 'Parsel' : ($pkg->isEcer() ? 'Eceran' : 'Tabungan') }} ({{ $pkg->isHarian() ? 'Harian' : 'Mingguan' }})
                                                 </span>
                                                 {{ $pkg->name }}
                                                 @if($cp->packaging)
