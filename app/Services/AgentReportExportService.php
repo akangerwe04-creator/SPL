@@ -753,33 +753,36 @@ class AgentReportExportService
         $totPaid = 0;
         $totRemaining = 0;
 
+        // Kumpulkan seluruh data baris pesanan agen untuk disortir
+        $orderRows = [];
+
         foreach ($agent->customers as $cust) {
             $packagesList = $cust->customerPackages;
             if ($packagesList->isEmpty()) {
-                $r++;
-                $xml .= "    <row r=\"{$r}\" ht=\"20\">\n";
-                $xml .= $this->cellNum('A', $r, $rowNo++, 6);
-                $xml .= $this->cellStr('B', $r, $cust->code ?: '-', 6);
-                $xml .= $this->cellStr('C', $r, $cust->name, 5);
-                $xml .= $this->cellStr('D', $r, $cust->phone ?: '-', 6);
-                $xml .= $this->cellStr('E', $r, $cust->address ?: '-', 5);
-                $xml .= $this->cellStr('F', $r, 'Belum memilih paket', 5);
-                $xml .= $this->cellStr('G', $r, '-', 6);
-                $xml .= $this->cellStr('H', $r, '-', 6);
-                $xml .= $this->cellStr('I', $r, '-', 6);
-                $xml .= $this->cellNum('J', $r, 0, 8);
-                $xml .= $this->cellNum('K', $r, 0, 8);
-                $xml .= $this->cellNum('L', $r, 0, 8);
-                $xml .= $this->cellStr('M', $r, '0%', 6);
-                $xml .= $this->cellStr('N', $r, 'Belum Aktif', 6);
-                $xml .= $this->cellStr('O', $r, '-', 5);
-                $xml .= "    </row>\n";
+                $orderRows[] = [
+                    'is_empty' => true,
+                    'cust_code' => $cust->code ?: '-',
+                    'cust_name' => $cust->name,
+                    'cust_phone' => $cust->phone ?: '-',
+                    'cust_address' => $cust->address ?: '-',
+                    'pkg_name' => 'Belum memilih paket',
+                    'pkg_type' => '-',
+                    'packaging_name' => 'Standar',
+                    'packaging_text' => '-',
+                    'period_text' => '-',
+                    'target' => 0.0,
+                    'paid' => 0.0,
+                    'remaining' => 0.0,
+                    'progress' => '0%',
+                    'status' => 'Belum Aktif',
+                    'note_str' => '-',
+                ];
             } else {
                 foreach ($packagesList as $cp) {
-                    $r++;
                     $pkg = $cp->package;
                     $pkgName = $pkg ? $pkg->name : 'Paket Kustom';
                     $pkgType = $pkg ? ucfirst($pkg->type) : 'Parsel';
+                    $rawPackagingName = $cp->packaging ? $cp->packaging->name : 'Standar';
                     $packagingText = $cp->packaging 
                         ? ($cp->packaging->name . ((float)$cp->packaging_price > 0 ? ' (+Rp ' . number_format($cp->packaging_price, 0, ',', '.') . ')' : ''))
                         : 'Standar';
@@ -818,30 +821,88 @@ class AgentReportExportService
                     }
                     $noteStr = !empty($notes) ? implode(' | ', $notes) : '-';
 
-                    $totTarget += $target;
-                    $totPaid += $paid;
-                    $totRemaining += $remaining;
-
-                    $xml .= "    <row r=\"{$r}\" ht=\"20\">\n";
-                    $xml .= $this->cellNum('A', $r, $rowNo++, 6);
-                    $xml .= $this->cellStr('B', $r, $cust->code ?: '-', 6);
-                    $xml .= $this->cellStr('C', $r, $cust->name, 5);
-                    $xml .= $this->cellStr('D', $r, $cust->phone ?: '-', 6);
-                    $xml .= $this->cellStr('E', $r, $cust->address ?: '-', 5);
-                    $xml .= $this->cellStr('F', $r, $pkgName, 5);
-                    $xml .= $this->cellStr('G', $r, $pkgType, 6);
-                    $xml .= $this->cellStr('H', $r, $packagingText, 5);
-                    $xml .= $this->cellStr('I', $r, $periodText, 6);
-                    $xml .= $this->cellNum('J', $r, $target, 8);
-                    $xml .= $this->cellNum('K', $r, $paid, 8);
-                    $xml .= $this->cellNum('L', $r, $remaining, 8);
-                    $xml .= $this->cellStr('M', $r, $progress, 6);
-                    $xml .= $this->cellStr('N', $r, $status, 6);
-                    $xml .= $this->cellStr('O', $r, $noteStr, 5);
-                    $xml .= "    </row>\n";
+                    $orderRows[] = [
+                        'is_empty' => false,
+                        'cust_code' => $cust->code ?: '-',
+                        'cust_name' => $cust->name,
+                        'cust_phone' => $cust->phone ?: '-',
+                        'cust_address' => $cust->address ?: '-',
+                        'pkg_name' => $pkgName,
+                        'pkg_type' => $pkgType,
+                        'packaging_name' => $rawPackagingName,
+                        'packaging_text' => $packagingText,
+                        'period_text' => $periodText,
+                        'target' => $target,
+                        'paid' => $paid,
+                        'remaining' => $remaining,
+                        'progress' => $progress,
+                        'status' => $status,
+                        'note_str' => $noteStr,
+                    ];
                 }
             }
         }
+
+        // Sortir multi-kolom:
+        // 1. Kemasan Dipilih (A - Z): COUNTENER BOX -> KERANJANG -> KOPER -> Standar
+        // 2. Jenis Paket (A - Z): Ecer -> Parsel -> Tabungan
+        // 3. Paket Dipesan (A - Z)
+        // 4. Nama Konsumen (A - Z)
+        usort($orderRows, function ($a, $b) {
+            // Baris yang memiliki pesanan ditaruh di atas
+            if ($a['is_empty'] !== $b['is_empty']) {
+                return $a['is_empty'] ? 1 : -1;
+            }
+
+            // 1. Kemasan Dipilih (A - Z)
+            $cmpKemasan = strcasecmp($a['packaging_name'], $b['packaging_name']);
+            if ($cmpKemasan !== 0) {
+                return $cmpKemasan;
+            }
+
+            // 2. Jenis Paket (A - Z): Ecer -> Parsel -> Tabungan
+            $cmpJenis = strcasecmp($a['pkg_type'], $b['pkg_type']);
+            if ($cmpJenis !== 0) {
+                return $cmpJenis;
+            }
+
+            // 3. Paket Dipesan (A - Z)
+            $cmpPaket = strcasecmp($a['pkg_name'], $b['pkg_name']);
+            if ($cmpPaket !== 0) {
+                return $cmpPaket;
+            }
+
+            // 4. Nama Konsumen (A - Z)
+            return strcasecmp($a['cust_name'], $b['cust_name']);
+        });
+
+        // Render baris yang sudah tersortir
+        foreach ($orderRows as $row) {
+            $r++;
+            $totTarget += $row['target'];
+            $totPaid += $row['paid'];
+            $totRemaining += $row['remaining'];
+
+            $xml .= "    <row r=\"{$r}\" ht=\"20\">\n";
+            $xml .= $this->cellNum('A', $r, $rowNo++, 6);
+            $xml .= $this->cellStr('B', $r, $row['cust_code'], 6);
+            $xml .= $this->cellStr('C', $r, $row['cust_name'], 5);
+            $xml .= $this->cellStr('D', $r, $row['cust_phone'], 6);
+            $xml .= $this->cellStr('E', $r, $row['cust_address'], 5);
+            $xml .= $this->cellStr('F', $r, $row['pkg_name'], 5);
+            $xml .= $this->cellStr('G', $r, $row['pkg_type'], 6);
+            $xml .= $this->cellStr('H', $r, $row['packaging_text'], 5);
+            $xml .= $this->cellStr('I', $r, $row['period_text'], 6);
+            $xml .= $this->cellNum('J', $r, $row['target'], 8);
+            $xml .= $this->cellNum('K', $r, $row['paid'], 8);
+            $xml .= $this->cellNum('L', $r, $row['remaining'], 8);
+            $xml .= $this->cellStr('M', $r, $row['progress'], 6);
+            $xml .= $this->cellStr('N', $r, $row['status'], 6);
+            $xml .= $this->cellStr('O', $r, $row['note_str'], 5);
+            $xml .= "    </row>\n";
+        }
+
+        $lastDataRow = $r;
 
         // Summary Total Row for this Agent
         $r++;
@@ -864,6 +925,11 @@ class AgentReportExportService
         $xml .= "    </row>\n";
 
         $xml .= '  </sheetData>' . "\n";
+
+        // AutoFilter dropdown controls pada baris header (A6:O)
+        if ($lastDataRow >= 7) {
+            $xml .= "  <autoFilter ref=\"A6:O{$lastDataRow}\"/>\n";
+        }
 
         // Print & Page Setup
         $xml .= '  <printOptions gridLines="1"/>' . "\n";
