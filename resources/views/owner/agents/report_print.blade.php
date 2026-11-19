@@ -438,11 +438,20 @@
                                     <td class="py-1.5 px-2.5 text-slate-600">{{ $cust->address ?: '-' }}</td>
                                     <td class="py-1.5 px-2.5">
                                         @forelse($cust->customerPackages as $cp)
+                                            @php
+                                                $pkg = $cp->package;
+                                            @endphp
+                                            @if(!$pkg)
+                                                <div class="text-[9px] text-slate-400 italic">
+                                                    Paket tidak ditemukan (ID: {{ $cp->package_id }})
+                                                </div>
+                                                @continue
+                                            @endif
                                             <div class="font-bold text-slate-800">
                                                 <span class="font-mono text-[9px] font-bold px-1 rounded bg-slate-200 text-slate-800 mr-1">
-                                                    {{ $cp->package->code }}
+                                                    {{ $pkg->code }}
                                                 </span>
-                                                {{ $cp->package->name }}
+                                                {{ $pkg->name }}
                                                 @if($cp->packaging)
                                                     <div class="text-[9px] text-amber-900 font-bold mt-0.5">
                                                         &bull; Kemasan: {{ $cp->packaging->name }} (+Rp {{ number_format($cp->packaging_price, 0, ',', '.') }})
@@ -452,14 +461,14 @@
                                                         &bull; Kemasan: Standar
                                                     </div>
                                                 @endif
-                                                @if($cp->package->isEcer())
+                                                @if($pkg->isEcer())
                                                     @if($cp->customItems->isNotEmpty())
                                                         <div class="text-[9px] text-blue-800 font-semibold mt-0.5">
                                                             Barang: {{ $cp->customItems->map(fn($ci) => ($ci->item ? $ci->item->name : 'Item') . ' (' . $ci->quantity . ')')->implode(', ') }}
                                                         </div>
-                                                    @elseif($cp->package->packageItems->isNotEmpty())
+                                                    @elseif($pkg->packageItems->isNotEmpty())
                                                         <div class="text-[9px] text-blue-800 font-semibold mt-0.5">
-                                                            Barang: {{ $cp->package->packageItems->map(fn($pi) => ($pi->item ? $pi->item->name : 'Item') . ' (' . $pi->quantity . ')')->implode(', ') }}
+                                                            Barang: {{ $pkg->packageItems->map(fn($pi) => ($pi->item ? $pi->item->name : 'Item') . ' (' . $pi->quantity . ')')->implode(', ') }}
                                                         </div>
                                                     @endif
                                                 @endif
@@ -475,7 +484,13 @@
                                     </td>
                                     <td class="py-1.5 px-2.5 text-right text-emerald-800 font-semibold font-mono">
                                         @foreach($cust->customerPackages as $cp)
-                                            <div>{{ $cp->package->formatted_installment }} / {{ strtolower($cp->package->period_label) }}</div>
+                                            <div>
+                                                @if($cp->package)
+                                                    {{ $cp->package->formatted_installment }} / {{ strtolower($cp->package->period_label) }}
+                                                @else
+                                                    -
+                                                @endif
+                                            </div>
                                         @endforeach
                                     </td>
                                     <td class="py-1.5 px-2.5 text-center">

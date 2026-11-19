@@ -42,33 +42,42 @@
     <td class="py-3 px-3.5">
         @forelse($customer->customerPackages as $cp)
             @php
-                $pkgTheme = $cp->package->isEcer() 
+                $pkg = $cp->package;
+            @endphp
+            @if(!$pkg)
+                <div class="p-2 rounded-xl border bg-slate-50 border-slate-200 text-slate-500 mb-1.5 last:mb-0 text-xs italic">
+                    Paket tidak ditemukan (ID: {{ $cp->package_id }})
+                </div>
+                @continue
+            @endif
+            @php
+                $pkgTheme = $pkg->isEcer() 
                     ? 'bg-blue-50/60 border-blue-200 text-blue-900' 
-                    : ($cp->package->isTabungan() 
+                    : ($pkg->isTabungan() 
                         ? 'bg-amber-50/60 border-amber-200 text-amber-900' 
-                        : ($cp->package->isMingguan() 
+                        : ($pkg->isMingguan() 
                             ? 'bg-purple-50/60 border-purple-200 text-purple-900' 
                             : 'bg-emerald-50/60 border-emerald-200 text-emerald-900'));
                 
-                $badgeColor = $cp->package->isEcer() 
+                $badgeColor = $pkg->isEcer() 
                     ? 'bg-blue-600 text-white' 
-                    : ($cp->package->isTabungan() 
+                    : ($pkg->isTabungan() 
                         ? 'bg-amber-600 text-white' 
-                        : ($cp->package->isMingguan() 
+                        : ($pkg->isMingguan() 
                             ? 'bg-purple-600 text-white' 
                             : 'bg-emerald-600 text-white'));
             @endphp
             <div class="p-2 rounded-xl border {{ $pkgTheme }} mb-1.5 last:mb-0">
                 <div class="flex items-center justify-between">
                     <span class="font-mono text-[9px] font-extrabold px-1.5 py-0.2 rounded {{ $badgeColor }}">
-                        {{ $cp->package->code }}
+                        {{ $pkg->code }}
                     </span>
                     <span class="text-[10px] font-bold text-slate-600">
-                        {{ $cp->package->installment_count }} {{ $cp->package->period_label }}
+                        {{ $pkg->installment_count }} {{ $pkg->period_label }}
                     </span>
                 </div>
                 <div class="font-extrabold text-slate-900 text-xs mt-1">
-                    {{ $cp->package->name }}
+                    {{ $pkg->name }}
                 </div>
 
                 <!-- RINCIAN KEMASAN DIPILIH -->
@@ -85,7 +94,7 @@
                 @endif
 
                 <!-- RINCIAN BARANG ECERAN PILIHAN KONSUMEN -->
-                @if($cp->package->isEcer())
+                @if($pkg->isEcer())
                     @if($cp->customItems->isNotEmpty())
                         <div class="mt-1.5 pt-1.5 border-t border-blue-200/80 flex flex-wrap gap-1">
                             @foreach($cp->customItems as $ci)
@@ -95,9 +104,9 @@
                                 </span>
                             @endforeach
                         </div>
-                    @elseif($cp->package->packageItems->isNotEmpty())
+                    @elseif($pkg->packageItems->isNotEmpty())
                         <div class="mt-1.5 pt-1.5 border-t border-blue-200/80 flex flex-wrap gap-1">
-                            @foreach($cp->package->packageItems as $pi)
+                            @foreach($pkg->packageItems as $pi)
                                 <span class="px-2 py-0.5 rounded-md bg-white border border-blue-200 text-blue-900 text-[10px] font-bold shadow-2xs">
                                     <i class="fa-solid fa-cube text-blue-600 mr-1 text-[8px]"></i>
                                     {{ $pi->item ? $pi->item->name : 'Item' }} ({{ $pi->quantity }} pcs)
@@ -117,9 +126,15 @@
         @forelse($customer->customerPackages as $cp)
             <div class="mb-1.5 last:mb-0">
                 <div class="font-extrabold text-slate-900 text-xs">{{ $cp->formatted_target }}</div>
-                <div class="text-[10px] text-emerald-700 font-semibold">
-                    {{ $cp->package->formatted_installment }} / {{ strtolower($cp->package->period_label) }}
-                </div>
+                @if($cp->package)
+                    <div class="text-[10px] text-emerald-700 font-semibold">
+                        {{ $cp->package->formatted_installment }} / {{ strtolower($cp->package->period_label) }}
+                    </div>
+                @else
+                    <div class="text-[10px] text-slate-400 italic">
+                        Rp {{ number_format($cp->installment_amount, 0, ',', '.') }}
+                    </div>
+                @endif
             </div>
         @empty
             <span class="text-slate-300">-</span>
