@@ -482,17 +482,17 @@ class AgentManagementController extends Controller
             ->orderBy('id')
             ->get();
 
-        // A. Paket Parsel Harian (period_type == 'harian' & bukan eceran)
-        $harianPackages = $packages->filter(fn($p) => $p->period_type === 'harian' && $p->type !== 'ecer')->values();
+        // A. Paket Parsel Harian (khusus tipe parsel & harian, bukan tabungan & bukan eceran)
+        $harianPackages = $packages->filter(fn($p) => $p->isHarian() && $p->isParsel())->values();
 
-        // B. Paket Mingguan Lainnya / Standar (period_type == 'mingguan' & bukan eceran)
-        $mingguanPackages = $packages->filter(fn($p) => ($p->period_type === 'mingguan' || empty($p->period_type)) && $p->type !== 'ecer')->values();
+        // B. Paket Mingguan Standar / Lainnya (khusus tipe parsel & mingguan, bukan tabungan & bukan eceran)
+        $mingguanPackages = $packages->filter(fn($p) => $p->isMingguan() && $p->isParsel())->values();
 
-        // C. Paket Tabungan Lebaran (type == 'tabungan', jika ada)
-        $tabunganPackages = $packages->filter(fn($p) => $p->type === 'tabungan')->values();
+        // C. Paket Tabungan Lebaran (khusus tipe tabungan, baik harian maupun mingguan)
+        $tabunganPackages = $packages->filter(fn($p) => $p->isTabungan())->values();
 
-        // D. Paket Mingguan Eceran (type == 'ecer')
-        $ecerPackages = $packages->filter(fn($p) => $p->type === 'ecer')->values();
+        // D. Paket Mingguan Eceran (khusus tipe ecer)
+        $ecerPackages = $packages->filter(fn($p) => $p->isEcer())->values();
 
         // 2. Query data agen beserta konsumen dan paket yang dipilih
         $agentsQuery = User::where('role', 'agent')
@@ -673,8 +673,8 @@ class AgentManagementController extends Controller
                     $agentTargetSum += (float) $cp->total_target;
                     $agentPaidSum += (float) $cp->total_paid;
 
-                    // A. Parsel Harian (Harian & Non-Eceran)
-                    if ($pkg->isHarian() && !$pkg->isEcer()) {
+                    // A. Parsel Harian (khusus tipe parsel & harian)
+                    if ($pkg->isParsel() && $pkg->isHarian()) {
                         $harianCustSet[$customer->id] = true;
                         $agentHarianPackageCounts[$pkg->id] = ($agentHarianPackageCounts[$pkg->id] ?? 0) + 1;
                         $harianPackageTotals[$pkg->id] = ($harianPackageTotals[$pkg->id] ?? 0) + 1;
@@ -682,8 +682,8 @@ class AgentManagementController extends Controller
                         $totalHarianOrdersCount++;
                     }
 
-                    // B. Paket Mingguan Lainnya / Standar (Mingguan & Non-Eceran)
-                    if ($pkg->isMingguan() && !$pkg->isEcer()) {
+                    // B. Paket Mingguan Standar / Reguler (khusus tipe parsel & mingguan)
+                    elseif ($pkg->isParsel() && $pkg->isMingguan()) {
                         $mingguanCustSet[$customer->id] = true;
                         $agentMingguanPackageCounts[$pkg->id] = ($agentMingguanPackageCounts[$pkg->id] ?? 0) + 1;
                         $mingguanPackageTotals[$pkg->id] = ($mingguanPackageTotals[$pkg->id] ?? 0) + 1;
@@ -691,8 +691,8 @@ class AgentManagementController extends Controller
                         $totalMingguanOrdersCount++;
                     }
 
-                    // C. Tabungan Lebaran (khusus type tabungan jika ada)
-                    if ($pkg->isTabungan()) {
+                    // C. Tabungan Lebaran (khusus tipe tabungan, baik harian maupun mingguan)
+                    elseif ($pkg->isTabungan()) {
                         $tabunganCustSet[$customer->id] = true;
                         $agentTabunganPackageCounts[$pkg->id] = ($agentTabunganPackageCounts[$pkg->id] ?? 0) + 1;
                         $tabunganPackageTotals[$pkg->id] = ($tabunganPackageTotals[$pkg->id] ?? 0) + 1;
@@ -700,8 +700,8 @@ class AgentManagementController extends Controller
                         $totalTabunganOrdersCount++;
                     }
 
-                    // D. Parsel Eceran (Mingguan Eceran dengan rincian komoditas barang)
-                    if ($pkg->isEcer()) {
+                    // D. Parsel Eceran (khusus tipe ecer)
+                    elseif ($pkg->isEcer()) {
                         $ecerCustSet[$customer->id] = true;
                         $agentEcerOrdersCount++;
                         $totalEcerOrdersCount++;
@@ -818,9 +818,33 @@ class AgentManagementController extends Controller
         $allAgentsList = User::where('role', 'agent')->orderBy('name')->get();
         $appSetting = CatalogSetting::current();
 
+        $sortAgent = $request->input('sort_agent', 'name_asc');
+        $filterActiveOnly = $request->boolean('active_only', false);
+
+        // Filter agen yang memiliki pesanan jika opsi dicentang
+        if ($filterActiveOnly) {
+            $agents = $agents->filter(fn($ag) => $ag->total_orders > 0)->values();
+        }
+
+        // Sorting agen berdasarkan nama atau jumlah pesanan
+        if ($sortAgent === 'name_desc') {
+            $agents = $agents->sortByDesc('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
+        } elseif ($sortAgent === 'orders_desc') {
+            $agents = $agents->sortByDesc('total_orders')->values();
+        } elseif ($sortAgent === 'orders_asc') {
+            $agents = $agents->sortBy('total_orders')->values();
+        } elseif ($sortAgent === 'customers_desc') {
+            $agents = $agents->sortByDesc('total_customers')->values();
+        } else {
+            // Default: Nama A - Z
+            $agents = $agents->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
+        }
+
         return compact(
             'agents',
             'allAgentsList',
+            'sortAgent',
+            'filterActiveOnly',
             'packages',
             'packageTotals',
             'harianPackages',

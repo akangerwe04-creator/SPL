@@ -584,6 +584,68 @@ class AgentReportExportService
             $xml .= "    </row>\n";
         }
 
+        // --- SECTION E: REKAPITULASI TABUNGAN LEBARAN PER AGEN ---
+        $tabunganPackages = $data['tabunganPackages'] ?? collect();
+        if ($tabunganPackages->isNotEmpty()) {
+            $r += 2;
+            $xml .= "    <row r=\"{$r}\" ht=\"22\">\n";
+            $xml .= $this->cellStr('A', $r, 'REKAPITULASI IV: MATRIKS TABUNGAN LEBARAN PER AGEN', 2);
+            $xml .= "    </row>\n";
+
+            $r++;
+            $xml .= "    <row r=\"{$r}\" ht=\"18\">\n";
+            $xml .= $this->cellStr('A', $r, 'Format: No, Nama Agen, Alamat, Jumlah Konsumen (Tabungan), dan Pesanan Tiap Paket Tabungan', 3);
+            $xml .= "    </row>\n";
+
+            $r++;
+            $xml .= "    <row r=\"{$r}\" ht=\"26\">\n";
+            $xml .= $this->cellStr('A', $r, 'No', 4);
+            $xml .= $this->cellStr('B', $r, 'Nama Agen Lapangan', 4);
+            $xml .= $this->cellStr('C', $r, 'Alamat Agen', 4);
+            $xml .= $this->cellStr('D', $r, 'Jml Konsumen (Tabungan)', 4);
+            $cIdx = 5;
+            foreach ($tabunganPackages as $pkg) {
+                $cLet = $this->colLetter($cIdx++);
+                $xml .= $this->cellStr($cLet, $r, $pkg->name, 4);
+            }
+            $totTabCol = $this->colLetter($cIdx);
+            $xml .= $this->cellStr($totTabCol, $r, 'Total Tabungan', 4);
+            $xml .= "    </row>\n";
+
+            foreach ($agents as $idx => $ag) {
+                $r++;
+                $xml .= "    <row r=\"{$r}\" ht=\"20\">\n";
+                $xml .= $this->cellNum('A', $r, $idx + 1, 6);
+                $xml .= $this->cellStr('B', $r, $ag->name, 5);
+                $xml .= $this->cellStr('C', $r, $ag->address ?: '-', 5);
+                $xml .= $this->cellNum('D', $r, (int)($ag->tabungan_customers_count ?? 0), 6);
+                $cIdx = 5;
+                foreach ($tabunganPackages as $pkg) {
+                    $cLet = $this->colLetter($cIdx++);
+                    $cnt = (int)($ag->tabungan_package_counts[$pkg->id] ?? 0);
+                    $xml .= $this->cellNum($cLet, $r, $cnt, 6);
+                }
+                $xml .= $this->cellNum($totTabCol, $r, (int)($ag->total_tabungan_orders ?? 0), 6);
+                $xml .= "    </row>\n";
+            }
+
+            // Total Tabungan Row
+            $r++;
+            $xml .= "    <row r=\"{$r}\" ht=\"22\">\n";
+            $xml .= $this->cellStr('A', $r, '', 9);
+            $xml .= $this->cellStr('B', $r, 'TOTAL TABUNGAN LEBARAN SE-SPL', 9);
+            $xml .= $this->cellStr('C', $r, '', 9);
+            $xml .= $this->cellNum('D', $r, (int)($data['totalTabunganCustomersCount'] ?? 0), 9);
+            $cIdx = 5;
+            foreach ($tabunganPackages as $pkg) {
+                $cLet = $this->colLetter($cIdx++);
+                $tot = (int)($data['tabunganPackageTotals'][$pkg->id] ?? 0);
+                $xml .= $this->cellNum($cLet, $r, $tot, 9);
+            }
+            $xml .= $this->cellNum($totTabCol, $r, (int)($data['totalTabunganOrdersCount'] ?? 0), 9);
+            $xml .= "    </row>\n";
+        }
+
         $xml .= '  </sheetData>' . "\n";
 
         // Print & Page Setup (Landscape, Fit to Page)

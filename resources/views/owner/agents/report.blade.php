@@ -13,6 +13,10 @@
 <div class="space-y-6" x-data="{ 
     activeTab: 'all', 
     activeAgentFilter: '{{ request('agent_id', '') }}',
+    onlyActiveHarian: false,
+    onlyActiveMingguan: false,
+    onlyActiveEcer: false,
+    onlyActiveTabungan: false,
     searchHarian: '',
     searchMingguan: '',
     searchEcer: '',
@@ -38,30 +42,46 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-            <!-- AGENT FILTER DROPDOWN -->
-            <form action="{{ route('owner.agents.report') }}" method="GET" class="flex items-center space-x-2">
+            <!-- AGENT FILTER & SORT FORM -->
+            <form action="{{ route('owner.agents.report') }}" method="GET" class="flex flex-wrap items-center gap-2">
+                <!-- Dropdown Pilih Agen -->
                 <select name="agent_id" onchange="this.form.submit()" class="px-3 py-2 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 text-xs shadow-xs focus:border-emerald-500">
-                    <option value="">-- Tampilkan Semua Agen ({{ $allAgentsList->count() }}) --</option>
+                    <option value="">-- Semua Agen ({{ $allAgentsList->count() }}) --</option>
                     @foreach($allAgentsList as $ag)
                         <option value="{{ $ag->id }}" {{ request('agent_id') == $ag->id ? 'selected' : '' }}>
                             Agen: {{ $ag->name }}
                         </option>
                     @endforeach
                 </select>
-                @if(request('agent_id'))
-                    <a href="{{ route('owner.agents.report') }}" class="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-xs" title="Reset Filter">
-                        <i class="fa-solid fa-xmark"></i>
+
+                <!-- Dropdown Sort / Urutkan Agen -->
+                <select name="sort_agent" onchange="this.form.submit()" class="px-3 py-2 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 text-xs shadow-xs focus:border-emerald-500">
+                    <option value="name_asc" {{ request('sort_agent', 'name_asc') === 'name_asc' ? 'selected' : '' }}>Urut: Nama Agen (A - Z)</option>
+                    <option value="name_desc" {{ request('sort_agent') === 'name_desc' ? 'selected' : '' }}>Urut: Nama Agen (Z - A)</option>
+                    <option value="orders_desc" {{ request('sort_agent') === 'orders_desc' ? 'selected' : '' }}>Urut: Pesanan Terbanyak</option>
+                    <option value="customers_desc" {{ request('sort_agent') === 'customers_desc' ? 'selected' : '' }}>Urut: Konsumen Terbanyak</option>
+                </select>
+
+                <!-- Checkbox Hanya Agen Pemesan -->
+                <label class="flex items-center space-x-1.5 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 shadow-xs cursor-pointer hover:bg-slate-50">
+                    <input type="checkbox" name="active_only" value="1" onchange="this.form.submit()" {{ request('active_only') ? 'checked' : '' }} class="rounded text-emerald-600 focus:ring-emerald-500">
+                    <span>Hanya Agen Pemesan</span>
+                </label>
+
+                @if(request()->hasAny(['agent_id', 'sort_agent', 'active_only']))
+                    <a href="{{ route('owner.agents.report') }}" class="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-xs" title="Reset Filter & Sort">
+                        <i class="fa-solid fa-rotate-left mr-1"></i> Reset
                     </a>
                 @endif
             </form>
 
             <!-- EXPORT EXCEL BUTTON -->
-            <a href="{{ route('owner.agents.report.export', ['agent_id' => request('agent_id')]) }}" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition flex items-center">
+            <a href="{{ route('owner.agents.report.export', ['agent_id' => request('agent_id'), 'sort_agent' => request('sort_agent'), 'active_only' => request('active_only')]) }}" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition flex items-center">
                 <i class="fa-solid fa-file-excel mr-1.5 text-emerald-100"></i> Export Excel (.xlsx) Siap Cetak
             </a>
 
             <!-- PRINT BUTTON -->
-            <a href="{{ route('owner.agents.report.print', ['agent_id' => request('agent_id')]) }}" target="_blank" class="px-4 py-2 bg-pink-700 hover:bg-pink-800 text-white font-bold rounded-xl shadow-xs transition flex items-center">
+            <a href="{{ route('owner.agents.report.print', ['agent_id' => request('agent_id'), 'sort_agent' => request('sort_agent'), 'active_only' => request('active_only')]) }}" target="_blank" class="px-4 py-2 bg-pink-700 hover:bg-pink-800 text-white font-bold rounded-xl shadow-xs transition flex items-center">
                 <i class="fa-solid fa-print mr-1.5"></i> Cetak Laporan (Print / PDF)
             </a>
         </div>
@@ -235,6 +255,12 @@
                 </p>
             </div>
             <div class="flex flex-wrap items-center gap-2 shrink-0">
+                <!-- Checkbox Hanya Agen Pemesan Harian -->
+                <label class="flex items-center space-x-1.5 text-xs font-bold text-emerald-900 bg-white px-3 py-1.5 rounded-xl border border-emerald-300 shadow-2xs cursor-pointer hover:bg-emerald-50">
+                    <input type="checkbox" x-model="onlyActiveHarian" class="rounded text-emerald-600 focus:ring-emerald-500">
+                    <span>Hanya yang Ada Pesanan</span>
+                </label>
+
                 <!-- FITUR SEARCH KHUSUS HARIAN -->
                 <div class="relative w-full sm:w-64">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-emerald-600 text-xs"></i>
@@ -254,7 +280,7 @@
                     </button>
                 </div>
                 <span class="text-xs font-bold text-emerald-900 bg-emerald-100/70 px-3 py-1.5 rounded-xl border border-emerald-200">
-                    {{ $harianPackages->count() }} Jenis Paket Harian
+                    {{ $harianPackages->count() }} Jenis Paket Parsel Harian
                 </span>
             </div>
         </div>
@@ -292,7 +318,7 @@
                     @forelse($agents as $idx => $agent)
                         <tr 
                             class="hover:bg-emerald-50/30 transition"
-                            x-show="matchesAgent('{{ addslashes($agent->name) }}', '{{ addslashes($agent->phone) }}', '{{ addslashes($agent->address) }}', searchHarian)"
+                            x-show="(!onlyActiveHarian || {{ (int)$agent->total_harian_orders }} > 0) && matchesAgent('{{ addslashes($agent->name) }}', '{{ addslashes($agent->phone) }}', '{{ addslashes($agent->address) }}', searchHarian)"
                         >
                             <td class="py-3 px-3.5 text-center font-mono text-slate-400 font-bold">
                                 {{ $idx + 1 }}
@@ -397,6 +423,12 @@
                     </p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    <!-- Checkbox Hanya Agen Pemesan Mingguan -->
+                    <label class="flex items-center space-x-1.5 text-xs font-bold text-purple-900 bg-white px-3 py-1.5 rounded-xl border border-purple-300 shadow-2xs cursor-pointer hover:bg-purple-50">
+                        <input type="checkbox" x-model="onlyActiveMingguan" class="rounded text-purple-600 focus:ring-purple-500">
+                        <span>Hanya yang Ada Pesanan</span>
+                    </label>
+
                     <!-- FITUR SEARCH KHUSUS MINGGUAN LAINNYA -->
                     <div class="relative w-full sm:w-64">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-purple-600 text-xs"></i>
@@ -454,7 +486,7 @@
                         @forelse($agents as $idx => $agent)
                             <tr 
                                 class="hover:bg-purple-50/30 transition"
-                                x-show="matchesAgent('{{ addslashes($agent->name) }}', '{{ addslashes($agent->phone) }}', '{{ addslashes($agent->address) }}', searchMingguan)"
+                                x-show="(!onlyActiveMingguan || {{ (int)$agent->total_mingguan_orders }} > 0) && matchesAgent('{{ addslashes($agent->name) }}', '{{ addslashes($agent->phone) }}', '{{ addslashes($agent->address) }}', searchMingguan)"
                             >
                                 <td class="py-3 px-3.5 text-center font-mono text-slate-400 font-bold">
                                     {{ $idx + 1 }}
@@ -559,6 +591,12 @@
                 </p>
             </div>
             <div class="flex flex-wrap items-center gap-2 shrink-0">
+                <!-- Checkbox Hanya Agen Pemesan Eceran -->
+                <label class="flex items-center space-x-1.5 text-xs font-bold text-blue-900 bg-white px-3 py-1.5 rounded-xl border border-blue-300 shadow-2xs cursor-pointer hover:bg-blue-50">
+                    <input type="checkbox" x-model="onlyActiveEcer" class="rounded text-blue-600 focus:ring-blue-500">
+                    <span>Hanya yang Ada Pesanan</span>
+                </label>
+
                 <!-- FITUR SEARCH KHUSUS ECERAN -->
                 <div class="relative w-full sm:w-64">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-blue-600 text-xs"></i>
@@ -613,7 +651,7 @@
                     @forelse($agents as $idx => $agent)
                         <tr 
                             class="hover:bg-blue-50/30 transition"
-                            x-show="!searchEcer || matchesAgent('{{ addslashes($agent->name) }}', '{{ addslashes($agent->phone) }}', '{{ addslashes($agent->address) }}', searchEcer) || '{{ strtolower(implode(' ', array_keys(array_filter($agent->ecer_item_counts ?? [])))) }}'.includes(searchEcer.toLowerCase().trim())"
+                            x-show="(!onlyActiveEcer || {{ (int)$agent->total_ecer_orders }} > 0) && (!searchEcer || matchesAgent('{{ addslashes($agent->name) }}', '{{ addslashes($agent->phone) }}', '{{ addslashes($agent->address) }}', searchEcer) || '{{ strtolower(implode(' ', array_keys(array_filter($agent->ecer_item_counts ?? [])))) }}'.includes(searchEcer.toLowerCase().trim()))"
                         >
                             <td class="py-3 px-3.5 text-center font-mono text-slate-400 font-bold">
                                 {{ $idx + 1 }}
@@ -732,6 +770,12 @@
                     </p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    <!-- Checkbox Hanya Agen Pemesan Tabungan -->
+                    <label class="flex items-center space-x-1.5 text-xs font-bold text-amber-900 bg-white px-3 py-1.5 rounded-xl border border-amber-300 shadow-2xs cursor-pointer hover:bg-amber-50">
+                        <input type="checkbox" x-model="onlyActiveTabungan" class="rounded text-amber-600 focus:ring-amber-500">
+                        <span>Hanya yang Ada Pesanan</span>
+                    </label>
+
                     <!-- FITUR SEARCH KHUSUS TABUNGAN -->
                     <div class="relative w-full sm:w-64">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-amber-600 text-xs"></i>
@@ -789,7 +833,7 @@
                         @forelse($agents as $idx => $agent)
                             <tr 
                                 class="hover:bg-amber-50/30 transition"
-                                x-show="matchesAgent('{{ addslashes($agent->name) }}', '{{ addslashes($agent->phone) }}', '{{ addslashes($agent->address) }}', searchTabungan)"
+                                x-show="(!onlyActiveTabungan || {{ (int)$agent->total_tabungan_orders }} > 0) && matchesAgent('{{ addslashes($agent->name) }}', '{{ addslashes($agent->phone) }}', '{{ addslashes($agent->address) }}', searchTabungan)"
                             >
                                 <td class="py-3 px-3.5 text-center font-mono text-slate-400 font-bold">
                                     {{ $idx + 1 }}
