@@ -12,8 +12,10 @@ class WholesalePlannerService
     /**
      * Hitung kebutuhan belanja grosir barang pokok, bonus paket, kemasan wadah, & penyiapan uang tunai dari seluruh pesanan aktif
      * Serta rekapan jumlah masing-masing paket yang harus disiapkan untuk memenuhi permintaan konsumen.
+     * 
+     * @param string $scope 'all' = Seluruh pesanan konsumen aktif (Rekomendasi Utama PO Supplier), 'safe' = Hanya konsumen lolos titik aman / ACC owner
      */
-    public function calculateRequirements(): array
+    public function calculateRequirements(string $scope = 'all'): array
     {
         // Ambil semua master paket aktif untuk inisialisasi rekapan paket
         $allMasterPackages = Package::with(['packageItems.item'])->where('is_active', true)->get();
@@ -99,6 +101,8 @@ class WholesalePlannerService
         $cashRequirements = []; // Rincian uang tunai per konsumen & agen
         $excludedIncompleteCustomers = []; // Konsumen tidak selesai yang belum ditentukan barangnya oleh owner
         $eligibleCustomersCount = 0;
+        $safeThresholdReachedCount = 0;
+        $pendingSafeCount = 0;
 
         foreach ($allPackages as $cp) {
             $pkg = $cp->package;
@@ -118,12 +122,19 @@ class WholesalePlannerService
             $isSafeReached = $cp->isSafeThresholdReached();
             $hasOwnerDecision = (bool) ($cp->partialFulfillment && ($cp->partialFulfillment->items->isNotEmpty() || (float)$cp->partialFulfillment->cash_payout > 0));
 
+            if ($isSafeReached || $hasOwnerDecision) {
+                $safeThresholdReachedCount++;
+            } else {
+                $pendingSafeCount++;
+            }
+
             // ATURAN RESMI OWNER SPL:
-            // 1. Yang masuk daftar belanja adalah konsumen yang sudah melebihi/mencapai titik aman ($isSafeReached == true).
-            // 2. Jika konsumennya TIDAK SELESAI (belum mencapai titik aman atau berhenti):
-            //    -> HANYA MASUK jika Owner sudah menentukan barang apa saja yang akan diterima ($hasOwnerDecision == true).
-            //    -> Jika belum ditentukan Owner, JANGAN dimasukkan ke daftar belanja!
-            $isEligibleForShopping = $isSafeReached || $hasOwnerDecision;
+            // 1. Jika scope == 'all' (PO Pengadaan ke Supplier):
+            //    Seluruh pesanan konsumen aktif (status != 'canceled') dimasukkan ke dalam rekapitulasi kebutuhan pengadaan ke supplier.
+            // 2. Jika scope == 'safe' (Realisasi Belanja Tutup Buku):
+            //    Yang masuk daftar belanja adalah konsumen yang sudah melebihi/mencapai titik aman ($isSafeReached == true).
+            //    Atau jika belum aman / berhenti, sudah ditentukan barangnya oleh Owner ($hasOwnerDecision == true).
+            $isEligibleForShopping = ($scope === 'all') ? true : ($isSafeReached || $hasOwnerDecision);
 
             if (!$isEligibleForShopping) {
                 // Catat ke daftar konsumen tidak selesai yang belum ditentukan barangnya oleh Owner
@@ -613,6 +624,13 @@ class WholesalePlannerService
             ];
         }
 
+        // Urutkan barang pokok: berdasarkan Kategori (A-Z), lalu Nama Barang (A-Z)
+        usort($goodsReport, function ($a, $b) {
+            $catCmp = strcasecmp($a['category'], $b['category']);
+            if ($catCmp !== 0) return $catCmp;
+            return strcasecmp($a['item_name'], $b['item_name']);
+        });
+
         // 4. OLAH TABEL 2: BARANG BONUS PAKET (TABEL TERPISAH SESUAI ARAHAN OWNER)
         $bonusReport = [];
         $totalBonusCount = 0;
@@ -653,7 +671,19 @@ class WholesalePlannerService
             ];
         }
 
+        // Urutkan barang bonus: berdasarkan Kategori (A-Z), lalu Nama Barang (A-Z)
+        usort($bonusReport, function ($a, $b) {
+            $catCmp = strcasecmp($a['category'], $b['category']);
+            if ($catCmp !== 0) return $catCmp;
+            return strcasecmp($a['item_name'], $b['item_name']);
+        });
+
         // 5. OLAH TABEL 3: KEMASAN / WADAH PARSEL (TABEL TERPISAH DENGAN FOTO)
+        // Urutkan kemasan berdasarkan nama wadah (A-Z)
+        uasort($packagingTotals, function ($a, $b) {
+            return strcasecmp($a['name'], $b['name']);
+        });
+
         $totalPackagingUnits = 0;
         $totalPackagingCost = 0;
         foreach ($packagingTotals as $kms) {
@@ -735,6 +765,12 @@ class WholesalePlannerService
             'cash_by_agent' => array_values($cashByAgent),
             'excluded_incomplete_customers' => $excludedIncompleteCustomers,
             'summary' => [
+                'scope' => $scope,
+                'scope_label' => $scope === 'all'
+                    ? 'Semua Pesanan Konsumen (PO ke Supplier)'
+                    : 'Hanya Konsumen Lolos Titik Aman (SOP Tutup Buku)',
+                'safe_threshold_reached_count' => $safeThresholdReachedCount,
+                'pending_safe_count' => $pendingSafeCount,
                 'total_packages_count' => $totalPackagesCount,
                 'total_packages_pending' => $totalPackagesPending,
                 'total_packages_fulfilled' => $totalPackagesFulfilled,

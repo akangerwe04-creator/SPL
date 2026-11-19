@@ -23,9 +23,48 @@
                 Kalkulator lengkap pemenuhan pesanan konsumen: rekapitulasi <strong>Jumlah Paket Masing-Masing Paket yang Harus Disiapkan</strong>, rincian <strong>Barang Pokok</strong>, <strong>Hadiah Bonus</strong>, <strong>Kemasan/Wadah</strong>, serta <strong>Uang Tunai</strong> yang harus dibelanjakan dan disiapkan owner.
             </p>
         </div>
-        <div class="flex items-center space-x-2 flex-shrink-0">
-            <a href="{{ route('inventory.print') }}" target="_blank" class="px-4 py-2.5 bg-pink-700 hover:bg-pink-800 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center">
+        <div class="flex flex-wrap items-center gap-2 flex-shrink-0">
+            <a href="{{ route('inventory.export', request()->all()) }}" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center">
+                <i class="fa-solid fa-file-excel mr-1.5 text-sm"></i> Ekspor Excel PO Supplier (.xlsx)
+            </a>
+            <a href="{{ route('inventory.print', request()->all()) }}" target="_blank" class="px-4 py-2.5 bg-pink-700 hover:bg-pink-800 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center">
                 <i class="fa-solid fa-print mr-1.5"></i> Cetak Lembar Rekap & Belanja (Print)
+            </a>
+        </div>
+    </div>
+
+    <!-- SCOPE SWITCHER: SEMUA KONSUMEN (PO SUPPLIER) VS TITIK AMAN (SOP TUTUP BUKU) -->
+    <div class="bg-white rounded-2xl border-2 {{ $scope === 'all' ? 'border-pink-300 bg-gradient-to-r from-pink-50/40 via-white to-pink-50/20' : 'border-amber-300 bg-gradient-to-r from-amber-50/40 via-white to-amber-50/20' }} shadow-xs p-4 sm:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex items-start sm:items-center space-x-3.5">
+            <div class="w-11 h-11 rounded-2xl {{ $scope === 'all' ? 'bg-pink-700 text-white shadow-pink-200' : 'bg-amber-600 text-white shadow-amber-200' }} flex items-center justify-center text-lg shrink-0 shadow-md">
+                <i class="fa-solid {{ $scope === 'all' ? 'fa-truck-ramp-box' : 'fa-shield-halved' }}"></i>
+            </div>
+            <div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="text-sm font-heading font-black text-slate-900">Mode Cakupan Belanja & Pengadaan Barang:</h3>
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider {{ $scope === 'all' ? 'bg-pink-700 text-white shadow-xs' : 'bg-amber-600 text-white shadow-xs' }}">
+                        {{ $scope === 'all' ? '✓ REKOMENDASI UTAMA: PO Grosir ke Supplier (Semua Konsumen Aktif)' : 'SOP Realisasi Tutup Buku (Hanya Lolos Titik Aman)' }}
+                    </span>
+                </div>
+                <p class="text-xs text-slate-600 mt-1 leading-relaxed max-w-3xl">
+                    @if($scope === 'all')
+                        Menampilkan <strong>total gabungan dari seluruh {{ number_format($summary['total_eligible_customers'] ?? 0) }} pesanan konsumen aktif se-SPL</strong> (Parsel Sembako, Tabungan, dan Eceran). Sangat tepat digunakan Owner saat membuat pesanan kulakan/PO ke Supplier grosir & pabrikan agar <strong>jumlah belanja pas</strong> dan <strong>meminimalisir kelebihan atau kekurangan barang</strong> saat belanja.
+                    @else
+                        Menampilkan hanya pesanan dari <strong>{{ number_format($summary['total_eligible_customers'] ?? 0) }} konsumen yang telah melampaui titik aman</strong> / di-ACC Owner sesuai SOP tutup buku akhir musim. Terdapat <strong>{{ number_format($summary['total_excluded_incomplete'] ?? 0) }} konsumen</strong> yang belum titik aman disaring dari daftar belanja ini.
+                    @endif
+                </p>
+            </div>
+        </div>
+
+        <!-- TOGGLE PILL SELECTOR -->
+        <div class="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 shrink-0 self-start md:self-auto text-xs font-bold shadow-2xs">
+            <a href="{{ route('inventory.planner', array_merge(request()->except('scope'), ['scope' => 'all'])) }}" class="px-3.5 py-2 rounded-lg transition flex items-center space-x-1.5 {{ $scope === 'all' ? 'bg-pink-700 text-white shadow-xs font-extrabold' : 'text-slate-600 hover:text-slate-900' }}">
+                <i class="fa-solid fa-cart-shopping text-xs"></i>
+                <span>Semua Konsumen (PO Supplier)</span>
+            </a>
+            <a href="{{ route('inventory.planner', array_merge(request()->except('scope'), ['scope' => 'safe'])) }}" class="px-3.5 py-2 rounded-lg transition flex items-center space-x-1.5 {{ $scope === 'safe' ? 'bg-amber-600 text-white shadow-xs font-extrabold' : 'text-slate-600 hover:text-slate-900' }}">
+                <i class="fa-solid fa-shield-halved text-xs"></i>
+                <span>Hanya Titik Aman</span>
             </a>
         </div>
     </div>
@@ -241,6 +280,7 @@
 
             <!-- SEARCH & FILTER FORM -->
             <form action="{{ route('inventory.planner') }}" method="GET" class="flex flex-wrap items-center gap-2 text-xs">
+                <input type="hidden" name="scope" value="{{ $scope }}">
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari paket / konsumen / agen..." class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-pink-500">
                 <select name="package_type" onchange="this.form.submit()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-medium">
                     <option value="">Semua Jenis Paket</option>
@@ -256,7 +296,7 @@
                     <i class="fa-solid fa-magnifying-glass"></i>
                 </button>
                 @if(request()->hasAny(['search', 'package_type', 'only_with_orders', 'category']))
-                    <a href="{{ route('inventory.planner') }}" class="px-3 py-2 text-slate-500 hover:text-slate-800 font-medium">
+                    <a href="{{ route('inventory.planner', ['scope' => $scope]) }}" class="px-3 py-2 text-slate-500 hover:text-slate-800 font-medium">
                         <i class="fa-solid fa-xmark mr-1"></i> Reset
                     </a>
                 @endif
@@ -551,6 +591,7 @@
 
             <!-- SEARCH & CATEGORY FILTER -->
             <form action="{{ route('inventory.planner') }}" method="GET" class="flex flex-wrap items-center gap-2 text-xs">
+                <input type="hidden" name="scope" value="{{ $scope }}">
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari barang / kode..." class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-pink-500">
                 <select name="category" onchange="this.form.submit()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-medium">
                     <option value="">Semua Kategori</option>
@@ -564,7 +605,7 @@
                     <i class="fa-solid fa-magnifying-glass"></i>
                 </button>
                 @if(request()->hasAny(['search', 'category']))
-                    <a href="{{ route('inventory.planner') }}" class="px-3 py-2 text-slate-500 hover:text-slate-800">
+                    <a href="{{ route('inventory.planner', ['scope' => $scope]) }}" class="px-3 py-2 text-slate-500 hover:text-slate-800">
                         <i class="fa-solid fa-xmark mr-1"></i> Reset
                     </a>
                 @endif

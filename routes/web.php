@@ -121,9 +121,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/owner/deposits/{deposit}/approve', [AgentDepositController::class, 'ownerApprove'])->name('owner.deposits.approve');
         Route::post('/owner/deposits/{deposit}/reject', [AgentDepositController::class, 'ownerReject'])->name('owner.deposits.reject');
 
-        // Menu 6: Belanja Barang (Kalkulator Belanja Grosir / Kulakan)
+        // Menu 6: Belanja Barang (Kalkulator Belanja Grosir / Kulakan & PO Supplier)
         Route::get('/owner/inventory-planner', [InventoryPlannerController::class, 'index'])->name('inventory.planner');
         Route::get('/owner/inventory-planner/print', [InventoryPlannerController::class, 'printView'])->name('inventory.print');
+        Route::get('/owner/inventory-planner/export', [InventoryPlannerController::class, 'exportXlsx'])->name('inventory.export');
 
         // Menu 7: Tutup Buku & Keputusan Pemenuhan Musim Parsel (Hak Akses Owner & Admin)
         Route::get('/owner/book-closing', [BookClosingController::class, 'index'])->name('owner.book-closing.index');

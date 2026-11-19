@@ -4,19 +4,23 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Services\WholesalePlannerService;
+use App\Services\WholesaleProcurementExportService;
 
 class InventoryPlannerController extends Controller
 {
     protected WholesalePlannerService $plannerService;
+    protected WholesaleProcurementExportService $exportService;
 
-    public function __construct(WholesalePlannerService $plannerService)
+    public function __construct(WholesalePlannerService $plannerService, WholesaleProcurementExportService $exportService)
     {
         $this->plannerService = $plannerService;
+        $this->exportService = $exportService;
     }
 
     public function index(Request $request)
     {
-        $result = $this->plannerService->calculateRequirements();
+        $scope = $request->input('scope', 'all');
+        $result = $this->plannerService->calculateRequirements($scope);
         $packagesToPrepare = $result['packages_to_prepare'] ?? [];
         $items = $result['items'];
         $bonusItems = $result['bonus_items'];
@@ -75,7 +79,17 @@ class InventoryPlannerController extends Controller
             });
         }
 
-        return view('inventory.planner', compact('packagesToPrepare', 'items', 'bonusItems', 'packagingItems', 'summary', 'cashItems', 'cashByAgent', 'excludedIncompleteCustomers'));
+        return view('inventory.planner', compact(
+            'scope',
+            'packagesToPrepare',
+            'items',
+            'bonusItems',
+            'packagingItems',
+            'summary',
+            'cashItems',
+            'cashByAgent',
+            'excludedIncompleteCustomers'
+        ));
     }
 
     /**
@@ -83,7 +97,8 @@ class InventoryPlannerController extends Controller
      */
     public function printView(Request $request)
     {
-        $result = $this->plannerService->calculateRequirements();
+        $scope = $request->input('scope', 'all');
+        $result = $this->plannerService->calculateRequirements($scope);
         $packagesToPrepare = $result['packages_to_prepare'] ?? [];
         $items = $result['items'];
         $bonusItems = $result['bonus_items'];
@@ -93,6 +108,27 @@ class InventoryPlannerController extends Controller
         $cashByAgent = $result['cash_by_agent'];
         $excludedIncompleteCustomers = $result['excluded_incomplete_customers'] ?? [];
 
-        return view('inventory.print', compact('packagesToPrepare', 'items', 'bonusItems', 'packagingItems', 'summary', 'cashItems', 'cashByAgent', 'excludedIncompleteCustomers'));
+        return view('inventory.print', compact(
+            'scope',
+            'packagesToPrepare',
+            'items',
+            'bonusItems',
+            'packagingItems',
+            'summary',
+            'cashItems',
+            'cashByAgent',
+            'excludedIncompleteCustomers'
+        ));
+    }
+
+    /**
+     * Ekspor Excel (.xlsx) Rekapitulasi Pengadaan Barang & Kemasan ke Supplier
+     */
+    public function exportXlsx(Request $request)
+    {
+        $scope = $request->input('scope', 'all');
+        $result = $this->plannerService->calculateRequirements($scope);
+
+        return $this->exportService->exportXlsx($result, $scope);
     }
 }

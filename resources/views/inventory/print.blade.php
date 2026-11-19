@@ -27,9 +27,14 @@
             <button onclick="window.history.back()" class="text-xs font-bold text-slate-500 hover:text-slate-800">
                 &larr; Kembali ke Aplikasi
             </button>
-            <button onclick="window.print()" class="px-5 py-2.5 bg-pink-700 hover:bg-pink-800 text-white font-bold text-xs rounded-xl shadow-sm transition">
-                Cetak Lembar Belanja & Uang (Print)
-            </button>
+            <div class="flex items-center space-x-2">
+                <a href="{{ route('inventory.export', request()->all()) }}" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center">
+                    <i class="fa-solid fa-file-excel mr-1.5"></i> Ekspor Excel (.xlsx)
+                </a>
+                <button onclick="window.print()" class="px-5 py-2.5 bg-pink-700 hover:bg-pink-800 text-white font-bold text-xs rounded-xl shadow-sm transition">
+                    Cetak Lembar Belanja & Uang (Print)
+                </button>
+            </div>
         </div>
 
         <!-- HEADER KOP RESMI -->
@@ -47,10 +52,10 @@
                         {{ $appSetting->app_name ?: 'SPL (SUSI PARSEL LEBARAN)' }}
                     </h1>
                     <h2 class="text-sm font-bold uppercase tracking-wider text-pink-900 mt-0.5">
-                        REKAP BELANJA GROSIR BARANG POKOK, BONUS, KEMASAN & PENYIAPAN UANG TUNAI
+                        {{ ($scope ?? 'all') === 'all' ? 'REKAP PENGADAAN BARANG POKOK, BONUS & KEMASAN KE SUPPLIER (SEMUA PESANAN KONSUMEN)' : 'REKAP BELANJA GROSIR BARANG POKOK, BONUS & KEMASAN (HANYA LOLOS TITIK AMAN)' }}
                     </h2>
                     <div class="text-[11px] text-slate-500 mt-1">
-                        Dicetak pada: {{ date('d F Y H:i') }} • Total Anggaran Disiapkan: <strong>Rp {{ number_format($summary['grand_total_fund'], 0, ',', '.') }}</strong>
+                        Cakupan: <strong>{{ $summary['scope_label'] ?? (($scope ?? 'all') === 'all' ? 'Semua Pesanan Konsumen (PO ke Supplier)' : 'Hanya Lolos Titik Aman') }}</strong> • Dicetak pada: {{ date('d F Y H:i') }} • Total Anggaran Disiapkan: <strong>Rp {{ number_format($summary['grand_total_fund'], 0, ',', '.') }}</strong>
                     </div>
                 </div>
             </div>
