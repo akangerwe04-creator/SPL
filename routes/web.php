@@ -117,6 +117,8 @@ Route::middleware(['auth'])->group(function () {
 
         // Menu 5: Rekonsiliasi Agen (Pengesahan Setoran Kas)
         Route::get('/owner/deposits', [AgentDepositController::class, 'ownerIndex'])->name('owner.deposits.index');
+        Route::post('/owner/deposits/bulk-approve', [AgentDepositController::class, 'bulkApprove'])->name('owner.deposits.bulk-approve');
+        Route::post('/owner/deposits/bulk-reject', [AgentDepositController::class, 'bulkReject'])->name('owner.deposits.bulk-reject');
         Route::get('/owner/deposits/{deposit}', [AgentDepositController::class, 'ownerShow'])->name('owner.deposits.show');
         Route::post('/owner/deposits/{deposit}/approve', [AgentDepositController::class, 'ownerApprove'])->name('owner.deposits.approve');
         Route::post('/owner/deposits/{deposit}/reject', [AgentDepositController::class, 'ownerReject'])->name('owner.deposits.reject');

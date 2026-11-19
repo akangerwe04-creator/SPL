@@ -67,7 +67,7 @@ class AgentDepositController extends Controller
     }
 
     /**
-     * Owner: Rekapitulasi Kas & Pengesahan Setoran Seluruh Agen
+     * Owner & Admin: Rekapitulasi Kas & Pengesahan Setoran Seluruh Agen
      */
     public function ownerIndex(Request $request)
     {
@@ -85,13 +85,110 @@ class AgentDepositController extends Controller
             $query->where('agent_id', $request->agent_id);
         }
 
-        $deposits = $query->latest()->paginate(15)->withQueryString();
-        $agents = User::where('role', 'agent')->get();
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('deposit_number', 'like', "%{$s}%")
+                  ->orWhereHas('agent', function ($aq) use ($s) {
+                      $aq->where('name', 'like', "%{$s}%")
+                         ->orWhere('username', 'like', "%{$s}%")
+                         ->orWhere('phone', 'like', "%{$s}%");
+                  });
+            });
+        }
+
+        // Pilihan jumlah baris: 15, 25, 50, 100, atau 'all' (Tampilkan Semuanya)
+        $perPage = $request->input('per_page', '15');
+        if ($perPage === 'all') {
+            $totalCount = (clone $query)->count();
+            $deposits = $query->latest()->paginate(max(1, $totalCount))->withQueryString();
+        } else {
+            $perPageInt = in_array((int)$perPage, [15, 25, 50, 100]) ? (int)$perPage : 15;
+            $deposits = $query->latest()->paginate($perPageInt)->withQueryString();
+        }
+
+        $agents = User::where('role', 'agent')->orderBy('name')->get();
 
         $submittedCount = AgentDeposit::where('status', 'submitted')->count();
         $totalApprovedAmount = AgentDeposit::where('status', 'approved')->sum('total_amount');
 
-        return view('deposits.owner_index', compact('deposits', 'agents', 'submittedCount', 'totalApprovedAmount'));
+        return view('deposits.owner_index', compact('deposits', 'agents', 'submittedCount', 'totalApprovedAmount', 'perPage'));
+    }
+
+    /**
+     * Admin: Sahkan / Validasi Setoran Masal (Khusus Akun Admin)
+     */
+    public function bulkApprove(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->isAdmin()) {
+            abort(403, 'Aksi masal pengesahan setoran hanya diizinkan untuk akun Admin.');
+        }
+
+        $request->validate([
+            'deposit_ids' => 'required|array|min:1',
+            'deposit_ids.*' => 'required|integer|exists:agent_deposits,id',
+            'notes' => 'nullable|string|max:255',
+        ]);
+
+        $depositIds = $request->input('deposit_ids', []);
+        $deposits = AgentDeposit::with('agent')->whereIn('id', $depositIds)
+            ->where('status', '!=', 'approved')
+            ->get();
+
+        if ($deposits->isEmpty()) {
+            return back()->with('error', 'Tidak ada berkas setoran terpilih yang dapat disahkan (mungkin sudah disahkan sebelumnya).');
+        }
+
+        $approvedCount = 0;
+        $totalAmount = 0;
+
+        foreach ($deposits as $deposit) {
+            $deposit->approve($user->id, $request->input('notes'));
+            $approvedCount++;
+            $totalAmount += (float)$deposit->total_amount;
+        }
+
+        return redirect()->route('owner.deposits.index', $request->only(['status', 'agent_id', 'per_page', 'search']))
+            ->with('success', "Berhasil mengesahkan {$approvedCount} berkas setoran agen sekaligus dengan total kas Rp " . number_format($totalAmount, 0, ',', '.') . '. Seluruh ceklis terkait telah terkunci sah.');
+    }
+
+    /**
+     * Admin: Tolak Setoran Masal (Khusus Akun Admin)
+     */
+    public function bulkReject(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->isAdmin()) {
+            abort(403, 'Aksi masal penolakan setoran hanya diizinkan untuk akun Admin.');
+        }
+
+        $request->validate([
+            'deposit_ids' => 'required|array|min:1',
+            'deposit_ids.*' => 'required|integer|exists:agent_deposits,id',
+            'notes' => 'required|string|max:255',
+        ]);
+
+        $depositIds = $request->input('deposit_ids', []);
+        $deposits = AgentDeposit::with('agent')->whereIn('id', $depositIds)
+            ->where('status', '!=', 'approved')
+            ->get();
+
+        if ($deposits->isEmpty()) {
+            return back()->with('error', 'Tidak ada berkas setoran terpilih yang dapat ditolak (mungkin sudah disahkan).');
+        }
+
+        $rejectedCount = 0;
+        $totalAmount = 0;
+
+        foreach ($deposits as $deposit) {
+            $deposit->reject($user->id, $request->input('notes'));
+            $rejectedCount++;
+            $totalAmount += (float)$deposit->total_amount;
+        }
+
+        return redirect()->route('owner.deposits.index', $request->only(['status', 'agent_id', 'per_page', 'search']))
+            ->with('success', "Berhasil menolak {$rejectedCount} berkas setoran agen dengan total Rp " . number_format($totalAmount, 0, ',', '.') . ". Seluruh berkas telah dikembalikan untuk direvisi oleh agen.");
     }
 
     /**
