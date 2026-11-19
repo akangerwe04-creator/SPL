@@ -608,13 +608,14 @@ class AgentReportExportService
             5 => 32,  // E: Alamat Konsumen
             6 => 32,  // F: Paket Dipesan
             7 => 15,  // G: Jenis Paket
-            8 => 18,  // H: Skema & Durasi
-            9 => 20,  // I: Target Nominal (Rp)
-            10 => 20, // J: Total Disetor (Rp)
-            11 => 20, // K: Sisa Tagihan (Rp)
-            12 => 14, // L: Progress Setor
-            13 => 16, // M: Status
-            14 => 28, // N: Catatan Khusus
+            8 => 26,  // H: Kemasan Dipilih
+            9 => 18,  // I: Skema & Durasi
+            10 => 20, // J: Target Nominal (Rp)
+            11 => 20, // K: Total Disetor (Rp)
+            12 => 20, // L: Sisa Tagihan (Rp)
+            13 => 14, // M: Progress Setor
+            14 => 16, // N: Status
+            15 => 28, // O: Catatan Khusus
         ];
 
         $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n";
@@ -669,13 +670,14 @@ class AgentReportExportService
             'E' => 'Alamat Konsumen',
             'F' => 'Paket Dipesan',
             'G' => 'Jenis Paket',
-            'H' => 'Skema & Durasi',
-            'I' => 'Target Nominal (Rp)',
-            'J' => 'Total Disetor (Rp)',
-            'K' => 'Sisa Tagihan (Rp)',
-            'L' => 'Progress',
-            'M' => 'Status',
-            'N' => 'Catatan Khusus',
+            'H' => 'Kemasan Dipilih',
+            'I' => 'Skema & Durasi',
+            'J' => 'Target Nominal (Rp)',
+            'K' => 'Total Disetor (Rp)',
+            'L' => 'Sisa Tagihan (Rp)',
+            'M' => 'Progress',
+            'N' => 'Status',
+            'O' => 'Catatan Khusus',
         ];
         $xml .= "    <row r=\"{$r}\" ht=\"26\">\n";
         foreach ($headers as $col => $text) {
@@ -702,12 +704,13 @@ class AgentReportExportService
                 $xml .= $this->cellStr('F', $r, 'Belum memilih paket', 5);
                 $xml .= $this->cellStr('G', $r, '-', 6);
                 $xml .= $this->cellStr('H', $r, '-', 6);
-                $xml .= $this->cellNum('I', $r, 0, 8);
+                $xml .= $this->cellStr('I', $r, '-', 6);
                 $xml .= $this->cellNum('J', $r, 0, 8);
                 $xml .= $this->cellNum('K', $r, 0, 8);
-                $xml .= $this->cellStr('L', $r, '0%', 6);
-                $xml .= $this->cellStr('M', $r, 'Belum Aktif', 6);
-                $xml .= $this->cellStr('N', $r, '-', 5);
+                $xml .= $this->cellNum('L', $r, 0, 8);
+                $xml .= $this->cellStr('M', $r, '0%', 6);
+                $xml .= $this->cellStr('N', $r, 'Belum Aktif', 6);
+                $xml .= $this->cellStr('O', $r, '-', 5);
                 $xml .= "    </row>\n";
             } else {
                 foreach ($packagesList as $cp) {
@@ -715,6 +718,9 @@ class AgentReportExportService
                     $pkg = $cp->package;
                     $pkgName = $pkg ? $pkg->name : 'Paket Kustom';
                     $pkgType = $pkg ? ucfirst($pkg->type) : 'Parsel';
+                    $packagingText = $cp->packaging 
+                        ? ($cp->packaging->name . ((float)$cp->packaging_price > 0 ? ' (+Rp ' . number_format($cp->packaging_price, 0, ',', '.') . ')' : ''))
+                        : 'Standar';
                     $periodText = $pkg ? (($pkg->installment_label ?? 'Mingguan') . ' (' . $pkg->installment_count . ' ' . ($pkg->period_label ?? 'Mgg') . ')') : '-';
                     $target = (float) $cp->total_target;
                     $paid = (float) $cp->total_paid;
@@ -762,13 +768,14 @@ class AgentReportExportService
                     $xml .= $this->cellStr('E', $r, $cust->address ?: '-', 5);
                     $xml .= $this->cellStr('F', $r, $pkgName, 5);
                     $xml .= $this->cellStr('G', $r, $pkgType, 6);
-                    $xml .= $this->cellStr('H', $r, $periodText, 6);
-                    $xml .= $this->cellNum('I', $r, $target, 8);
-                    $xml .= $this->cellNum('J', $r, $paid, 8);
-                    $xml .= $this->cellNum('K', $r, $remaining, 8);
-                    $xml .= $this->cellStr('L', $r, $progress, 6);
-                    $xml .= $this->cellStr('M', $r, $status, 6);
-                    $xml .= $this->cellStr('N', $r, $noteStr, 5);
+                    $xml .= $this->cellStr('H', $r, $packagingText, 5);
+                    $xml .= $this->cellStr('I', $r, $periodText, 6);
+                    $xml .= $this->cellNum('J', $r, $target, 8);
+                    $xml .= $this->cellNum('K', $r, $paid, 8);
+                    $xml .= $this->cellNum('L', $r, $remaining, 8);
+                    $xml .= $this->cellStr('M', $r, $progress, 6);
+                    $xml .= $this->cellStr('N', $r, $status, 6);
+                    $xml .= $this->cellStr('O', $r, $noteStr, 5);
                     $xml .= "    </row>\n";
                 }
             }
@@ -784,13 +791,14 @@ class AgentReportExportService
         $xml .= $this->cellStr('E', $r, '', 9);
         $xml .= $this->cellStr('F', $r, '', 9);
         $xml .= $this->cellStr('G', $r, '', 9);
-        $xml .= $this->cellStr('H', $r, ($rowNo - 1) . ' Pesanan', 9);
-        $xml .= $this->cellNum('I', $r, $totTarget, 9);
-        $xml .= $this->cellNum('J', $r, $totPaid, 9);
-        $xml .= $this->cellNum('K', $r, $totRemaining, 9);
-        $xml .= $this->cellStr('L', $r, '', 9);
+        $xml .= $this->cellStr('H', $r, '', 9);
+        $xml .= $this->cellStr('I', $r, ($rowNo - 1) . ' Pesanan', 9);
+        $xml .= $this->cellNum('J', $r, $totTarget, 9);
+        $xml .= $this->cellNum('K', $r, $totPaid, 9);
+        $xml .= $this->cellNum('L', $r, $totRemaining, 9);
         $xml .= $this->cellStr('M', $r, '', 9);
         $xml .= $this->cellStr('N', $r, '', 9);
+        $xml .= $this->cellStr('O', $r, '', 9);
         $xml .= "    </row>\n";
 
         $xml .= '  </sheetData>' . "\n";

@@ -501,6 +501,7 @@ class AgentManagementController extends Controller
                     $q->with([
                         'customerPackages.package.packageItems.item',
                         'customerPackages.customItems.item',
+                        'customerPackages.packaging',
                     ])->orderBy('name');
                 }
             ])

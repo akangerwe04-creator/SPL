@@ -4,7 +4,8 @@
         $customer->name . ' ' . 
         $customer->address . ' ' . 
         $customer->phone . ' ' . 
-        $customer->customerPackages->pluck('package.name')->implode(' ')
+        $customer->customerPackages->pluck('package.name')->implode(' ') . ' ' .
+        $customer->customerPackages->pluck('packaging.name')->implode(' ')
     );
     $isSafeCust = $customer->is_safe ?? $customer->isSafeThresholdReached();
 @endphp
@@ -69,6 +70,19 @@
                 <div class="font-extrabold text-slate-900 text-xs mt-1">
                     {{ $cp->package->name }}
                 </div>
+
+                <!-- RINCIAN KEMASAN DIPILIH -->
+                @if($cp->packaging)
+                    <div class="mt-1.5 flex items-center space-x-1.5 text-[10px] text-amber-900 bg-amber-100/80 border border-amber-300/80 rounded-lg px-2 py-0.5 w-fit font-bold shadow-2xs">
+                        <i class="fa-solid fa-box-archive text-amber-700 text-[9px]"></i>
+                        <span>Kemasan: {{ $cp->packaging->name }} (+Rp {{ number_format($cp->packaging_price, 0, ',', '.') }})</span>
+                    </div>
+                @else
+                    <div class="mt-1 text-[10px] text-slate-500 flex items-center space-x-1">
+                        <i class="fa-solid fa-box text-slate-400 text-[9px]"></i>
+                        <span>Kemasan: Standar</span>
+                    </div>
+                @endif
 
                 <!-- RINCIAN BARANG ECERAN PILIHAN KONSUMEN -->
                 @if($cp->package->isEcer())

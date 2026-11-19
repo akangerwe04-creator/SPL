@@ -443,6 +443,15 @@
                                                     {{ $cp->package->code }}
                                                 </span>
                                                 {{ $cp->package->name }}
+                                                @if($cp->packaging)
+                                                    <div class="text-[9px] text-amber-900 font-bold mt-0.5">
+                                                        &bull; Kemasan: {{ $cp->packaging->name }} (+Rp {{ number_format($cp->packaging_price, 0, ',', '.') }})
+                                                    </div>
+                                                @else
+                                                    <div class="text-[8px] text-slate-400 mt-0.5">
+                                                        &bull; Kemasan: Standar
+                                                    </div>
+                                                @endif
                                                 @if($cp->package->isEcer())
                                                     @if($cp->customItems->isNotEmpty())
                                                         <div class="text-[9px] text-blue-800 font-semibold mt-0.5">

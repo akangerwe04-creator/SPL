@@ -920,7 +920,8 @@
                     $agent->phone . ' ' . 
                     $agent->customers->pluck('name')->implode(' ') . ' ' . 
                     $agent->customers->pluck('phone')->implode(' ') . ' ' . 
-                    $agent->customers->flatMap->customerPackages->pluck('package.name')->implode(' ')
+                    $agent->customers->flatMap->customerPackages->pluck('package.name')->implode(' ') . ' ' .
+                    $agent->customers->flatMap->customerPackages->pluck('packaging.name')->implode(' ')
                 );
             @endphp
             <div 
