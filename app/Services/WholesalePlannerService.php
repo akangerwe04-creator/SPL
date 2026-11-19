@@ -452,7 +452,7 @@ class WholesalePlannerService
             } elseif ($pkg->isTabungan()) {
                 // Tabungan: Payout utama adalah Uang Tunai kepada Nasabah!
                 $uangItem = $pkg->packageItems->first(fn($pi) => $pi->item && $pi->item->isUang() && !$pi->is_bonus);
-                $tabunganCash = $uangItem ? (float) ($uangItem->item->unit_price * $uangItem->quantity) : (float) ($pkg->base_price ?: ($cp->total_target ?: $pkg->target_nominal));
+                $tabunganCash = $uangItem ? (float) ($uangItem->item->unit_price * $uangItem->quantity) : (float) ($pkg->target_nominal ?: ($pkg->base_price ?: $cp->total_target));
 
                 $cashRequirements[] = [
                     'customer_id' => $cp->customer_id,

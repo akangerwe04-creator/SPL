@@ -742,10 +742,21 @@ function customerRegistration() {
             if (this.isEcerPackage) {
                 return this.calculatedInstallment;
             } else if (this.selectedPackageInfo.type === 'tabungan') {
-                return this.selectedPackageInfo.installment;
+                const baseInst = Number(this.selectedPackageInfo.installment) || 0;
+                if (baseInst > 0) return baseInst;
+                const count = this.selectedPackageInfo.count || 30;
+                const target = Number(this.selectedPackageInfo.target) || 0;
+                return count > 0 ? this.roundInstallment(target / count) : 0;
             } else {
                 const count = this.selectedPackageInfo.count || 30;
                 const pkgExtra = this.selectedPackagingPrice || 0;
+                const baseInst = Number(this.selectedPackageInfo.installment) || 0;
+                if (baseInst > 0) {
+                    if (pkgExtra > 0) {
+                        return this.roundInstallment(baseInst + (pkgExtra / count));
+                    }
+                    return baseInst;
+                }
                 const target = this.selectedPackageInfo.target || 0;
                 return this.roundInstallment((target + pkgExtra) / count);
             }

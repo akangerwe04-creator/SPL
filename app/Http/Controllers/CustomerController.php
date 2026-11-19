@@ -159,16 +159,35 @@ class CustomerController extends Controller
             }
 
             // 2. Tentukan Total Target & Cicilan
-            $installmentCount = $package->installment_count ?: 30;
-            if ((float) $package->target_nominal > 0) {
-                $targetNominal = (float) $package->target_nominal + $packagingPrice;
-                $rawInstallment = $installmentCount > 0 ? ($targetNominal / $installmentCount) : 0;
+            $installmentCount = max(1, (int) ($package->installment_count ?: 30));
+            $baseInstallment = (float) ($package->installment_amount ?: 0);
+            $packagingPrice = (float) ($packagingPrice ?: 0);
+            $packagingWeekly = $installmentCount > 0 ? ($packagingPrice / $installmentCount) : 0;
+
+            if ($package->isTabungan()) {
+                if ($baseInstallment > 0) {
+                    $installmentAmount = $baseInstallment;
+                } elseif ((float) $package->target_nominal > 0) {
+                    $installmentAmount = Package::roundInstallment((float) $package->target_nominal / $installmentCount);
+                } else {
+                    $installmentAmount = 0;
+                }
+                $targetNominal = ($installmentAmount * $installmentCount) + $packagingPrice;
+            } elseif ($baseInstallment > 0) {
+                if ($packagingPrice > 0) {
+                    $installmentAmount = Package::roundInstallment($baseInstallment + $packagingWeekly);
+                } else {
+                    $installmentAmount = $baseInstallment;
+                }
+                $targetNominal = ($installmentAmount * $installmentCount);
+            } elseif ((float) $package->target_nominal > 0) {
+                $rawInstallment = ($package->target_nominal + $packagingPrice) / $installmentCount;
+                $installmentAmount = Package::roundInstallment($rawInstallment);
+                $targetNominal = ($installmentAmount * $installmentCount);
             } else {
-                $baseInstallment = (float) ($package->installment_amount ?: 0);
-                $rawInstallment = $baseInstallment + ($installmentCount > 0 ? ($packagingPrice / $installmentCount) : 0);
-                $targetNominal = ($baseInstallment * $installmentCount) + $packagingPrice;
+                $installmentAmount = 0;
+                $targetNominal = 0;
             }
-            $installmentAmount = Package::roundInstallment($rawInstallment);
 
             // Jika Paket Ecer:
             $customItemsData = [];
@@ -452,16 +471,35 @@ class CustomerController extends Controller
                     }
 
                     // Tentukan Total Target & Cicilan baru
-                    $installmentCount = $newPackage->installment_count ?: 30;
-                    if ((float) $newPackage->target_nominal > 0) {
-                        $targetNominal = (float) $newPackage->target_nominal + $packagingPrice;
-                        $rawInstallment = $installmentCount > 0 ? ($targetNominal / $installmentCount) : 0;
+                    $installmentCount = max(1, (int) ($newPackage->installment_count ?: 30));
+                    $baseInstallment = (float) ($newPackage->installment_amount ?: 0);
+                    $packagingPrice = (float) ($packagingPrice ?: 0);
+                    $packagingWeekly = $installmentCount > 0 ? ($packagingPrice / $installmentCount) : 0;
+
+                    if ($newPackage->isTabungan()) {
+                        if ($baseInstallment > 0) {
+                            $installmentAmount = $baseInstallment;
+                        } elseif ((float) $newPackage->target_nominal > 0) {
+                            $installmentAmount = Package::roundInstallment((float) $newPackage->target_nominal / $installmentCount);
+                        } else {
+                            $installmentAmount = 0;
+                        }
+                        $targetNominal = ($installmentAmount * $installmentCount) + $packagingPrice;
+                    } elseif ($baseInstallment > 0) {
+                        if ($packagingPrice > 0) {
+                            $installmentAmount = Package::roundInstallment($baseInstallment + $packagingWeekly);
+                        } else {
+                            $installmentAmount = $baseInstallment;
+                        }
+                        $targetNominal = ($installmentAmount * $installmentCount);
+                    } elseif ((float) $newPackage->target_nominal > 0) {
+                        $rawInstallment = ($newPackage->target_nominal + $packagingPrice) / $installmentCount;
+                        $installmentAmount = Package::roundInstallment($rawInstallment);
+                        $targetNominal = ($installmentAmount * $installmentCount);
                     } else {
-                        $baseInstallment = (float) ($newPackage->installment_amount ?: 0);
-                        $rawInstallment = $baseInstallment + ($installmentCount > 0 ? ($packagingPrice / $installmentCount) : 0);
-                        $targetNominal = ($baseInstallment * $installmentCount) + $packagingPrice;
+                        $installmentAmount = 0;
+                        $targetNominal = 0;
                     }
-                    $installmentAmount = Package::roundInstallment($rawInstallment);
 
                     // Cek riwayat pembayaran yang sudah ada
                     $paidPayments = $activePackage->payments()->where('is_paid', true)->get();
@@ -486,7 +524,11 @@ class CustomerController extends Controller
                         // Sudah ada cicilan masuk: Pertahankan yang sudah terbayar, sesuaikan sisa tagihan
                         $remainingTarget = max(0, $targetNominal - $paidSum);
                         $remainingCount = max(1, $installmentCount - $paidCount);
-                        $newRemainingInstallment = Package::roundInstallment($remainingTarget / $remainingCount);
+                        if ($newPackage->isTabungan() && $baseInstallment > 0) {
+                            $newRemainingInstallment = $baseInstallment;
+                        } else {
+                            $newRemainingInstallment = Package::roundInstallment($remainingTarget / $remainingCount);
+                        }
 
                         // Hapus kotak tagihan yang belum terbayar
                         $activePackage->payments()->where('is_paid', false)->delete();
@@ -536,16 +578,35 @@ class CustomerController extends Controller
                     }
                 }
 
-                $installmentCount = $newPackage->installment_count ?: 30;
-                if ((float) $newPackage->target_nominal > 0) {
-                    $targetNominal = (float) $newPackage->target_nominal + $packagingPrice;
-                    $rawInstallment = $installmentCount > 0 ? ($targetNominal / $installmentCount) : 0;
+                $installmentCount = max(1, (int) ($newPackage->installment_count ?: 30));
+                $baseInstallment = (float) ($newPackage->installment_amount ?: 0);
+                $packagingPrice = (float) ($packagingPrice ?: 0);
+                $packagingWeekly = $installmentCount > 0 ? ($packagingPrice / $installmentCount) : 0;
+
+                if ($newPackage->isTabungan()) {
+                    if ($baseInstallment > 0) {
+                        $installmentAmount = $baseInstallment;
+                    } elseif ((float) $newPackage->target_nominal > 0) {
+                        $installmentAmount = Package::roundInstallment((float) $newPackage->target_nominal / $installmentCount);
+                    } else {
+                        $installmentAmount = 0;
+                    }
+                    $targetNominal = ($installmentAmount * $installmentCount) + $packagingPrice;
+                } elseif ($baseInstallment > 0) {
+                    if ($packagingPrice > 0) {
+                        $installmentAmount = Package::roundInstallment($baseInstallment + $packagingWeekly);
+                    } else {
+                        $installmentAmount = $baseInstallment;
+                    }
+                    $targetNominal = ($installmentAmount * $installmentCount);
+                } elseif ((float) $newPackage->target_nominal > 0) {
+                    $rawInstallment = ($newPackage->target_nominal + $packagingPrice) / $installmentCount;
+                    $installmentAmount = Package::roundInstallment($rawInstallment);
+                    $targetNominal = ($installmentAmount * $installmentCount);
                 } else {
-                    $baseInstallment = (float) ($newPackage->installment_amount ?: 0);
-                    $rawInstallment = $baseInstallment + ($installmentCount > 0 ? ($packagingPrice / $installmentCount) : 0);
-                    $targetNominal = ($baseInstallment * $installmentCount) + $packagingPrice;
+                    $installmentAmount = 0;
+                    $targetNominal = 0;
                 }
-                $installmentAmount = Package::roundInstallment($rawInstallment);
 
                 $newCp = CustomerPackage::create([
                     'customer_id' => $customer->id,
