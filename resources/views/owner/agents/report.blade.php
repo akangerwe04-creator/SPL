@@ -1146,7 +1146,7 @@
                                                 <th class="py-2.5 px-3.5 min-w-[220px]">Paket &amp; Barang</th>
                                                 <th class="py-2.5 px-3.5 min-w-[130px] text-right">Target &amp; Cicilan</th>
                                                 <th class="py-2.5 px-3.5 min-w-[140px] text-center">Status Titik Aman</th>
-                                                <th class="py-2.5 px-3.5 min-w-[140px]">Progres Pembayaran</th>
+                                                <th class="py-2.5 px-3.5 min-w-[150px]">Progres &amp; Hari Lunas</th>
                                                 <th class="py-2.5 px-3 text-center w-20">Aksi</th>
                                             </tr>
                                         </thead>
@@ -1195,7 +1195,7 @@
                                                 <th class="py-2.5 px-3.5 min-w-[220px]">Paket &amp; Barang</th>
                                                 <th class="py-2.5 px-3.5 min-w-[130px] text-right">Target &amp; Cicilan</th>
                                                 <th class="py-2.5 px-3.5 min-w-[140px] text-center">Status Titik Aman</th>
-                                                <th class="py-2.5 px-3.5 min-w-[140px]">Progres Pembayaran</th>
+                                                <th class="py-2.5 px-3.5 min-w-[150px]">Progres &amp; Hari Lunas</th>
                                                 <th class="py-2.5 px-3 text-center w-20">Aksi</th>
                                             </tr>
                                         </thead>
@@ -1222,7 +1222,7 @@
                                     <th class="py-2.5 px-3.5 min-w-[220px]">Paket &amp; Barang yang Dipilih</th>
                                     <th class="py-2.5 px-3.5 min-w-[130px] text-right">Target &amp; Cicilan</th>
                                     <th class="py-2.5 px-3.5 min-w-[140px] text-center">Status Titik Aman</th>
-                                    <th class="py-2.5 px-3.5 min-w-[140px]">Progres Pembayaran</th>
+                                    <th class="py-2.5 px-3.5 min-w-[150px]">Progres &amp; Hari Lunas</th>
                                     <th class="py-2.5 px-3 text-center w-20">Aksi</th>
                                 </tr>
                             </thead>

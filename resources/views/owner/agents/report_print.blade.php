@@ -423,7 +423,7 @@
                                 <th class="py-1.5 px-2.5 text-right w-24">Target</th>
                                 <th class="py-1.5 px-2.5 text-right w-24">Cicilan</th>
                                 <th class="py-1.5 px-2.5 text-center w-24">Titik Aman</th>
-                                <th class="py-1.5 px-2.5 text-center w-16">Progres</th>
+                                <th class="py-1.5 px-2.5 text-center w-24">Progres &amp; Hari Lunas</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-200">
@@ -464,6 +464,9 @@
                                                         &bull; Kemasan: Standar
                                                     </div>
                                                 @endif
+                                                <div class="text-[8px] text-emerald-800 font-bold mt-0.5">
+                                                    &bull; Lunas: {{ $cp->paid_installments_count }} / {{ $cp->total_installments_count }} {{ $cp->period_unit_label }}
+                                                </div>
                                                 @if($pkg->isEcer())
                                                     @if($cp->customItems->isNotEmpty())
                                                         <div class="text-[9px] text-blue-800 font-semibold mt-0.5">
@@ -511,7 +514,12 @@
                                     </td>
                                     <td class="py-1.5 px-2.5 text-center font-bold text-slate-700">
                                         @foreach($cust->customerPackages as $cp)
-                                            <div>{{ $cp->progress_percent }}%</div>
+                                            <div class="mb-1 last:mb-0 space-y-0.5">
+                                                <div>{{ $cp->progress_percent }}%</div>
+                                                <div class="text-[8px] text-emerald-900 font-extrabold bg-emerald-50 border border-emerald-200 px-1 py-0.2 rounded whitespace-nowrap">
+                                                    {{ $cp->paid_installments_count }} {{ $cp->period_unit_label }} Lunas
+                                                </div>
+                                            </div>
                                         @endforeach
                                     </td>
                                 </tr>

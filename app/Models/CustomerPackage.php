@@ -240,6 +240,73 @@ class CustomerPackage extends Model
     }
 
     /**
+     * Hitung jumlah periode/hari cicilan yang sudah lunas dibayar
+     */
+    public function getPaidInstallmentsCountAttribute(): int
+    {
+        if (isset($this->attributes['paid_payments_count'])) {
+            return (int) $this->attributes['paid_payments_count'];
+        }
+
+        if ($this->relationLoaded('payments')) {
+            $count = (int) $this->payments->where('is_paid', true)->count();
+            if ($count > 0) return $count;
+        } else {
+            $count = (int) $this->payments()->where('is_paid', true)->count();
+            if ($count > 0) return $count;
+        }
+
+        // Estimasi fallback dari total nominal disetor dibagi cicilan paket
+        if ((float)$this->total_paid > 0 && $this->package && (float)$this->package->installment_amount > 0) {
+            $est = (int) floor((float)$this->total_paid / (float)$this->package->installment_amount);
+            $max = $this->total_installments_count;
+            return $max > 0 ? min($max, $est) : $est;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Total periode/hari cicilan dari paket
+     */
+    public function getTotalInstallmentsCountAttribute(): int
+    {
+        if ($this->package && (int)$this->package->installment_count > 0) {
+            return (int) $this->package->installment_count;
+        }
+
+        if (isset($this->attributes['payments_count'])) {
+            return (int) $this->attributes['payments_count'];
+        }
+
+        if ($this->relationLoaded('payments')) {
+            return (int) $this->payments->count();
+        }
+
+        return 0;
+    }
+
+    /**
+     * Label satuan periode (Hari atau Minggu)
+     */
+    public function getPeriodUnitLabelAttribute(): string
+    {
+        return ($this->package && $this->package->isHarian()) ? 'Hari' : 'Minggu';
+    }
+
+    /**
+     * Ringkasan hari/minggu lunas
+     */
+    public function getPaidPeriodSummaryAttribute(): string
+    {
+        $paid = $this->paid_installments_count;
+        $total = $this->total_installments_count;
+        $unit = $this->period_unit_label;
+
+        return $total > 0 ? "{$paid} / {$total} {$unit} Lunas" : "{$paid} {$unit} Lunas";
+    }
+
+    /**
      * Hitung ulang total_paid dari ceklis pembayaran yang sudah disahkan/dibayar
      */
     public function recalculatePaidAmount(): void

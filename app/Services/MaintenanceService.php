@@ -10,11 +10,7 @@ class MaintenanceService
 
     public static function filePath(): string
     {
-        try {
-            return storage_path('framework/maintenance_active.json');
-        } catch (\Throwable $e) {
-            return dirname(__DIR__, 2) . '/storage/framework/maintenance_active.json';
-        }
+        return storage_path('framework/maintenance_active.json');
     }
 
     /**
@@ -84,11 +80,7 @@ class MaintenanceService
 
         @file_put_contents(self::filePath(), json_encode($data, JSON_PRETTY_PRINT));
         self::$cachedActive = true;
-        try {
-            Cache::forever('spl_maintenance_active', true);
-        } catch (\Throwable $e) {
-            // Silently ignore cache store exception if database or cache is offline
-        }
+        Cache::forever('spl_maintenance_active', true);
     }
 
     /**
@@ -101,10 +93,7 @@ class MaintenanceService
         }
 
         self::$cachedActive = false;
-        try {
-            Cache::forget('spl_maintenance_active');
-        } catch (\Throwable $e) {
-            // Silently ignore cache store exception if database or cache is offline
-        }
+        Cache::forget('spl_maintenance_active');
     }
 }
+

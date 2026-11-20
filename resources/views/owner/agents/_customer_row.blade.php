@@ -108,6 +108,17 @@
                     </div>
                 @endif
 
+                <!-- JUMLAH HARI / PERIODE LUNAS -->
+                @php
+                    $paidDays = $cp->paid_installments_count;
+                    $totPeriods = $cp->total_installments_count;
+                    $unitLabel = ($pkg && $pkg->isHarian()) ? 'Hari' : 'Minggu';
+                @endphp
+                <div class="mt-1 flex items-center space-x-1.5 text-[10px] text-emerald-900 bg-emerald-100/80 border border-emerald-300/80 rounded-lg px-2 py-0.5 w-fit font-bold shadow-2xs">
+                    <i class="fa-solid fa-calendar-check text-emerald-700 text-[9px]"></i>
+                    <span>Lunas: {{ $paidDays }} {{ $unitLabel }} <span class="text-slate-500 font-normal">({{ $totPeriods }} {{ $unitLabel }})</span></span>
+                </div>
+
                 <!-- RINCIAN BARANG ECERAN PILIHAN KONSUMEN -->
                 @if($pkg->isEcer())
                     @if($cp->customItems->isNotEmpty())
@@ -202,16 +213,32 @@
         @endforelse
     </td>
 
-    <!-- 7. PROGRES PEMBAYARAN -->
+    <!-- 7. PROGRES PEMBAYARAN & HARI LUNAS -->
     <td class="py-3 px-3.5">
         @forelse($customer->customerPackages as $cp)
-            <div class="mb-2 last:mb-0 space-y-1">
+            @php
+                $pDays = $cp->paid_installments_count;
+                $tPeriods = $cp->total_installments_count;
+                $uLabel = ($cp->package && $cp->package->isHarian()) ? 'Hari' : 'Minggu';
+            @endphp
+            <div class="mb-2.5 last:mb-0 space-y-1">
                 <div class="flex justify-between text-[10px] font-semibold">
                     <span class="text-emerald-700 font-bold font-mono">{{ $cp->formatted_paid }}</span>
                     <span class="text-slate-600 font-bold font-mono">{{ $cp->progress_percent }}%</span>
                 </div>
                 <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                     <div class="h-1.5 rounded-full {{ $cp->progress_percent >= 100 ? 'bg-emerald-600' : ($cp->isSafeThresholdReached() ? 'bg-emerald-500' : 'bg-amber-500') }}" style="width: {{ min(100, $cp->progress_percent) }}%"></div>
+                </div>
+                <div class="flex items-center justify-between text-[9px] pt-0.5">
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold">
+                        <i class="fa-solid fa-calendar-check mr-1 text-[8px] text-emerald-600"></i>
+                        {{ $pDays }} {{ $uLabel }} Lunas
+                    </span>
+                    @if($tPeriods > 0)
+                        <span class="text-slate-400 font-medium font-mono text-[9px]">
+                            sisa {{ max(0, $tPeriods - $pDays) }} {{ $uLabel }}
+                        </span>
+                    @endif
                 </div>
             </div>
         @empty

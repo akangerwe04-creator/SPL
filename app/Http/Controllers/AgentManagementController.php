@@ -499,9 +499,18 @@ class AgentManagementController extends Controller
             ->with([
                 'customers' => function ($q) {
                     $q->with([
-                        'customerPackages.package.packageItems.item',
-                        'customerPackages.customItems.item',
-                        'customerPackages.packaging',
+                        'customerPackages' => function ($cpQ) {
+                            $cpQ->withCount([
+                                'payments as paid_payments_count' => function ($pq) {
+                                    $pq->where('is_paid', true);
+                                },
+                                'payments as payments_count'
+                            ])->with([
+                                'package.packageItems.item',
+                                'customItems.item',
+                                'packaging',
+                            ]);
+                        }
                     ])->orderBy('name');
                 }
             ])

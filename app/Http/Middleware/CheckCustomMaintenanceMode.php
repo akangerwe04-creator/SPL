@@ -57,15 +57,9 @@ class CheckCustomMaintenanceMode
 
         // 6. Tampilkan halaman pemeliharaan server untuk publik, tamu, agen, dan owner
         $maintenanceData = MaintenanceService::getInfo();
-        try {
-            $appSetting = CatalogSetting::current();
-        } catch (\Throwable $e) {
-            $appSetting = new CatalogSetting([
-                'app_name' => 'SUSI PARSEL',
-                'title' => 'SISTEM MANAJEMEN PARSEL & TABUNGAN HARI RAYA',
-            ]);
-        }
+        $appSetting = CatalogSetting::current();
 
         return response()->view('maintenance', compact('maintenanceData', 'appSetting'), 503);
     }
 }
+
