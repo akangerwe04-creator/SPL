@@ -20,6 +20,7 @@ use App\Http\Controllers\BackupController;
 use App\Http\Controllers\PackagingController;
 use App\Http\Controllers\BookClosingController;
 use App\Http\Controllers\CustomerStopController;
+use App\Http\Controllers\MaintenanceController;
 
 // Root Redirector
 Route::get('/', function () {
@@ -185,5 +186,11 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
         Route::put('/users/{user}/reset-password', [UserManagementController::class, 'resetPassword'])->name('users.reset-password');
         Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
+
+        // Mode Maintenance Server (Khusus Administrator)
+        Route::get('/maintenance', [MaintenanceController::class, 'index'])->name('maintenance.index');
+        Route::post('/maintenance/start', [MaintenanceController::class, 'start'])->name('maintenance.start');
+        Route::post('/maintenance/stop', [MaintenanceController::class, 'stop'])->name('maintenance.stop');
+        Route::get('/maintenance/preview', [MaintenanceController::class, 'preview'])->name('maintenance.preview');
     });
 });

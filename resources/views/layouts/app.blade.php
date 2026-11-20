@@ -288,6 +288,19 @@
                             </div>
                             <span class="bg-indigo-100 text-indigo-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full">Admin</span>
                         </a>
+
+                        <!-- 11. Mode Maintenance Server (Khusus Administrator) -->
+                        <a href="{{ route('admin.maintenance.index') }}" class="flex items-center justify-between px-3 py-2.5 rounded-lg transition {{ request()->routeIs('admin.maintenance.*') ? 'bg-amber-50 text-amber-800 font-bold border-l-4 border-amber-600' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                            <div class="flex items-center">
+                                <i class="fa-solid fa-screwdriver-wrench w-5 text-center mr-2.5 {{ \App\Services\MaintenanceService::isActive() ? 'text-amber-600 animate-spin' : 'text-slate-400' }}"></i>
+                                <span>11. Mode Maintenance</span>
+                            </div>
+                            @if(\App\Services\MaintenanceService::isActive())
+                                <span class="bg-amber-500 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full animate-pulse">Aktif</span>
+                            @else
+                                <span class="bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-full">Off</span>
+                            @endif
+                        </a>
                     @endif
                 @else
                     <!-- MENU AGEN LAPANGAN -->
@@ -408,6 +421,39 @@
 
         <!-- FLASH MESSAGES -->
         <div class="px-4 md:px-8 pt-4">
+            {{-- BANNER PERINGATAN MODE MAINTENANCE AKTIF (KHUSUS ADMINISTRATOR) --}}
+            @if(\App\Services\MaintenanceService::isActive() && auth()->user()->isAdmin())
+                <div class="mb-4 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white p-3.5 sm:p-4 rounded-2xl shadow-xl border-2 border-amber-300 flex flex-col md:flex-row items-center justify-between gap-3 animate-pulse">
+                    <div class="flex items-center space-x-3">
+                        <span class="w-10 h-10 rounded-xl bg-white/20 text-white flex items-center justify-center shrink-0 text-lg shadow-inner">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </span>
+                        <div>
+                            <div class="text-xs sm:text-sm font-black uppercase tracking-wider flex items-center space-x-2">
+                                <span>MODE MAINTENANCE SERVER AKTIF!</span>
+                                <span class="px-2 py-0.5 rounded-full bg-white text-amber-800 text-[10px] font-black shadow-xs">AKSES PUBLIK DITUTUP</span>
+                            </div>
+                            <div class="text-[11px] sm:text-xs text-amber-100 font-medium">
+                                Pengunjung publik, agen, dan akun owner dialihkan ke tampilan pemeliharaan. Hanya Administrator yang dapat melihat aplikasi dan menghentikan mode ini.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 shrink-0">
+                        <a href="{{ route('admin.maintenance.index') }}" class="px-3.5 py-2 rounded-xl bg-amber-900/60 hover:bg-amber-900 text-white text-xs font-bold transition flex items-center space-x-1.5 border border-white/20">
+                            <i class="fa-solid fa-sliders"></i>
+                            <span>Pengaturan</span>
+                        </a>
+                        <form action="{{ route('admin.maintenance.stop') }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin MENGHENTIKAN mode maintenance sekarang dan membuka akses aplikasi kembali ke publik?')">
+                            @csrf
+                            <button type="submit" class="px-4 py-2 rounded-xl bg-white text-amber-900 hover:bg-amber-50 font-black text-xs shadow-md transition flex items-center space-x-1.5">
+                                <i class="fa-solid fa-power-off text-rose-600"></i>
+                                <span>Hentikan Maintenance Sekarang</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            @endif
+
             @if($appSetting->is_book_closed && auth()->user()->isOwnerOrAdmin() && !request()->routeIs('owner.book-closing.*'))
                 <div class="mb-4 bg-gradient-to-r from-rose-900 to-pink-900 border-l-4 border-rose-500 p-3.5 sm:p-4 rounded-r-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-white shadow-sm">
                     <div class="flex items-center space-x-3">
@@ -522,6 +568,10 @@
                 <a href="{{ route('admin.users.index') }}" class="flex flex-col items-center py-1 px-2 text-xs {{ request()->routeIs('admin.users.*') ? 'text-indigo-600 font-extrabold' : 'text-slate-600 hover:text-indigo-600' }}">
                     <i class="fa-solid fa-user-shield text-lg mb-0.5"></i>
                     <span class="text-[10px]">Akun</span>
+                </a>
+                <a href="{{ route('admin.maintenance.index') }}" class="flex flex-col items-center py-1 px-2 text-xs {{ request()->routeIs('admin.maintenance.*') ? 'text-amber-600 font-extrabold' : 'text-slate-600 hover:text-amber-600' }}">
+                    <i class="fa-solid fa-screwdriver-wrench text-lg mb-0.5 {{ \App\Services\MaintenanceService::isActive() ? 'text-amber-600 animate-spin' : '' }}"></i>
+                    <span class="text-[10px]">Maint</span>
                 </a>
             @endif
         @else

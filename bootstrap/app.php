@@ -16,12 +16,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(prepend: [
             \App\Http\Middleware\EnsureDatabaseConnected::class,
         ]);
+        $middleware->web(append: [
+            \App\Http\Middleware\CheckCustomMaintenanceMode::class,
+        ]);
         $middleware->api(prepend: [
             \App\Http\Middleware\EnsureDatabaseConnected::class,
         ]);
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureRole::class,
             'db.connected' => \App\Http\Middleware\EnsureDatabaseConnected::class,
+            'maintenance' => \App\Http\Middleware\CheckCustomMaintenanceMode::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

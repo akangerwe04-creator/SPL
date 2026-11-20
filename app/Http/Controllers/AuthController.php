@@ -5,13 +5,22 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use App\Services\MaintenanceService;
 
 class AuthController extends Controller
 {
     public function showLogin()
     {
         if (Auth::check()) {
-            return $this->smartRedirect(Auth::user());
+            $user = Auth::user();
+            // Jika mode maintenance aktif dan user bukan admin, keluarkan sesi
+            if (MaintenanceService::isActive() && !$user->isAdmin()) {
+                Auth::logout();
+                request()->session()->invalidate();
+                request()->session()->regenerateToken();
+            } else {
+                return $this->smartRedirect($user);
+            }
         }
 
         return view('auth.login');
@@ -33,9 +42,20 @@ class AuthController extends Controller
         ];
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            $request->session()->regenerate();
             $user = Auth::user();
 
+            // Jika mode maintenance sedang aktif dan user bukan admin (misal Owner atau Agen):
+            if (MaintenanceService::isActive() && !$user->isAdmin()) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return back()->withErrors([
+                    'login' => 'Mohon maaf server kami sedang dalam perbaikan. Akses saat ini hanya dibuka untuk Administrator.',
+                ])->onlyInput('login');
+            }
+
+            $request->session()->regenerate();
             return $this->smartRedirect($user);
         }
 
@@ -49,6 +69,10 @@ class AuthController extends Controller
      */
     public function quickLogin(string $role)
     {
+        if (MaintenanceService::isActive() && $role !== 'admin') {
+            return redirect()->route('login')->with('error', 'Mohon maaf server kami sedang dalam perbaikan. Akses demo agen/owner ditutup sementara.');
+        }
+
         $user = User::where('role', $role)->first();
         if ($user) {
             Auth::login($user);

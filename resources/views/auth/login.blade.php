@@ -102,6 +102,21 @@
             <h2 class="text-lg font-extrabold text-slate-900 mb-1">Masuk ke Sistem</h2>
             <p class="text-xs text-slate-600 font-medium mb-6">Gunakan akun Anda untuk mengelola tagihan, setoran, atau operasional parsel.</p>
 
+            @if(\App\Services\MaintenanceService::isActive())
+                <div class="mb-5 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-400 p-3.5 rounded-2xl text-xs text-amber-900 flex items-start space-x-2.5 shadow-sm">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-600 text-lg mt-0.5 shrink-0"></i>
+                    <div>
+                        <div class="font-extrabold uppercase tracking-wider text-[11px] text-amber-900 flex items-center gap-1.5">
+                            <span>Mode Pemeliharaan Server Aktif</span>
+                            <span class="px-1.5 py-0.2 rounded bg-amber-200 text-amber-950 font-black text-[9px]">503</span>
+                        </div>
+                        <div class="text-[11px] text-amber-800 mt-1 leading-relaxed">
+                            Aplikasi sedang dalam perbaikan. Akses publik, agen, dan owner dinonaktifkan sementara. Halaman login ini khusus diperuntukkan bagi <strong>Administrator</strong>.
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             @if(session('error'))
                 <div class="mb-4 bg-red-50 border-l-4 border-red-500 p-3 rounded-r-lg text-xs font-semibold text-red-900 flex items-start">
                     <i class="fa-solid fa-circle-exclamation text-red-600 mr-2 mt-0.5"></i>
