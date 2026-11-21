@@ -10,6 +10,9 @@
 @endsection
 
 @section('content')
+@php
+    $isClosed = $isClosed ?? ($isBookClosed ?? ($appSetting->is_book_closed ?? false));
+@endphp
 <div class="space-y-6 max-w-6xl">
 
     <!-- 1. HERO BANNER MANAJEMEN PERIODE -->

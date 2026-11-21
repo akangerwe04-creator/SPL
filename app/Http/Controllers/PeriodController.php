@@ -71,9 +71,12 @@ class PeriodController extends Controller
         $suggestedStartDate = now()->format('Y-m-d');
         $suggestedEndDate = now()->addDays(305)->format('Y-m-d');
 
+        $isBookClosed = $isClosed;
+
         return view('admin.period.index', compact(
             'appSetting',
             'isClosed',
+            'isBookClosed',
             'currentStats',
             'archives',
             'currentPeriodName',
