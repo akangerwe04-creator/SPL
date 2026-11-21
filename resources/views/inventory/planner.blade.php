@@ -659,9 +659,11 @@
                                     <div class="font-extrabold text-pink-900 text-xs">
                                         {{ $row['wholesale_text'] }}
                                     </div>
-                                    <div class="text-[10px] text-slate-400 font-medium">
-                                        (atau genap <strong>{{ $row['wholesale_ceil'] }} {{ $row['wholesale_unit'] }}</strong>)
-                                    </div>
+                                    @if($row['conversion_rate'] > 1)
+                                        <div class="text-[10px] text-slate-400 font-medium">
+                                            (atau genap <strong>{{ $row['wholesale_ceil'] }} {{ $row['wholesale_unit'] }}</strong>)
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="py-3 px-4 text-right font-bold text-slate-900">
                                     Rp {{ number_format($row['estimated_cost'], 0, ',', '.') }}
@@ -744,9 +746,11 @@
                                     <div class="font-extrabold text-amber-900 text-xs">
                                         {{ $b['wholesale_text'] }}
                                     </div>
-                                    <div class="text-[10px] text-slate-400 font-medium">
-                                        (atau genap <strong>{{ $b['wholesale_ceil'] }} {{ $b['wholesale_unit'] }}</strong>)
-                                    </div>
+                                    @if($b['conversion_rate'] > 1)
+                                        <div class="text-[10px] text-slate-400 font-medium">
+                                            (atau genap <strong>{{ $b['wholesale_ceil'] }} {{ $b['wholesale_unit'] }}</strong>)
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="py-3 px-4 text-right font-bold text-slate-900">
                                     Rp {{ number_format($b['estimated_cost'], 0, ',', '.') }}

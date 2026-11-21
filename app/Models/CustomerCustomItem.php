@@ -35,5 +35,10 @@ class CustomerCustomItem extends Model
     {
         return $this->belongsTo(Item::class);
     }
+
+    public function getItemNameAttribute(): string
+    {
+        return $this->item ? $this->item->name : 'Item Eceran';
+    }
 }
 

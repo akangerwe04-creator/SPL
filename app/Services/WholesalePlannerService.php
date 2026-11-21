@@ -584,9 +584,20 @@ class WholesalePlannerService
 
             $totalBase = $data['qty'];
             $rate = $item->conversion_rate > 0 ? (float)$item->conversion_rate : 1;
-            $wholesaleFull = floor($totalBase / $rate);
-            $wholesaleRemainder = $totalBase - ($wholesaleFull * $rate);
-            $wholesaleCeil = (int) ceil($totalBase / $rate);
+            
+            if ($rate > 1) {
+                $wholesaleFull = floor($totalBase / $rate);
+                $wholesaleRemainder = $totalBase - ($wholesaleFull * $rate);
+                $wholesaleCeil = (int) ceil($totalBase / $rate);
+                $wholesaleUnit = $item->wholesale_unit ?: $item->base_unit;
+                $wholesaleText = $wholesaleFull . ' ' . $wholesaleUnit . ($wholesaleRemainder > 0 ? ' + ' . $wholesaleRemainder . ' ' . $item->base_unit : '');
+            } else {
+                $wholesaleFull = $totalBase;
+                $wholesaleRemainder = 0;
+                $wholesaleCeil = $totalBase;
+                $wholesaleUnit = $item->base_unit;
+                $wholesaleText = $totalBase . ' ' . $item->base_unit;
+            }
             
             $costPerUnit = $item->cost_price > 0 ? (float)$item->cost_price : ((float)$item->unit_price * 0.85);
             $estCost = $totalBase * $costPerUnit;
@@ -610,7 +621,7 @@ class WholesalePlannerService
                 'item_name' => $item->name,
                 'category' => $cat,
                 'base_unit' => $item->base_unit,
-                'wholesale_unit' => $item->wholesale_unit,
+                'wholesale_unit' => $wholesaleUnit,
                 'conversion_rate' => $rate,
                 'total_base_qty' => $totalBase,
                 'from_parsel' => $data['from_parsel'],
@@ -618,7 +629,7 @@ class WholesalePlannerService
                 'wholesale_full' => (int) $wholesaleFull,
                 'wholesale_remainder' => (int) $wholesaleRemainder,
                 'wholesale_ceil' => $wholesaleCeil,
-                'wholesale_text' => $wholesaleFull . ' ' . $item->wholesale_unit . ($wholesaleRemainder > 0 ? ' + ' . $wholesaleRemainder . ' ' . $item->base_unit : ''),
+                'wholesale_text' => $wholesaleText,
                 'cost_price' => $costPerUnit,
                 'estimated_cost' => $estCost,
             ];
@@ -643,9 +654,20 @@ class WholesalePlannerService
 
             $totalBase = $data['qty'];
             $rate = $item->conversion_rate > 0 ? (float)$item->conversion_rate : 1;
-            $wholesaleFull = floor($totalBase / $rate);
-            $wholesaleRemainder = $totalBase - ($wholesaleFull * $rate);
-            $wholesaleCeil = (int) ceil($totalBase / $rate);
+            
+            if ($rate > 1) {
+                $wholesaleFull = floor($totalBase / $rate);
+                $wholesaleRemainder = $totalBase - ($wholesaleFull * $rate);
+                $wholesaleCeil = (int) ceil($totalBase / $rate);
+                $wholesaleUnit = $item->wholesale_unit ?: $item->base_unit;
+                $wholesaleText = $wholesaleFull . ' ' . $wholesaleUnit . ($wholesaleRemainder > 0 ? ' + ' . $wholesaleRemainder . ' ' . $item->base_unit : '');
+            } else {
+                $wholesaleFull = $totalBase;
+                $wholesaleRemainder = 0;
+                $wholesaleCeil = $totalBase;
+                $wholesaleUnit = $item->base_unit;
+                $wholesaleText = $totalBase . ' ' . $item->base_unit;
+            }
             
             $costPerUnit = $item->cost_price > 0 ? (float)$item->cost_price : ((float)$item->unit_price * 0.85);
             $estCost = $totalBase * $costPerUnit;
@@ -658,14 +680,14 @@ class WholesalePlannerService
                 'item_name' => $item->name,
                 'category' => $item->category ?: 'Bonus Hadiah',
                 'base_unit' => $item->base_unit,
-                'wholesale_unit' => $item->wholesale_unit,
+                'wholesale_unit' => $wholesaleUnit,
                 'conversion_rate' => $rate,
                 'total_base_qty' => $totalBase,
                 'packages_list' => array_unique($data['packages']),
                 'wholesale_full' => (int) $wholesaleFull,
                 'wholesale_remainder' => (int) $wholesaleRemainder,
                 'wholesale_ceil' => $wholesaleCeil,
-                'wholesale_text' => $wholesaleFull . ' ' . $item->wholesale_unit . ($wholesaleRemainder > 0 ? ' + ' . $wholesaleRemainder . ' ' . $item->base_unit : ''),
+                'wholesale_text' => $wholesaleText,
                 'cost_price' => $costPerUnit,
                 'estimated_cost' => $estCost,
             ];

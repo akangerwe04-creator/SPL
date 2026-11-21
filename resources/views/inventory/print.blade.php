@@ -308,7 +308,9 @@
                             <td class="py-2 px-3 text-center font-bold">{{ number_format($r['total_base_qty']) }} {{ $r['base_unit'] }}</td>
                             <td class="py-2 px-3 font-extrabold text-slate-900">
                                 {{ $r['wholesale_text'] }}
-                                <span class="font-normal text-slate-500 text-[10px]">(atau {{ $r['wholesale_ceil'] }} {{ $r['wholesale_unit'] }})</span>
+                                @if($r['conversion_rate'] > 1)
+                                    <span class="font-normal text-slate-500 text-[10px]">(atau {{ $r['wholesale_ceil'] }} {{ $r['wholesale_unit'] }})</span>
+                                @endif
                             </td>
                             <td class="py-2 px-3 text-right font-bold text-slate-800">
                                 Rp {{ number_format($r['estimated_cost'], 0, ',', '.') }}
