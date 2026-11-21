@@ -1,9 +1,14 @@
+@php
+    $section = request('section', 'all'); // 'all', 'detail', 'summary'
+    $selectedAgentId = request('agent_id');
+    $singleAgent = ($selectedAgentId && $agents->count() === 1) ? $agents->first() : null;
+@endphp
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan Rekapitulasi Distribusi Agen & Paket Konsumen - {{ $appSetting->app_name }}</title>
+    <title>{{ $singleAgent ? 'Rincian Konsumen & Paket - Agen ' . $singleAgent->name : ($section === 'detail' ? 'Laporan Rincian Konsumen per Agen' : 'Laporan Rekapitulasi Distribusi Agen & Paket Konsumen') }} - {{ $appSetting->app_name }}</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
@@ -12,19 +17,55 @@
         @media print {
             .no-print { display: none !important; }
             body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            @page { size: A4 landscape; margin: 10mm; }
+            @page { size: A4 landscape; margin: 8mm; }
             .page-break { page-break-before: always; }
+            .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+            .agent-sheet-break { page-break-after: always; break-after: page; }
         }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-900 p-4 md:p-8 font-sans">
 
     <!-- FLOATING ACTION BUTTONS (NO PRINT) -->
-    <div class="max-w-6xl mx-auto flex items-center justify-between pb-4 no-print text-xs">
-        <button onclick="window.history.back()" class="font-bold text-slate-600 hover:text-slate-900 flex items-center">
-            &larr; Kembali ke Tampilan Web
-        </button>
-        <button onclick="window.print()" class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow transition flex items-center">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-4 no-print text-xs">
+        <div class="flex items-center space-x-2 flex-wrap gap-y-2">
+            <a href="{{ route('owner.agents.report', request()->all()) }}" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center shadow-2xs">
+                &larr; Kembali ke Tampilan Web
+            </a>
+
+            <!-- PILIHAN BAGIAN DOKUMEN -->
+            <div class="flex items-center space-x-1 bg-white p-1 rounded-xl border border-slate-300 shadow-2xs">
+                <a href="{{ route('owner.agents.report.print', array_merge(request()->all(), ['section' => 'all'])) }}" 
+                   class="px-2.5 py-1 rounded-lg font-bold text-[11px] transition {{ $section === 'all' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100' }}">
+                    Semua (Lengkap)
+                </a>
+                <a href="{{ route('owner.agents.report.print', array_merge(request()->all(), ['section' => 'detail'])) }}" 
+                   class="px-2.5 py-1 rounded-lg font-bold text-[11px] transition {{ $section === 'detail' ? 'bg-purple-700 text-white shadow-2xs' : 'text-purple-800 hover:bg-purple-50' }}">
+                    <i class="fa-solid fa-users-viewfinder mr-1"></i> Khusus Rincian Konsumen
+                </a>
+                <a href="{{ route('owner.agents.report.print', array_merge(request()->all(), ['section' => 'summary'])) }}" 
+                   class="px-2.5 py-1 rounded-lg font-bold text-[11px] transition {{ $section === 'summary' ? 'bg-emerald-700 text-white shadow-2xs' : 'text-emerald-800 hover:bg-emerald-50' }}">
+                    Khusus Rekap Matriks
+                </a>
+            </div>
+
+            <!-- FILTER AGEN CEPAT -->
+            <div class="flex items-center space-x-1.5 bg-white px-2.5 py-1 rounded-xl border border-slate-300 shadow-2xs">
+                <span class="text-[11px] font-bold text-slate-500"><i class="fa-solid fa-user-tie text-slate-400 mr-1"></i> Agen:</span>
+                <select onchange="window.location.href = this.value" class="px-2 py-0.5 rounded-lg border border-slate-200 bg-slate-50 font-bold text-xs text-slate-800 focus:outline-none cursor-pointer">
+                    <option value="{{ route('owner.agents.report.print', array_merge(request()->except('agent_id'), ['section' => $section])) }}">
+                        -- Semua Agen ({{ $allAgentsList->count() }} Orang) --
+                    </option>
+                    @foreach($allAgentsList as $ag)
+                        <option value="{{ route('owner.agents.report.print', array_merge(request()->all(), ['agent_id' => $ag->id])) }}" {{ request('agent_id') == $ag->id ? 'selected' : '' }}>
+                            Agen: {{ $ag->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+
+        <button onclick="window.print()" class="px-5 py-2.5 bg-pink-700 hover:bg-pink-800 text-white font-extrabold rounded-xl shadow transition flex items-center shrink-0">
             <i class="fa-solid fa-print mr-1.5"></i> Cetak Dokumen / Simpan PDF
         </button>
     </div>
@@ -62,36 +103,76 @@
 
         <!-- JUDUL DOKUMEN -->
         <div class="text-center mb-6">
-            <h2 class="text-base sm:text-lg font-black uppercase tracking-wide text-slate-900">
-                LAPORAN KESELURUHAN DISTRIBUSI AGEN & PERSEBARAN PAKET KONSUMEN
-            </h2>
-            <div class="text-xs text-slate-500 mt-0.5">
-                Rekapitulasi resmi agen lapangan, alamat, jumlah binaan konsumen, dan jenis paket yang dipesan
-            </div>
+            @if($singleAgent)
+                <h2 class="text-base sm:text-lg font-black uppercase tracking-wide text-slate-900">
+                    LEMBAR RESMI RINCIAN KONSUMEN &amp; PAKET YANG DIPILIH
+                </h2>
+                <div class="text-xs font-bold text-purple-900 mt-1">
+                    AGEN PENANGGUNG JAWAB: {{ strtoupper($singleAgent->name) }} &bull; NO. WA: {{ $singleAgent->phone ?: '-' }} &bull; ALAMAT: {{ $singleAgent->address ?: '-' }}
+                </div>
+            @elseif($section === 'detail')
+                <h2 class="text-base sm:text-lg font-black uppercase tracking-wide text-slate-900">
+                    LAPORAN RINCIAN KONSUMEN &amp; PAKET YANG DIPILIH PER AGEN
+                </h2>
+                <div class="text-xs text-slate-500 mt-0.5">
+                    Daftar lengkap konsumen binaan dan rincian pilihan paket per masing-masing agen lapangan
+                </div>
+            @else
+                <h2 class="text-base sm:text-lg font-black uppercase tracking-wide text-slate-900">
+                    LAPORAN KESELURUHAN DISTRIBUSI AGEN &amp; PERSEBARAN PAKET KONSUMEN
+                </h2>
+                <div class="text-xs text-slate-500 mt-0.5">
+                    Rekapitulasi resmi agen lapangan, alamat, jumlah binaan konsumen, dan jenis paket yang dipesan
+                </div>
+            @endif
         </div>
 
         <!-- 4 SUMMARY BADGES -->
         <div class="grid grid-cols-4 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 text-center text-xs mb-6">
-            <div>
-                <div class="text-[10px] text-slate-500 uppercase font-bold">Total Agen Lapangan</div>
-                <div class="text-base font-extrabold text-slate-900 mt-0.5">{{ $agents->count() }} Orang</div>
-            </div>
-            <div>
-                <div class="text-[10px] text-slate-500 uppercase font-bold">Total Konsumen Binaan</div>
-                <div class="text-base font-extrabold text-blue-900 mt-0.5">{{ $totalCustomersCount }} Konsumen</div>
-                <div class="text-[9px] text-slate-500">H: {{ $totalHarianCustomersCount }} &bull; M: {{ $totalMingguanCustomersCount }} &bull; E: {{ $totalEcerCustomersCount }}</div>
-            </div>
-            <div>
-                <div class="text-[10px] text-slate-500 uppercase font-bold">Total Paket Terpesan</div>
-                <div class="text-base font-extrabold text-amber-800 mt-0.5">{{ $totalPackagesCount }} Paket</div>
-                <div class="text-[9px] text-slate-500">H: {{ $totalHarianOrdersCount }} &bull; M: {{ $totalMingguanOrdersCount }} &bull; E: {{ $totalEcerOrdersCount }}</div>
-            </div>
-            <div>
-                <div class="text-[10px] text-slate-500 uppercase font-bold">Total Target Nilai Pesanan</div>
-                <div class="text-base font-extrabold text-emerald-800 mt-0.5">Rp {{ number_format($totalTargetNominalSum, 0, ',', '.') }}</div>
-            </div>
+            @if($singleAgent)
+                <div>
+                    <div class="text-[10px] text-slate-500 uppercase font-bold">Agen Lapangan</div>
+                    <div class="text-base font-extrabold text-slate-900 mt-0.5">{{ $singleAgent->name }}</div>
+                    <div class="text-[9px] text-slate-500">{{ $singleAgent->phone ?: '-' }}</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-500 uppercase font-bold">Total Konsumen Binaan</div>
+                    <div class="text-base font-extrabold text-blue-900 mt-0.5">{{ $singleAgent->customers->count() }} Konsumen</div>
+                    <div class="text-[9px] text-slate-500">Lolos Aman: {{ $singleAgent->safe_customers_count }} &bull; Belum: {{ $singleAgent->unreached_customers_count }}</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-500 uppercase font-bold">Total Paket Terpesan</div>
+                    <div class="text-base font-extrabold text-amber-800 mt-0.5">{{ $singleAgent->total_orders }} Paket</div>
+                    <div class="text-[9px] text-slate-500">Tingkat Aman: {{ $singleAgent->safe_rate }}%</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-500 uppercase font-bold">Total Target Nilai Pesanan</div>
+                    <div class="text-base font-extrabold text-emerald-800 mt-0.5">Rp {{ number_format($singleAgent->total_target_amount, 0, ',', '.') }}</div>
+                    <div class="text-[9px] text-slate-500">Disetor: Rp {{ number_format($singleAgent->total_paid_amount, 0, ',', '.') }}</div>
+                </div>
+            @else
+                <div>
+                    <div class="text-[10px] text-slate-500 uppercase font-bold">Total Agen Lapangan</div>
+                    <div class="text-base font-extrabold text-slate-900 mt-0.5">{{ $agents->count() }} Orang</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-500 uppercase font-bold">Total Konsumen Binaan</div>
+                    <div class="text-base font-extrabold text-blue-900 mt-0.5">{{ $totalCustomersCount }} Konsumen</div>
+                    <div class="text-[9px] text-slate-500">H: {{ $totalHarianCustomersCount }} &bull; M: {{ $totalMingguanCustomersCount }} &bull; E: {{ $totalEcerCustomersCount }}</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-500 uppercase font-bold">Total Paket Terpesan</div>
+                    <div class="text-base font-extrabold text-amber-800 mt-0.5">{{ $totalPackagesCount }} Paket</div>
+                    <div class="text-[9px] text-slate-500">H: {{ $totalHarianOrdersCount }} &bull; M: {{ $totalMingguanOrdersCount }} &bull; E: {{ $totalEcerOrdersCount }}</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-500 uppercase font-bold">Total Target Nilai Pesanan</div>
+                    <div class="text-base font-extrabold text-emerald-800 mt-0.5">Rp {{ number_format($totalTargetNominalSum, 0, ',', '.') }}</div>
+                </div>
+            @endif
         </div>
 
+        @if($section !== 'detail')
         <!-- BAGIAN I: TABEL REKAPITULASI PARSEL HARIAN -->
         <div class="mb-8">
             <div class="font-extrabold text-xs uppercase tracking-wider text-slate-900 mb-2 flex items-center justify-between">
@@ -386,16 +467,18 @@
                 </table>
             </div>
         @endif
+        @endif
 
+        @if($section !== 'summary')
         <!-- BAGIAN II (DETAIL): RINCIAN HIERARKIS SUB-DATA KONSUMEN PER AGEN -->
-        <div class="page-break mb-8">
+        <div class="{{ $section !== 'detail' ? 'page-break' : '' }} mb-8">
             <div class="font-extrabold text-xs uppercase tracking-wider text-slate-900 mb-3 flex items-center justify-between">
-                <span>II. RINCIAN SUB-DATA KONSUMEN &amp; PAKET YANG DIPILIH PER AGEN</span>
+                <span>{{ $singleAgent ? 'RINCIAN KONSUMEN & PAKET YANG DIPILIH' : 'II. RINCIAN SUB-DATA KONSUMEN & PAKET YANG DIPILIH PER AGEN' }}</span>
                 <span class="text-[9px] text-slate-500 font-semibold font-mono">Urutan: Parsel &rarr; Eceran &rarr; Tabungan | Harian &rarr; Mingguan</span>
             </div>
 
             @foreach($agents as $agent)
-                <div class="mb-6 border border-slate-300 rounded-xl overflow-hidden avoid-break">
+                <div class="mb-6 border border-slate-300 rounded-xl overflow-hidden avoid-break {{ ($section === 'detail' && !$loop->last) ? 'agent-sheet-break' : '' }}">
                     <!-- HEADER AGEN -->
                     <div class="bg-slate-100 px-4 py-2.5 border-b border-slate-300 flex items-center justify-between text-xs">
                         <div>
@@ -484,12 +567,14 @@
                                         @endforelse
                                     </td>
                                     <td class="py-1.5 px-2.5 text-right font-bold text-slate-900 font-mono">
-                                        @foreach($cust->customerPackages as $cp)
+                                        @forelse($cust->customerPackages as $cp)
                                             <div>{{ $cp->formatted_target }}</div>
-                                        @endforeach
+                                        @empty
+                                            <div class="text-slate-300">-</div>
+                                        @endforelse
                                     </td>
                                     <td class="py-1.5 px-2.5 text-right text-emerald-800 font-semibold font-mono">
-                                        @foreach($cust->customerPackages as $cp)
+                                        @forelse($cust->customerPackages as $cp)
                                             <div>
                                                 @if($cp->package)
                                                     {{ $cp->package->formatted_installment }} / {{ strtolower($cp->package->period_label) }}
@@ -497,10 +582,12 @@
                                                     -
                                                 @endif
                                             </div>
-                                        @endforeach
+                                        @empty
+                                            <div class="text-slate-300">-</div>
+                                        @endforelse
                                     </td>
                                     <td class="py-1.5 px-2.5 text-center">
-                                        @foreach($cust->customerPackages as $cp)
+                                        @forelse($cust->customerPackages as $cp)
                                             @if($cp->progress_percent >= 100)
                                                 <span class="font-bold text-emerald-900 bg-emerald-100 px-1.5 py-0.2 rounded text-[8px]">Lunas</span>
                                             @elseif($cp->isSafeThresholdReached())
@@ -510,34 +597,80 @@
                                             @else
                                                 <span class="text-slate-400 text-[8px]">-</span>
                                             @endif
-                                        @endforeach
+                                        @empty
+                                            <span class="text-slate-300 text-[8px]">-</span>
+                                        @endforelse
                                     </td>
                                     <td class="py-1.5 px-2.5 text-center font-bold text-slate-700">
-                                        @foreach($cust->customerPackages as $cp)
+                                        @forelse($cust->customerPackages as $cp)
                                             <div class="mb-1 last:mb-0 space-y-0.5">
                                                 <div>{{ $cp->progress_percent }}%</div>
                                                 <div class="text-[8px] text-emerald-900 font-extrabold bg-emerald-50 border border-emerald-200 px-1 py-0.2 rounded whitespace-nowrap">
                                                     {{ $cp->paid_installments_count }} {{ $cp->period_unit_label }} Lunas
                                                 </div>
                                             </div>
-                                        @endforeach
+                                        @empty
+                                            <span class="text-slate-300 text-[8px]">-</span>
+                                        @endforelse
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="py-3 text-center text-slate-400 italic">
+                                    <td colspan="9" class="py-3 text-center text-slate-400 italic">
                                         Belum ada konsumen binaan terdaftar pada agen ini.
                                     </td>
                                 </tr>
                             @endforelse
                         </tbody>
+                        <tfoot>
+                            <tr class="bg-slate-100 text-slate-800 font-bold border-t border-slate-300 text-[10px]">
+                                <td colspan="4" class="py-2 px-2.5 text-right font-extrabold uppercase">
+                                    Subtotal Agen {{ $agent->name }} ({{ $agent->customers->count() }} Konsumen):
+                                </td>
+                                <td class="py-2 px-2.5 font-extrabold text-slate-900">
+                                    {{ $agent->total_orders }} Paket Terdaftar
+                                </td>
+                                <td class="py-2 px-2.5 text-right font-mono font-extrabold text-slate-900">
+                                    Rp {{ number_format($agent->total_target_amount, 0, ',', '.') }}
+                                </td>
+                                <td class="py-2 px-2.5 text-right font-mono font-bold text-emerald-800">
+                                    Rp {{ number_format($agent->total_paid_amount, 0, ',', '.') }}
+                                </td>
+                                <td class="py-2 px-2.5 text-center font-extrabold text-emerald-900">
+                                    {{ $agent->safe_customers_count }} Lolos
+                                </td>
+                                <td class="py-2 px-2.5 text-center font-bold text-slate-700">
+                                    {{ $agent->safe_rate }}% Aman
+                                </td>
+                            </tr>
+                        </tfoot>
                     </table>
+
+                    @if($singleAgent || $section === 'detail')
+                        <div class="p-3.5 bg-slate-50 border-t border-slate-200 text-[10px] flex justify-between items-end avoid-break">
+                            <div>
+                                <div class="text-slate-500 font-medium">Tanda Tangan Penerima / Agen Lapangan:</div>
+                                <div class="h-10"></div>
+                                <div class="font-extrabold text-slate-900 underline text-[11px]">{{ $agent->name }}</div>
+                                <div class="text-[9px] text-slate-400">Agen SPL &bull; Telp: {{ $agent->phone ?: '-' }}</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-slate-500 font-medium">Paseh, {{ date('d F Y') }}</div>
+                                <div class="text-slate-500 font-medium">Pimpinan &amp; Penanggung Jawab SPL:</div>
+                                <div class="h-10"></div>
+                                <div class="font-extrabold text-slate-900 underline text-[11px]">{{ $appSetting->owner_name ?: 'Hj. Susi Susilawati, S.E.' }}</div>
+                                <div class="text-[9px] text-slate-400">Owner Super Admin SPL</div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             @endforeach
         </div>
+        @endif
 
+        @if(!$singleAgent && $section !== 'detail')
         <!-- TANDA TANGAN PENGESAHAN DOKUMEN -->
-        <div class="mt-8 pt-4 border-t border-slate-300 text-xs flex justify-between items-end">
+        <div class="mt-8 pt-4 border-t border-slate-300 text-xs flex justify-between items-end avoid-break">
             <div>
                 <div class="text-[11px] text-slate-500">
                     Catatan SPL: Laporan ini diterbitkan sebagai rekapitulasi data resmi operasional dan logistik pesanan parsel/tabungan.
@@ -552,6 +685,7 @@
                 <div class="text-[10px] text-slate-500">Owner Super Admin SPL 2026</div>
             </div>
         </div>
+        @endif
 
     </div>
 

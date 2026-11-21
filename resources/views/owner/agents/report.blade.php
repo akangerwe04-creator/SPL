@@ -76,13 +76,17 @@
             </form>
 
             <!-- EXPORT EXCEL BUTTON -->
-            <a href="{{ route('owner.agents.report.export', ['agent_id' => request('agent_id'), 'sort_agent' => request('sort_agent'), 'active_only' => request('active_only')]) }}" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition flex items-center">
+            <a href="{{ route('owner.agents.report.export', ['agent_id' => request('agent_id'), 'sort_agent' => request('sort_agent'), 'active_only' => request('active_only')]) }}" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition flex items-center text-xs">
                 <i class="fa-solid fa-file-excel mr-1.5 text-emerald-100"></i> Export Excel (.xlsx) Siap Cetak
             </a>
 
-            <!-- PRINT BUTTON -->
-            <a href="{{ route('owner.agents.report.print', ['agent_id' => request('agent_id'), 'sort_agent' => request('sort_agent'), 'active_only' => request('active_only')]) }}" target="_blank" class="px-4 py-2 bg-pink-700 hover:bg-pink-800 text-white font-bold rounded-xl shadow-xs transition flex items-center">
-                <i class="fa-solid fa-print mr-1.5"></i> Cetak Laporan (Print / PDF)
+            <!-- PRINT BUTTONS: RINCIAN KONSUMEN & LAPORAN LENGKAP -->
+            <a href="{{ route('owner.agents.report.print', array_merge(request()->all(), ['section' => 'detail'])) }}" target="_blank" class="px-3.5 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl shadow-xs transition flex items-center text-xs" title="Cetak khusus lembar rincian konsumen dan paket per agen">
+                <i class="fa-solid fa-users-viewfinder mr-1.5"></i> Cetak Rincian Konsumen
+            </a>
+
+            <a href="{{ route('owner.agents.report.print', array_merge(request()->all(), ['section' => 'all'])) }}" target="_blank" class="px-3.5 py-2 bg-pink-700 hover:bg-pink-800 text-white font-bold rounded-xl shadow-xs transition flex items-center text-xs" title="Cetak seluruh dokumen laporan distribusi (matriks + rincian konsumen)">
+                <i class="fa-solid fa-print mr-1.5"></i> Cetak Semua (Lengkap)
             </a>
         </div>
     </div>
@@ -934,24 +938,35 @@
                 </p>
             </div>
 
-            <!-- SEARCH FILTER KHUSUS SUB-DATA KONSUMEN -->
-            <div class="w-full sm:w-80">
-                <div class="relative">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-                    <input 
-                        type="text" 
-                        x-model="searchDetail" 
-                        placeholder="Cari agen, konsumen, no HP, atau paket..." 
-                        class="w-full pl-8 pr-7 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 shadow-xs"
-                    >
-                    <button 
-                        type="button" 
-                        x-show="searchDetail" 
-                        @click="searchDetail = ''" 
-                        class="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs"
-                    >
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
+            <div class="flex items-center space-x-2 w-full sm:w-auto">
+                <!-- PRINT ALL DETAIL BUTTON -->
+                <a href="{{ route('owner.agents.report.print', array_merge(request()->all(), ['section' => 'detail'])) }}" 
+                   target="_blank" 
+                   class="px-3.5 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl text-xs shadow-xs transition flex items-center space-x-1.5 shrink-0"
+                   title="Cetak cetak rincian sub-data konsumen untuk semua agen">
+                    <i class="fa-solid fa-print"></i>
+                    <span>Cetak Rincian Konsumen</span>
+                </a>
+
+                <!-- SEARCH FILTER KHUSUS SUB-DATA KONSUMEN -->
+                <div class="w-full sm:w-72">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                        <input 
+                            type="text" 
+                            x-model="searchDetail" 
+                            placeholder="Cari agen, konsumen, no HP..." 
+                            class="w-full pl-8 pr-7 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 shadow-xs"
+                        >
+                        <button 
+                            type="button" 
+                            x-show="searchDetail" 
+                            @click="searchDetail = ''" 
+                            class="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs"
+                        >
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1020,6 +1035,15 @@
                             <div class="text-[9px] font-bold uppercase text-purple-700">Tingkat Aman</div>
                             <div class="text-xs font-heading font-black text-purple-950">{{ $agent->safe_rate }}%</div>
                         </div>
+
+                        <!-- CETAK KHUSUS AGEN INI -->
+                        <a href="{{ route('owner.agents.report.print', ['agent_id' => $agent->id, 'section' => 'detail']) }}" 
+                           target="_blank" 
+                           class="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-800 hover:text-purple-950 font-extrabold text-xs shadow-2xs transition flex items-center space-x-1.5 shrink-0"
+                           title="Cetak lembar rincian konsumen khusus agen {{ $agent->name }}">
+                            <i class="fa-solid fa-print text-purple-600"></i>
+                            <span>Cetak Rincian Agen</span>
+                        </a>
                     </div>
                 </div>
 
