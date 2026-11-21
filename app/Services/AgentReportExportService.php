@@ -805,12 +805,16 @@ class AgentReportExportService
                         $itemDetails = [];
                         if ($cp->customItems && $cp->customItems->isNotEmpty()) {
                             foreach ($cp->customItems as $cItem) {
-                                $itemDetails[] = $cItem->item_name . ($cItem->quantity > 1 ? ' (' . $cItem->quantity . ')' : '');
+                                $name = $cItem->item ? trim($cItem->item->name) : trim($cItem->item_name ?? '');
+                                if (empty($name)) {
+                                    $name = 'Item';
+                                }
+                                $itemDetails[] = $name . ($cItem->quantity > 0 ? ' (' . $cItem->quantity . ')' : '');
                             }
                         } elseif ($cp->package->packageItems && $cp->package->packageItems->isNotEmpty()) {
                             foreach ($cp->package->packageItems as $pItem) {
-                                $name = $pItem->item ? $pItem->item->name : 'Item';
-                                $itemDetails[] = $name . ($pItem->quantity > 1 ? ' (' . $pItem->quantity . ')' : '');
+                                $name = $pItem->item ? trim($pItem->item->name) : 'Item';
+                                $itemDetails[] = $name . ($pItem->quantity > 0 ? ' (' . $pItem->quantity . ')' : '');
                             }
                         }
                         if (!empty($itemDetails)) {
