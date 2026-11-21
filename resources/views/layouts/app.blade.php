@@ -153,7 +153,7 @@
                 <div class="text-[11px] font-bold text-pink-900 uppercase tracking-wider mb-2 flex items-center justify-between">
                     <span>Mode Tampilan</span>
                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-pink-100 text-pink-900 border border-pink-200">
-                        {{ auth()->user()->role === 'owner' ? 'Super Admin' : 'Staff Agen' }}
+                        {{ auth()->check() ? (auth()->user()->isAdmin() ? 'Administrator' : (auth()->user()->role === 'owner' ? 'Super Admin' : 'Staff Agen')) : 'Tamu' }}
                     </span>
                 </div>
                 <div class="grid grid-cols-2 gap-1.5 bg-pink-100/60 p-1 rounded-xl">
@@ -521,7 +521,7 @@
                 </div>
             @endif
 
-            @if($errors->any())
+            @if(isset($errors) && $errors->any())
                 <div class="mb-4 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg shadow-xs">
                     <div class="text-xs font-bold uppercase tracking-wider text-amber-800 mb-1 flex items-center">
                         <i class="fa-solid fa-circle-exclamation mr-2"></i> Mohon periksa kembali isian formulir:

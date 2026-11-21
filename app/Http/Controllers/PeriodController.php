@@ -306,21 +306,25 @@ class PeriodController extends Controller
      */
     private function generateNextPeriodSuggestion(string $current): string
     {
-        // Cari tahun masehi (4 digit)
-        if (preg_match('/(\d{4})/', $current, $mYear)) {
-            $year = (int) $mYear[1];
-            $nextYear = $year + 1;
+        $hijri = null;
+        $masehi = null;
 
-            // Cari tahun hijriyah jika ada (e.g. 1447 H)
-            if (preg_match('/(\d{3,4})\s*H/i', $current, $mHijri)) {
-                $hijri = (int) $mHijri[1];
-                $nextHijri = $hijri + 1;
-                return "Musim {$nextHijri} H / {$nextYear}";
-            }
-
-            return "Musim Tahun {$nextYear}";
+        // Cari tahun hijriyah (e.g. 1447 H)
+        if (preg_match('/(\d{3,4})\s*H/i', $current, $mHijri)) {
+            $hijri = (int) $mHijri[1] + 1;
         }
 
-        return "Musim " . (date('Y') + 1);
+        // Cari tahun masehi 4 digit (20xx)
+        if (preg_match('/\b(20\d{2})\b/', $current, $mMasehi)) {
+            $masehi = (int) $mMasehi[1] + 1;
+        } else {
+            $masehi = (int) date('Y') + 1;
+        }
+
+        if ($hijri) {
+            return "Musim {$hijri} H / {$masehi}";
+        }
+
+        return "Musim Tahun {$masehi}";
     }
 }
