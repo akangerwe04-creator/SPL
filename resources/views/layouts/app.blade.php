@@ -301,6 +301,19 @@
                                 <span class="bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-full">Off</span>
                             @endif
                         </a>
+
+                        <!-- 12. Buka Periode Baru (Khusus Administrator) -->
+                        <a href="{{ route('admin.period.index') }}" class="flex items-center justify-between px-3 py-2.5 rounded-lg transition {{ request()->routeIs('admin.period.*') ? 'bg-purple-50 text-purple-800 font-bold border-l-4 border-purple-600' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                            <div class="flex items-center">
+                                <i class="fa-solid fa-calendar-plus w-5 text-center mr-2.5 {{ request()->routeIs('admin.period.*') ? 'text-purple-600' : 'text-slate-400' }}"></i>
+                                <span>12. Buka Periode Baru</span>
+                            </div>
+                            @if($appSetting->is_book_closed)
+                                <span class="bg-emerald-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full animate-pulse">Siap Buka</span>
+                            @else
+                                <span class="bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-full">Musim Aktif</span>
+                            @endif
+                        </a>
                     @endif
                 @else
                     <!-- MENU AGEN LAPANGAN -->
@@ -414,7 +427,7 @@
                 @endif
                 <div class="text-right">
                     <div class="text-xs font-bold text-slate-800">{{ auth()->user()->name }}</div>
-                    <div class="text-[10px] text-pink-800 font-semibold">{{ date('d M Y') }} • Musim 1447 H</div>
+                    <div class="text-[10px] text-pink-800 font-semibold">{{ date('d M Y') }} • {{ $appSetting->program_period ?: 'Musim 1447 H' }}</div>
                 </div>
             </div>
         </header>
@@ -572,6 +585,10 @@
                 <a href="{{ route('admin.maintenance.index') }}" class="flex flex-col items-center py-1 px-2 text-xs {{ request()->routeIs('admin.maintenance.*') ? 'text-amber-600 font-extrabold' : 'text-slate-600 hover:text-amber-600' }}">
                     <i class="fa-solid fa-screwdriver-wrench text-lg mb-0.5 {{ \App\Services\MaintenanceService::isActive() ? 'text-amber-600 animate-spin' : '' }}"></i>
                     <span class="text-[10px]">Maint</span>
+                </a>
+                <a href="{{ route('admin.period.index') }}" class="flex flex-col items-center py-1 px-2 text-xs {{ request()->routeIs('admin.period.*') ? 'text-purple-600 font-extrabold' : 'text-slate-600 hover:text-purple-600' }}">
+                    <i class="fa-solid fa-calendar-plus text-lg mb-0.5 {{ request()->routeIs('admin.period.*') ? 'text-purple-600' : '' }}"></i>
+                    <span class="text-[10px]">Periode</span>
                 </a>
             @endif
         @else

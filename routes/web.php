@@ -21,6 +21,7 @@ use App\Http\Controllers\PackagingController;
 use App\Http\Controllers\BookClosingController;
 use App\Http\Controllers\CustomerStopController;
 use App\Http\Controllers\MaintenanceController;
+use App\Http\Controllers\PeriodController;
 
 // Root Redirector
 Route::get('/', function () {
@@ -192,5 +193,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/maintenance/start', [MaintenanceController::class, 'start'])->name('maintenance.start');
         Route::post('/maintenance/stop', [MaintenanceController::class, 'stop'])->name('maintenance.stop');
         Route::get('/maintenance/preview', [MaintenanceController::class, 'preview'])->name('maintenance.preview');
+
+        // Buka Periode Baru & Arsip Musim (Khusus Administrator)
+        Route::get('/period', [PeriodController::class, 'index'])->name('period.index');
+        Route::post('/period/open-new', [PeriodController::class, 'openNewPeriod'])->name('period.open-new');
+        Route::get('/period/archive/{archive}/download', [PeriodController::class, 'downloadArchive'])->name('period.download-archive');
     });
 });
