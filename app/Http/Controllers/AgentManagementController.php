@@ -46,13 +46,29 @@ class AgentManagementController extends Controller
         if ($request->filled('agent_id')) {
             $customerQuery->where('agent_id', $request->agent_id);
         }
-        $customers = $customerQuery->orderBy('name')->paginate(15);
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $customerQuery->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        // Pilihan jumlah baris: 15, 25, 50, 100, atau 'all' (Tampilkan Semuanya)
+        $perPage = $request->input('per_page', '15');
+        if ($perPage === 'all') {
+            $totalCount = (clone $customerQuery)->count();
+            $customers = $customerQuery->orderBy('name')->paginate(max(1, $totalCount))->withQueryString();
+        } else {
+            $perPageInt = in_array((int)$perPage, [15, 25, 50, 100]) ? (int)$perPage : 15;
+            $customers = $customerQuery->orderBy('name')->paginate($perPageInt)->withQueryString();
+        }
 
         $totalAgents = $agents->count();
         $totalCustomers = Customer::count();
         $totalCollected = Payment::where('is_paid', true)->sum('amount');
 
-        return view('owner.agents.index', compact('agents', 'customers', 'totalAgents', 'totalCustomers', 'totalCollected'));
+        return view('owner.agents.index', compact('agents', 'customers', 'totalAgents', 'totalCustomers', 'totalCollected', 'perPage'));
     }
 
     /**

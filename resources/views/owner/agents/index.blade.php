@@ -10,6 +10,9 @@
 @endsection
 
 @section('content')
+@php
+    $currentPerPage = request('per_page', '15');
+@endphp
 <div class="space-y-6" x-data="agentManagement()">
 
     <!-- KPI SUMMARY -->
@@ -159,7 +162,7 @@
 
                 <!-- ACTIONS FOOTER -->
                 <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <a href="{{ route('owner.agents.index', ['agent_id' => $agent->id]) }}" @click="activeTab = 'customers'" class="font-bold text-emerald-600 hover:text-emerald-700">
+                    <a href="{{ route('owner.agents.index', ['agent_id' => $agent->id, 'tab' => 'customers']) }}" @click="activeTab = 'customers'" class="font-bold text-emerald-600 hover:text-emerald-700">
                         Lihat Konsumen &rarr;
                     </a>
                     <div class="flex items-center space-x-1">
@@ -212,8 +215,11 @@
     <!-- TAB 2: SEMUA KONSUMEN BINAAN -->
     <div x-show="activeTab === 'customers'" class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div class="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
-            <form action="{{ route('owner.agents.index') }}" method="GET" class="flex items-center space-x-2">
-                <select name="agent_id" onchange="this.form.submit()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-medium text-slate-700">
+            <form action="{{ route('owner.agents.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
+                <input type="hidden" name="tab" value="customers">
+
+                <!-- Filter Agen -->
+                <select name="agent_id" onchange="this.form.submit()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700">
                     <option value="">Semua Agen Pembina</option>
                     @foreach($agents as $ag)
                         <option value="{{ $ag->id }}" {{ request('agent_id') == $ag->id ? 'selected' : '' }}>
@@ -221,14 +227,49 @@
                         </option>
                     @endforeach
                 </select>
-                @if(request()->filled('agent_id'))
-                    <a href="{{ route('owner.agents.index') }}" class="text-slate-500 hover:text-slate-800">
-                        <i class="fa-solid fa-xmark mr-1"></i> Reset Filter
+
+                <!-- Pencarian Nama / HP -->
+                <div class="relative">
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama / HP..."
+                        class="pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 w-44">
+                    <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                </div>
+
+                <!-- Pilihan Jumlah Baris Data (Semua Baris / Pagination) -->
+                <select name="per_page" onchange="this.form.submit()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-800">
+                    <option value="15" {{ $currentPerPage == '15' ? 'selected' : '' }}>15 Baris / Hal</option>
+                    <option value="25" {{ $currentPerPage == '25' ? 'selected' : '' }}>25 Baris / Hal</option>
+                    <option value="50" {{ $currentPerPage == '50' ? 'selected' : '' }}>50 Baris / Hal</option>
+                    <option value="100" {{ $currentPerPage == '100' ? 'selected' : '' }}>100 Baris / Hal</option>
+                    <option value="all" {{ $currentPerPage == 'all' ? 'selected' : '' }}>Tampilkan Semua Baris</option>
+                </select>
+
+                <button type="submit" class="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg font-bold shadow-xs transition">
+                    <i class="fa-solid fa-filter mr-1"></i> Filter
+                </button>
+
+                @if(request()->hasAny(['agent_id', 'search', 'per_page']))
+                    <a href="{{ route('owner.agents.index', ['tab' => 'customers']) }}" class="px-2 py-2 text-slate-500 hover:text-slate-800 font-medium flex items-center">
+                        <i class="fa-solid fa-xmark mr-1"></i> Reset
                     </a>
                 @endif
             </form>
-            <div class="text-slate-500 font-medium">
-                Menampilkan <strong>{{ $customers->total() }}</strong> Konsumen
+
+            <div class="flex items-center space-x-2 shrink-0">
+                @if($currentPerPage === 'all')
+                    <a href="{{ route('owner.agents.index', array_merge(request()->except('per_page'), ['per_page' => '15', 'tab' => 'customers'])) }}" class="px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs flex items-center space-x-1.5 transition hover:bg-emerald-200">
+                        <i class="fa-solid fa-list-ol text-emerald-700"></i>
+                        <span>Batasi 15 / Hal</span>
+                    </a>
+                @else
+                    <a href="{{ route('owner.agents.index', array_merge(request()->all(), ['per_page' => 'all', 'tab' => 'customers'])) }}" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center space-x-1.5 transition border border-slate-200">
+                        <i class="fa-solid fa-expand text-slate-500"></i>
+                        <span>Tampilkan Semua Baris</span>
+                    </a>
+                @endif
+                <div class="text-slate-500 font-medium pl-2 border-l border-slate-200">
+                    Menampilkan <strong>{{ $customers->total() }}</strong> Konsumen
+                </div>
             </div>
         </div>
 
@@ -307,6 +348,13 @@
         @if($customers->hasPages())
             <div class="p-4 border-t border-slate-100">
                 {{ $customers->links() }}
+            </div>
+        @elseif($currentPerPage === 'all' && $customers->total() > 15)
+            <div class="p-4 border-t border-slate-100 text-center text-xs text-slate-500 font-medium bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-2">
+                <span>Menampilkan seluruh <strong>{{ $customers->total() }} konsumen binaan</strong> dalam satu halaman tanpa pagination.</span>
+                <a href="{{ route('owner.agents.index', array_merge(request()->except('per_page'), ['per_page' => '15', 'tab' => 'customers'])) }}" class="text-emerald-700 font-bold hover:underline">
+                    Kembalikan ke Pagination (15 Baris / Hal)
+                </a>
             </div>
         @endif
     </div>
@@ -594,7 +642,7 @@
 <script>
     function agentManagement() {
         return {
-            activeTab: '{{ request()->filled('agent_id') ? 'customers' : 'agents' }}',
+            activeTab: '{{ (request()->filled('agent_id') || request()->filled('page') || request()->filled('per_page') || request()->filled('search') || request('tab') === 'customers') ? 'customers' : 'agents' }}',
             showAddModal: false,
             showImportModal: false,
             showEditModal: false,
