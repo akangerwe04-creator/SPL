@@ -30,9 +30,16 @@
                 <img src="{{ asset($package->image_path) }}" alt="{{ $package->name }}" class="w-full h-full object-cover">
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent"></div>
                 <div class="absolute bottom-4 left-6 text-white">
-                    <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded {{ $package->isParsel() ? 'bg-emerald-600 text-white' : ($package->isTabungan() ? 'bg-amber-600 text-white' : 'bg-blue-600 text-white') }}">
-                        Tipe: {{ ucfirst($package->type) }} &bull; {{ strtoupper($package->period_type ?? 'mingguan') }} &bull; {{ $package->code }}
-                    </span>
+                    <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                        <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded {{ $package->isParsel() ? 'bg-emerald-600 text-white' : ($package->isTabungan() ? 'bg-amber-600 text-white' : 'bg-blue-600 text-white') }}">
+                            Tipe: {{ ucfirst($package->type) }} &bull; {{ strtoupper($package->period_type ?? 'mingguan') }} &bull; {{ $package->code }}
+                        </span>
+                        @if(!$package->hasSafeThreshold())
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500 text-white border border-amber-400 shadow-xs">
+                                <i class="fa-solid fa-triangle-exclamation mr-1 text-white"></i> Belum Ada Titik Aman
+                            </span>
+                        @endif
+                    </div>
                     <h1 class="text-2xl font-heading font-extrabold text-white mt-1 drop-shadow-sm">{{ $package->name }}</h1>
                 </div>
             </div>
@@ -42,9 +49,16 @@
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100">
                 <div>
                     @if(!$package->image_path)
-                        <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded {{ $package->isParsel() ? 'bg-emerald-100 text-emerald-800' : ($package->isTabungan() ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800') }}">
-                            Tipe: {{ ucfirst($package->type) }} &bull; {{ strtoupper($package->period_type ?? 'mingguan') }}
-                        </span>
+                        <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded {{ $package->isParsel() ? 'bg-emerald-100 text-emerald-800' : ($package->isTabungan() ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800') }}">
+                                Tipe: {{ ucfirst($package->type) }} &bull; {{ strtoupper($package->period_type ?? 'mingguan') }}
+                            </span>
+                            @if(!$package->hasSafeThreshold())
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                                    <i class="fa-solid fa-triangle-exclamation mr-1 text-amber-600"></i> Belum Ada Titik Aman
+                                </span>
+                            @endif
+                        </div>
                         <h2 class="text-xl font-heading font-extrabold text-slate-900 mt-1.5">
                             {{ $package->name }}
                         </h2>
@@ -90,6 +104,22 @@
                             <div class="flex justify-between items-center text-slate-900 font-extrabold pt-1 border-t border-slate-200/40">
                                 <span>Total Target Tagihan:</span>
                                 <span>{{ $package->formatted_target }}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs pt-1.5 border-t border-slate-200/40">
+                                <span class="font-bold text-slate-700 flex items-center">
+                                    <i class="fa-solid fa-shield-halved text-emerald-600 mr-1 text-[11px]"></i>
+                                    Titik Aman Full:
+                                </span>
+                                @if($package->hasSafeThreshold())
+                                    <span class="font-extrabold text-emerald-700 text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                        {{ $package->formatted_safe_threshold }}
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center font-extrabold text-amber-900 text-[11px] bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md">
+                                        <i class="fa-solid fa-triangle-exclamation mr-1 text-amber-600"></i>
+                                        Belum Ada Titik Aman
+                                    </span>
+                                @endif
                             </div>
                         </div>
                     @endif

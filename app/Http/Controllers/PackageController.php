@@ -29,6 +29,16 @@ class PackageController extends Controller
             $query->where('period_type', $request->period_type);
         }
 
+        if ($request->filled('safe_status')) {
+            if ($request->safe_status === 'has_safe') {
+                $query->whereNotNull('safe_threshold')->where('safe_threshold', '>', 0);
+            } elseif ($request->safe_status === 'no_safe') {
+                $query->where(function ($q) {
+                    $q->whereNull('safe_threshold')->orWhere('safe_threshold', '<=', 0);
+                });
+            }
+        }
+
         if ($request->filled('search')) {
             $search = trim($request->search);
             $query->where(function ($q) use ($search) {

@@ -4,9 +4,19 @@
 @section('page_title', 'Master Paket Parsel, Tabungan & Ecer')
 
 @section('header_badge')
-    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-        {{ $packages->count() }} Paket Tersedia
-    </span>
+    <div class="flex items-center space-x-2">
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+            {{ $packages->count() }} Paket Tersedia
+        </span>
+        @php
+            $noSafeCount = $packages->filter(fn($p) => !$p->hasSafeThreshold())->count();
+        @endphp
+        @if($noSafeCount > 0)
+            <a href="{{ route('packages.index', ['safe_status' => 'no_safe']) }}" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 transition shadow-2xs" title="Filter paket yang belum memiliki titik aman">
+                <i class="fa-solid fa-triangle-exclamation mr-1.5 text-amber-600"></i> {{ $noSafeCount }} Belum Ada Titik Aman
+            </a>
+        @endif
+    </div>
 @endsection
 
 @section('content')
@@ -32,7 +42,8 @@
             installment_count: {{ (int) $pkg->installment_count }},
             installment_amount: {{ (float) $pkg->installment_amount }},
             target_nominal: {{ (float) $pkg->target_nominal }},
-            search: '{{ addslashes(strtolower($pkg->name . ' ' . $pkg->code . ' ' . $pkg->type . ' ' . $pkg->period_type . ' ' . $pkg->installment_label . ' ' . ($pkg->description ?? '') . ' ' . $pkg->packageItems->map(fn($pi) => $pi->item?->name)->filter()->implode(' '))) }}'
+            has_safe_threshold: {{ $pkg->hasSafeThreshold() ? 'true' : 'false' }},
+            search: '{{ addslashes(strtolower($pkg->name . ' ' . $pkg->code . ' ' . $pkg->type . ' ' . $pkg->period_type . ' ' . $pkg->installment_label . ' ' . ($pkg->hasSafeThreshold() ? 'aman ' . $pkg->formatted_safe_threshold : 'belum ada titik aman tanpa titik aman') . ' ' . ($pkg->description ?? '') . ' ' . $pkg->packageItems->map(fn($pi) => $pi->item?->name)->filter()->implode(' '))) }}'
         },
         @endforeach
     ],
@@ -174,7 +185,14 @@
                     <option value="harian" {{ request('period_type') === 'harian' ? 'selected' : '' }}>☀️ Skema Harian</option>
                 </select>
 
-                @if(request()->filled('type') || request()->filled('period_type') || request()->filled('search'))
+                <!-- FILTER STATUS TITIK AMAN -->
+                <select name="safe_status" onchange="this.form.submit()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold focus:border-pink-500 focus:outline-none">
+                    <option value="">Semua Status Titik Aman</option>
+                    <option value="has_safe" {{ request('safe_status') === 'has_safe' ? 'selected' : '' }}>🛡️ Memiliki Titik Aman</option>
+                    <option value="no_safe" {{ request('safe_status') === 'no_safe' ? 'selected' : '' }}>⚠️ Belum Ada Titik Aman</option>
+                </select>
+
+                @if(request()->filled('type') || request()->filled('period_type') || request()->filled('safe_status') || request()->filled('search'))
                     <a href="{{ route('packages.index') }}" class="px-2.5 py-1.5 text-slate-500 hover:text-pink-600 font-bold flex items-center">
                         <i class="fa-solid fa-xmark mr-1"></i> Reset Filter
                     </a>
@@ -281,7 +299,7 @@
                         @endphp
                         <tr 
                             x-show="matchesSearch('{{ addslashes($searchKey) }}')" 
-                            :class="selectedPackages.includes({{ $pkg->id }}) ? 'bg-pink-50/70 font-semibold' : 'hover:bg-pink-50/30'"
+                            :class="selectedPackages.includes({{ $pkg->id }}) ? 'bg-pink-50/70 font-semibold' : '{{ !$pkg->hasSafeThreshold() ? 'bg-amber-50/20' : '' }} hover:bg-pink-50/30'"
                             class="transition group"
                         >
                             @if(auth()->user()->isOwnerOrAdmin())
@@ -300,13 +318,18 @@
                                         @endif
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="flex items-center space-x-1.5">
+                                        <div class="flex items-center space-x-1.5 flex-wrap gap-y-1">
                                             <span class="font-mono text-[10px] font-extrabold px-1.5 py-0.2 rounded {{ $pkg->isParsel() ? 'bg-pink-100 text-pink-800' : ($pkg->isTabungan() ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800') }}">
                                                 {{ $pkg->code }}
                                             </span>
                                             <a href="{{ route('packages.show', $pkg) }}" class="font-bold text-slate-900 hover:text-pink-600 text-xs truncate max-w-xs block">
                                                 {{ $pkg->name }}
                                             </a>
+                                            @if(!$pkg->hasSafeThreshold())
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs" title="Paket ini belum memiliki pengaturan Titik Aman">
+                                                    <i class="fa-solid fa-triangle-exclamation mr-1 text-amber-600"></i> Belum Ada Titik Aman
+                                                </span>
+                                            @endif
                                         </div>
                                         @if($pkg->description)
                                             <p class="text-[10px] text-slate-400 truncate max-w-sm mt-0.5">{{ $pkg->description }}</p>
@@ -339,8 +362,12 @@
                                     <span class="text-[10px] font-bold text-slate-500">/ {{ strtolower($pkg->period_label) }}</span>
                                 </div>
                                 @if($pkg->hasSafeThreshold())
-                                    <div class="text-[9px] text-emerald-700 font-bold mt-0.5">
-                                        Aman: {{ $pkg->formatted_safe_threshold }}
+                                    <div class="text-[9px] text-emerald-700 font-bold mt-0.5 flex items-center justify-end">
+                                        <i class="fa-solid fa-shield-halved text-emerald-600 mr-1"></i> Aman: {{ $pkg->formatted_safe_threshold }}
+                                    </div>
+                                @else
+                                    <div class="text-[9px] text-amber-700 font-bold mt-0.5 flex items-center justify-end">
+                                        <i class="fa-solid fa-triangle-exclamation text-amber-600 mr-1"></i> Belum Ada Titik Aman
                                     </div>
                                 @endif
                             </td>
@@ -445,8 +472,8 @@
             @endphp
             <div 
                 x-show="matchesSearch('{{ addslashes($searchKey) }}')" 
-                :class="selectedPackages.includes({{ $pkg->id }}) ? 'ring-2 ring-pink-500 border-pink-500 bg-pink-50/20' : 'hover:border-pink-500'"
-                class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col justify-between hover:shadow-md transition group relative"
+                :class="selectedPackages.includes({{ $pkg->id }}) ? 'ring-2 ring-pink-500 border-pink-500 bg-pink-50/20' : '{{ !$pkg->hasSafeThreshold() ? 'border-amber-300' : 'border-slate-200' }} hover:border-pink-500'"
+                class="bg-white rounded-2xl border shadow-xs overflow-hidden flex flex-col justify-between hover:shadow-md transition group relative"
             >
                 <div>
                     @if($pkg->image_path)
@@ -464,7 +491,12 @@
                                     {{ $pkg->code }} &bull; {{ strtoupper($pkg->type) }} &bull; {{ strtoupper($pkg->period_type ?? 'mingguan') }}
                                 </span>
                             </div>
-                            <div class="absolute top-3 right-3">
+                            <div class="absolute top-3 right-3 flex items-center space-x-1.5">
+                                @if(!$pkg->hasSafeThreshold())
+                                    <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-xs bg-amber-500 text-white border border-amber-400 flex items-center">
+                                        <i class="fa-solid fa-triangle-exclamation mr-1 text-white"></i> Belum Ada Titik Aman
+                                    </span>
+                                @endif
                                 <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow-xs {{ $pkg->isHarian() ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-white/95 text-pink-900 border border-pink-200' }}">
                                     <i class="fa-solid {{ $pkg->isHarian() ? 'fa-calendar-day text-amber-600' : 'fa-calendar-week text-pink-600' }} mr-1"></i>
                                     {{ $pkg->installment_count }} {{ $pkg->period_label }}
@@ -476,13 +508,18 @@
                     <div class="p-5">
                         @if(!$pkg->image_path)
                             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                                <div class="flex items-center space-x-2">
+                                <div class="flex items-center space-x-2 flex-wrap gap-y-1">
                                     @if(auth()->user()->isOwnerOrAdmin())
                                         <input type="checkbox" :value="{{ $pkg->id }}" x-model="selectedPackages" @change="updateSelectAllState()" class="pkg-item-checkbox w-4 h-4 rounded border-slate-300 text-pink-600 focus:ring-pink-500 cursor-pointer" title="Pilih Paket Ini">
                                     @endif
                                     <span class="font-mono text-[10px] font-bold px-2 py-0.5 rounded {{ $pkg->isParsel() ? 'bg-pink-100 text-pink-800 border border-pink-200' : ($pkg->isTabungan() ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800') }}">
                                         {{ $pkg->code }} &bull; {{ strtoupper($pkg->type) }} &bull; {{ strtoupper($pkg->period_type ?? 'mingguan') }}
                                     </span>
+                                    @if(!$pkg->hasSafeThreshold())
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                                            <i class="fa-solid fa-triangle-exclamation mr-1 text-amber-600"></i> Belum Ada Titik Aman
+                                        </span>
+                                    @endif
                                 </div>
                                 <span class="text-xs font-extrabold px-2.5 py-0.5 rounded-full {{ $pkg->isHarian() ? 'bg-amber-100 text-amber-900 border border-amber-200' : 'bg-pink-100 text-pink-900 border border-pink-200' }}">
                                     <i class="fa-solid {{ $pkg->isHarian() ? 'fa-calendar-day text-amber-600' : 'fa-calendar-week text-pink-600' }} mr-1"></i>
@@ -491,9 +528,16 @@
                             </div>
                         @endif
 
-                        <h3 class="font-heading font-extrabold text-slate-900 text-base {{ $pkg->image_path ? 'mt-1' : 'mt-3' }}">
-                            {{ $pkg->name }}
-                        </h3>
+                        <div class="flex items-start justify-between gap-2 {{ $pkg->image_path ? 'mt-1' : 'mt-3' }}">
+                            <h3 class="font-heading font-extrabold text-slate-900 text-base">
+                                {{ $pkg->name }}
+                            </h3>
+                            @if(!$pkg->hasSafeThreshold() && $pkg->image_path)
+                                <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded text-[9px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                                    <i class="fa-solid fa-triangle-exclamation mr-1 text-amber-600"></i> Belum Ada Titik Aman
+                                </span>
+                            @endif
+                        </div>
 
                         @if($pkg->description)
                             <p class="text-xs text-slate-500 mt-1 line-clamp-2 font-medium">{{ $pkg->description }}</p>
@@ -549,8 +593,9 @@
                                             {{ $pkg->formatted_safe_threshold }}
                                         </span>
                                     @else
-                                        <span class="font-medium text-slate-400 text-[11px] italic">
-                                            Tanpa Titik Aman
+                                        <span class="inline-flex items-center font-extrabold text-amber-900 text-[11px] bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md">
+                                            <i class="fa-solid fa-triangle-exclamation mr-1 text-amber-600"></i>
+                                            Belum Ada Titik Aman
                                         </span>
                                     @endif
                                 </div>
