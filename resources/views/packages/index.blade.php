@@ -769,286 +769,289 @@
     @endif
 
     <!-- ================= MODAL ATUR JUMLAH TAGIHAN SERENTAK (BULK ADJUST) ================= -->
-    <div x-show="showBulkAdjustModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full p-6 text-xs space-y-5" @click.away="showBulkAdjustModal = false">
-            <!-- MODAL HEADER -->
-            <div class="flex items-center justify-between pb-3.5 border-b border-slate-100">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold shadow-2xs">
-                        <i class="fa-solid fa-sliders text-base"></i>
+    <div x-show="showBulkAdjustModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full flex flex-col max-h-[92vh] text-xs overflow-hidden" @click.away="showBulkAdjustModal = false">
+            <!-- MODAL HEADER (STICKY) -->
+            <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-white shrink-0">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold shadow-2xs shrink-0">
+                        <i class="fa-solid fa-sliders text-sm"></i>
                     </div>
                     <div>
-                        <h3 class="font-heading font-extrabold text-base text-slate-900">Atur Jumlah Tagihan Serentak</h3>
-                        <p class="text-[11px] text-slate-500">Sesuaikan jumlah kali tagih mingguan atau harian untuk paket terpilih secara cepat & tepat</p>
+                        <h3 class="font-heading font-extrabold text-sm text-slate-900">Atur Jumlah Tagihan Serentak</h3>
+                        <p class="text-[10px] text-slate-500">Sesuaikan kali tagih mingguan atau harian untuk paket terpilih secara cepat & serentak</p>
                     </div>
                 </div>
-                <button type="button" @click="showBulkAdjustModal = false" class="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer">
-                    <i class="fa-solid fa-xmark text-sm"></i>
+                <button type="button" @click="showBulkAdjustModal = false" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer">
+                    <i class="fa-solid fa-xmark text-base"></i>
                 </button>
             </div>
 
-            <!-- FORM ATUR SERENTAK -->
-            <form action="{{ route('packages.bulk-adjust-installments') }}" method="POST" onsubmit="rememberScroll();" class="space-y-4">
+            <!-- FORM ATUR SERENTAK (FLEX WITH SCROLLABLE BODY & STICKY FOOTER) -->
+            <form action="{{ route('packages.bulk-adjust-installments') }}" method="POST" onsubmit="rememberScroll();" class="flex flex-col flex-1 overflow-hidden min-h-0">
                 @csrf
                 <input type="hidden" name="package_ids" :value="selectedPackages.join(',')">
 
-                <!-- 1. PILIH TARGET PAKET YANG DIATUR -->
-                <div>
-                    <label class="block font-bold text-slate-800 mb-1.5 flex items-center justify-between">
-                        <span>1. Pilih Lingkup Paket yang Akan Diatur *</span>
-                        <span class="text-[11px] text-indigo-600 font-extrabold" x-text="getAffectedPackages().length + ' Paket Terpilih'"></span>
-                    </label>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        <!-- OPSI: PAKET DIPILIH DI TABEL -->
-                        <label 
-                            :class="bulkAdjustScope === 'selected' ? 'bg-indigo-50 border-indigo-500 text-indigo-900 ring-1 ring-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
-                            class="p-2.5 rounded-xl border flex flex-col justify-between cursor-pointer transition relative"
-                        >
-                            <div class="flex items-center justify-between">
-                                <span class="font-bold text-[11px]">Paket Dipilih</span>
-                                <input type="radio" name="target_scope" value="selected" x-model="bulkAdjustScope" class="text-indigo-600 focus:ring-indigo-500">
-                            </div>
-                            <div class="text-[10px] text-slate-500 mt-1">
-                                <span class="font-bold text-indigo-700" x-text="selectedPackages.length"></span> paket dari tabel
-                            </div>
+                <!-- SCROLLABLE BODY -->
+                <div class="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1">
+                    <!-- 1. PILIH TARGET PAKET YANG DIATUR -->
+                    <div>
+                        <label class="block font-bold text-slate-800 mb-1 flex items-center justify-between text-[11px]">
+                            <span>1. Pilih Lingkup Paket yang Akan Diatur *</span>
+                            <span class="text-[10px] text-indigo-600 font-extrabold" x-text="getAffectedPackages().length + ' Paket Terpilih'"></span>
                         </label>
-
-                        <!-- OPSI: SEMUA MINGGUAN -->
-                        <label 
-                            :class="bulkAdjustScope === 'all_mingguan' ? 'bg-indigo-50 border-indigo-500 text-indigo-900 ring-1 ring-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
-                            class="p-2.5 rounded-xl border flex flex-col justify-between cursor-pointer transition relative"
-                        >
-                            <div class="flex items-center justify-between">
-                                <span class="font-bold text-[11px]">Semua Mingguan</span>
-                                <input type="radio" name="target_scope" value="all_mingguan" x-model="bulkAdjustScope" class="text-indigo-600 focus:ring-indigo-500">
-                            </div>
-                            <div class="text-[10px] text-slate-500 mt-1">
-                                <span class="font-bold text-indigo-700" x-text="allPackages.filter(p => p.period_type === 'mingguan').length"></span> paket mingguan
-                            </div>
-                        </label>
-
-                        <!-- OPSI: SEMUA HARIAN -->
-                        <label 
-                            :class="bulkAdjustScope === 'all_harian' ? 'bg-indigo-50 border-indigo-500 text-indigo-900 ring-1 ring-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
-                            class="p-2.5 rounded-xl border flex flex-col justify-between cursor-pointer transition relative"
-                        >
-                            <div class="flex items-center justify-between">
-                                <span class="font-bold text-[11px]">Semua Harian</span>
-                                <input type="radio" name="target_scope" value="all_harian" x-model="bulkAdjustScope" class="text-indigo-600 focus:ring-indigo-500">
-                            </div>
-                            <div class="text-[10px] text-slate-500 mt-1">
-                                <span class="font-bold text-indigo-700" x-text="allPackages.filter(p => p.period_type === 'harian').length"></span> paket harian
-                            </div>
-                        </label>
-
-                        <!-- OPSI: SEMUA PARSEL -->
-                        <label 
-                            :class="bulkAdjustScope === 'all_parsel' ? 'bg-indigo-50 border-indigo-500 text-indigo-900 ring-1 ring-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
-                            class="p-2.5 rounded-xl border flex flex-col justify-between cursor-pointer transition relative"
-                        >
-                            <div class="flex items-center justify-between">
-                                <span class="font-bold text-[11px]">Semua Parsel</span>
-                                <input type="radio" name="target_scope" value="all_parsel" x-model="bulkAdjustScope" class="text-indigo-600 focus:ring-indigo-500">
-                            </div>
-                            <div class="text-[10px] text-slate-500 mt-1">
-                                <span class="font-bold text-indigo-700" x-text="allPackages.filter(p => p.type === 'parsel').length"></span> paket barang
-                            </div>
-                        </label>
-
-                        <!-- OPSI: SEMUA TABUNGAN -->
-                        <label 
-                            :class="bulkAdjustScope === 'all_tabungan' ? 'bg-indigo-50 border-indigo-500 text-indigo-900 ring-1 ring-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
-                            class="p-2.5 rounded-xl border flex flex-col justify-between cursor-pointer transition relative"
-                        >
-                            <div class="flex items-center justify-between">
-                                <span class="font-bold text-[11px]">Semua Tabungan</span>
-                                <input type="radio" name="target_scope" value="all_tabungan" x-model="bulkAdjustScope" class="text-indigo-600 focus:ring-indigo-500">
-                            </div>
-                            <div class="text-[10px] text-slate-500 mt-1">
-                                <span class="font-bold text-indigo-700" x-text="allPackages.filter(p => p.type === 'tabungan').length"></span> paket tabungan
-                            </div>
-                        </label>
-
-                        <!-- OPSI: SEMUA PAKET -->
-                        <label 
-                            :class="bulkAdjustScope === 'all' ? 'bg-indigo-50 border-indigo-500 text-indigo-900 ring-1 ring-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
-                            class="p-2.5 rounded-xl border flex flex-col justify-between cursor-pointer transition relative"
-                        >
-                            <div class="flex items-center justify-between">
-                                <span class="font-bold text-[11px]">Semua Paket SPL</span>
-                                <input type="radio" name="target_scope" value="all" x-model="bulkAdjustScope" class="text-indigo-600 focus:ring-indigo-500">
-                            </div>
-                            <div class="text-[10px] text-slate-500 mt-1">
-                                Total <span class="font-bold text-indigo-700" x-text="allPackages.length"></span> paket
-                            </div>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- 2. INPUT JUMLAH TAGIHAN BARU & QUICK PRESETS -->
-                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
-                    <label class="block font-bold text-slate-800">2. Masukkan Jumlah Tagihan Baru (Kali Tagih) *</label>
-                    <div class="flex items-center gap-3">
-                        <div class="relative w-44">
-                            <input 
-                                type="number" 
-                                name="new_installment_count" 
-                                x-model.number="bulkAdjustCount" 
-                                min="1" 
-                                max="500" 
-                                required 
-                                class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl font-black text-lg text-indigo-900 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-center"
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                            <!-- OPSI: PAKET DIPILIH DI TABEL -->
+                            <label 
+                                :class="bulkAdjustScope === 'selected' ? 'bg-indigo-50 border-indigo-500 text-indigo-900 ring-1 ring-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
+                                class="p-2 rounded-xl border flex flex-col justify-between cursor-pointer transition relative"
                             >
-                            <span class="absolute inset-y-0 right-3 flex items-center text-slate-400 font-bold text-xs pointer-events-none">
-                                Kali
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-[11px]">Paket Dipilih</span>
+                                    <input type="radio" name="target_scope" value="selected" x-model="bulkAdjustScope" class="text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5">
+                                </div>
+                                <div class="text-[10px] text-slate-500 mt-0.5">
+                                    <span class="font-bold text-indigo-700" x-text="selectedPackages.length"></span> paket dari tabel
+                                </div>
+                            </label>
+
+                            <!-- OPSI: SEMUA MINGGUAN -->
+                            <label 
+                                :class="bulkAdjustScope === 'all_mingguan' ? 'bg-indigo-50 border-indigo-500 text-indigo-900 ring-1 ring-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
+                                class="p-2 rounded-xl border flex flex-col justify-between cursor-pointer transition relative"
+                            >
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-[11px]">Semua Mingguan</span>
+                                    <input type="radio" name="target_scope" value="all_mingguan" x-model="bulkAdjustScope" class="text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5">
+                                </div>
+                                <div class="text-[10px] text-slate-500 mt-0.5">
+                                    <span class="font-bold text-indigo-700" x-text="allPackages.filter(p => p.period_type === 'mingguan').length"></span> paket mingguan
+                                </div>
+                            </label>
+
+                            <!-- OPSI: SEMUA HARIAN -->
+                            <label 
+                                :class="bulkAdjustScope === 'all_harian' ? 'bg-indigo-50 border-indigo-500 text-indigo-900 ring-1 ring-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
+                                class="p-2 rounded-xl border flex flex-col justify-between cursor-pointer transition relative"
+                            >
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-[11px]">Semua Harian</span>
+                                    <input type="radio" name="target_scope" value="all_harian" x-model="bulkAdjustScope" class="text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5">
+                                </div>
+                                <div class="text-[10px] text-slate-500 mt-0.5">
+                                    <span class="font-bold text-indigo-700" x-text="allPackages.filter(p => p.period_type === 'harian').length"></span> paket harian
+                                </div>
+                            </label>
+
+                            <!-- OPSI: SEMUA PARSEL -->
+                            <label 
+                                :class="bulkAdjustScope === 'all_parsel' ? 'bg-indigo-50 border-indigo-500 text-indigo-900 ring-1 ring-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
+                                class="p-2 rounded-xl border flex flex-col justify-between cursor-pointer transition relative"
+                            >
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-[11px]">Semua Parsel</span>
+                                    <input type="radio" name="target_scope" value="all_parsel" x-model="bulkAdjustScope" class="text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5">
+                                </div>
+                                <div class="text-[10px] text-slate-500 mt-0.5">
+                                    <span class="font-bold text-indigo-700" x-text="allPackages.filter(p => p.type === 'parsel').length"></span> paket barang
+                                </div>
+                            </label>
+
+                            <!-- OPSI: SEMUA TABUNGAN -->
+                            <label 
+                                :class="bulkAdjustScope === 'all_tabungan' ? 'bg-indigo-50 border-indigo-500 text-indigo-900 ring-1 ring-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
+                                class="p-2 rounded-xl border flex flex-col justify-between cursor-pointer transition relative"
+                            >
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-[11px]">Semua Tabungan</span>
+                                    <input type="radio" name="target_scope" value="all_tabungan" x-model="bulkAdjustScope" class="text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5">
+                                </div>
+                                <div class="text-[10px] text-slate-500 mt-0.5">
+                                    <span class="font-bold text-indigo-700" x-text="allPackages.filter(p => p.type === 'tabungan').length"></span> paket tabungan
+                                </div>
+                            </label>
+
+                            <!-- OPSI: SEMUA PAKET -->
+                            <label 
+                                :class="bulkAdjustScope === 'all' ? 'bg-indigo-50 border-indigo-500 text-indigo-900 ring-1 ring-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
+                                class="p-2 rounded-xl border flex flex-col justify-between cursor-pointer transition relative"
+                            >
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-[11px]">Semua Paket SPL</span>
+                                    <input type="radio" name="target_scope" value="all" x-model="bulkAdjustScope" class="text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5">
+                                </div>
+                                <div class="text-[10px] text-slate-500 mt-0.5">
+                                    Total <span class="font-bold text-indigo-700" x-text="allPackages.length"></span> paket
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 2. INPUT JUMLAH TAGIHAN BARU & QUICK PRESETS -->
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                        <label class="block font-bold text-slate-800 text-[11px]">2. Masukkan Jumlah Tagihan Baru (Kali Tagih) *</label>
+                        <div class="flex items-center gap-2.5">
+                            <div class="relative w-36 shrink-0">
+                                <input 
+                                    type="number" 
+                                    name="new_installment_count" 
+                                    x-model.number="bulkAdjustCount" 
+                                    min="1" 
+                                    max="500" 
+                                    required 
+                                    class="w-full pl-3 pr-12 py-1.5 bg-white border border-slate-300 rounded-lg font-black text-base text-indigo-900 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-center"
+                                >
+                                <span class="absolute inset-y-0 right-2.5 flex items-center text-slate-400 font-bold text-xs pointer-events-none">
+                                    Kali
+                                </span>
+                            </div>
+                            <div class="text-[10px] text-slate-500 leading-tight">
+                                Durasi disesuaikan menjadi <strong class="text-indigo-800 font-bold" x-text="bulkAdjustCount"></strong> kali tagihan (mingguan / harian).
+                            </div>
+                        </div>
+
+                        <!-- PRESETS BUTTONS -->
+                        <div class="pt-1.5 border-t border-slate-200/80 space-y-1">
+                            <div class="flex items-center flex-wrap gap-1">
+                                <span class="text-[10px] font-bold text-slate-500 w-20">Mingguan:</span>
+                                <template x-for="cnt in [25, 30, 32, 35, 40, 42]" :key="cnt">
+                                    <button 
+                                        type="button" 
+                                        @click="bulkAdjustCount = cnt" 
+                                        :class="bulkAdjustCount === cnt ? 'bg-pink-600 text-white font-black shadow-2xs' : 'bg-white hover:bg-pink-50 text-slate-700 border border-slate-200 font-semibold'"
+                                        class="px-2 py-0.5 rounded text-[10px] transition cursor-pointer"
+                                        x-text="cnt + ' Mgg'"
+                                    ></button>
+                                </template>
+                            </div>
+                            <div class="flex items-center flex-wrap gap-1">
+                                <span class="text-[10px] font-bold text-slate-500 w-20">Harian:</span>
+                                <template x-for="cnt in [40, 60, 100, 120, 150, 300]" :key="cnt">
+                                    <button 
+                                        type="button" 
+                                        @click="bulkAdjustCount = cnt" 
+                                        :class="bulkAdjustCount === cnt ? 'bg-amber-600 text-white font-black shadow-2xs' : 'bg-white hover:bg-amber-50 text-slate-700 border border-slate-200 font-semibold'"
+                                        class="px-2 py-0.5 rounded text-[10px] transition cursor-pointer"
+                                        x-text="cnt + ' Hari'"
+                                    ></button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. METODE PENYESUAIAN NOMINAL -->
+                    <div>
+                        <label class="block font-bold text-slate-800 mb-1 text-[11px]">3. Metode Penyesuaian Nilai Nominal Paket *</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <label 
+                                :class="bulkAdjustMode === 'keep_target' ? 'bg-indigo-50/80 border-indigo-400 ring-1 ring-indigo-400' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'"
+                                class="p-2.5 rounded-xl border cursor-pointer transition flex items-start space-x-2"
+                            >
+                                <input type="radio" name="adjustment_mode" value="keep_target" x-model="bulkAdjustMode" class="mt-0.5 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5">
+                                <div>
+                                    <div class="font-extrabold text-slate-900 text-[11px] flex items-center">
+                                        <span>Target Tetap, Cicilan Dihitung</span>
+                                        <span class="ml-1 text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1 py-0.2 rounded">Rekomendasi</span>
+                                    </div>
+                                    <div class="text-[10px] text-slate-500 mt-0.5 leading-tight">
+                                        Total target tetap. Nominal cicilan dihitung ulang (<span class="font-mono">Target &divide; Jumlah</span>) &amp; dibulatkan.
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label 
+                                :class="bulkAdjustMode === 'keep_installment' ? 'bg-indigo-50/80 border-indigo-400 ring-1 ring-indigo-400' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'"
+                                class="p-2.5 rounded-xl border cursor-pointer transition flex items-start space-x-2"
+                            >
+                                <input type="radio" name="adjustment_mode" value="keep_installment" x-model="bulkAdjustMode" class="mt-0.5 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5">
+                                <div>
+                                    <div class="font-extrabold text-slate-900 text-[11px]">Cicilan Tetap, Target Dihitung</div>
+                                    <div class="text-[10px] text-slate-500 mt-0.5 leading-tight">
+                                        Nominal cicilan tetap. Total target dihitung ulang (<span class="font-mono">Cicilan &times; Jumlah</span>).
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 4. OPSI SINKRONISASI KONSUMEN -->
+                    <div class="p-2.5 bg-amber-50/80 border border-amber-200 rounded-xl">
+                        <label class="flex items-start space-x-2 cursor-pointer">
+                            <input type="checkbox" name="sync_customers" value="1" x-model="bulkAdjustSyncCustomers" class="mt-0.5 rounded text-amber-600 focus:ring-amber-500 w-3.5 h-3.5">
+                            <div>
+                                <div class="font-bold text-amber-950 text-[11px]">
+                                    Sinkronkan jadwal tagihan ke konsumen aktif yang mengambil paket ini (Opsional)
+                                </div>
+                                <div class="text-[10px] text-amber-800 mt-0.5 leading-tight">
+                                    Menambah kotak tagihan baru jika jumlah tagihan naik, atau menghapus kotak belum bayar jika berkurang.
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- 5. PRATINJAU REAL-TIME (LIVE SIMULATION) -->
+                    <div class="space-y-1.5">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-bold text-slate-800 text-[11px]">
+                                Pratinjau Hasil (<span x-text="getAffectedPackages().length"></span> Paket Terdampak)
                             </span>
+                            <span class="text-[10px] text-slate-400 italic">Simulasi 4 paket:</span>
                         </div>
-                        <div class="text-[11px] text-slate-500">
-                            Durasi tagihan paket akan disesuaikan menjadi <strong class="text-indigo-800 font-bold" x-text="bulkAdjustCount"></strong> kali tagihan (mingguan / harian).
-                        </div>
-                    </div>
 
-                    <!-- PRESETS BUTTONS -->
-                    <div class="pt-2 border-t border-slate-200 space-y-1.5">
-                        <div class="flex items-center flex-wrap gap-1.5">
-                            <span class="text-[10px] font-bold text-slate-500 w-24">Pilihan Mingguan:</span>
-                            <template x-for="cnt in [25, 30, 32, 35, 40, 42]" :key="cnt">
-                                <button 
-                                    type="button" 
-                                    @click="bulkAdjustCount = cnt" 
-                                    :class="bulkAdjustCount === cnt ? 'bg-pink-600 text-white font-black shadow-2xs' : 'bg-white hover:bg-pink-50 text-slate-700 border border-slate-200 font-semibold'"
-                                    class="px-2.5 py-1 rounded-lg text-[10px] transition cursor-pointer"
-                                    x-text="cnt + ' Mgg'"
-                                ></button>
-                            </template>
-                        </div>
-                        <div class="flex items-center flex-wrap gap-1.5">
-                            <span class="text-[10px] font-bold text-slate-500 w-24">Pilihan Harian:</span>
-                            <template x-for="cnt in [40, 60, 100, 120, 150, 300]" :key="cnt">
-                                <button 
-                                    type="button" 
-                                    @click="bulkAdjustCount = cnt" 
-                                    :class="bulkAdjustCount === cnt ? 'bg-amber-600 text-white font-black shadow-2xs' : 'bg-white hover:bg-amber-50 text-slate-700 border border-slate-200 font-semibold'"
-                                    class="px-2.5 py-1 rounded-lg text-[10px] transition cursor-pointer"
-                                    x-text="cnt + ' Hari'"
-                                ></button>
-                            </template>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. METODE PENYESUAIAN NOMINAL -->
-                <div>
-                    <label class="block font-bold text-slate-800 mb-1.5">3. Metode Penyesuaian Nilai Nominal Paket *</label>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <label 
-                            :class="bulkAdjustMode === 'keep_target' ? 'bg-indigo-50/80 border-indigo-400 ring-1 ring-indigo-400' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'"
-                            class="p-3 rounded-xl border cursor-pointer transition flex items-start space-x-2.5"
-                        >
-                            <input type="radio" name="adjustment_mode" value="keep_target" x-model="bulkAdjustMode" class="mt-0.5 text-indigo-600 focus:ring-indigo-500">
-                            <div>
-                                <div class="font-extrabold text-slate-900 text-[11px] flex items-center">
-                                    <span>Target Tetap, Hitung Cicilan Baru</span>
-                                    <span class="ml-1.5 text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">Rekomendasi</span>
-                                </div>
-                                <div class="text-[10px] text-slate-500 mt-0.5 leading-normal">
-                                    Total target paket tidak berubah. Nominal cicilan per tagihan dihitung ulang otomatis (<span class="font-mono">Target &divide; Jumlah Baru</span>) dan dibulatkan.
-                                </div>
-                            </div>
-                        </label>
-
-                        <label 
-                            :class="bulkAdjustMode === 'keep_installment' ? 'bg-indigo-50/80 border-indigo-400 ring-1 ring-indigo-400' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'"
-                            class="p-3 rounded-xl border cursor-pointer transition flex items-start space-x-2.5"
-                        >
-                            <input type="radio" name="adjustment_mode" value="keep_installment" x-model="bulkAdjustMode" class="mt-0.5 text-indigo-600 focus:ring-indigo-500">
-                            <div>
-                                <div class="font-extrabold text-slate-900 text-[11px]">Cicilan Tetap, Hitung Target Baru</div>
-                                <div class="text-[10px] text-slate-500 mt-0.5 leading-normal">
-                                    Nominal setoran cicilan tetap sama. Total Target paket akan dihitung ulang secara proporsional (<span class="font-mono">Cicilan &times; Jumlah Baru</span>).
-                                </div>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- 4. OPSI SINKRONISASI KONSUMEN -->
-                <div class="p-3 bg-amber-50/80 border border-amber-200 rounded-xl">
-                    <label class="flex items-start space-x-2.5 cursor-pointer">
-                        <input type="checkbox" name="sync_customers" value="1" x-model="bulkAdjustSyncCustomers" class="mt-0.5 rounded text-amber-600 focus:ring-amber-500">
-                        <div>
-                            <div class="font-bold text-amber-950 text-[11px]">
-                                Sinkronkan jadwal tagihan ke konsumen aktif yang mengambil paket ini (Opsional)
-                            </div>
-                            <div class="text-[10px] text-amber-800 mt-0.5 leading-normal">
-                                Jika dicentang, sistem otomatis menambah kotak tagihan baru bagi konsumen aktif jika jumlah tagihan naik, atau menghapus kotak belum bayar (unpaid) jika berkurang. Jika tidak dicentang, hanya mengubah Master Paket untuk pendaftaran konsumen baru.
-                            </div>
-                        </div>
-                    </label>
-                </div>
-
-                <!-- 5. PRATINJAU REAL-TIME (LIVE SIMULATION) -->
-                <div class="space-y-2">
-                    <div class="flex items-center justify-between text-xs">
-                        <span class="font-bold text-slate-800">
-                            Pratinjau Hasil (<span x-text="getAffectedPackages().length"></span> Paket Terdampak)
-                        </span>
-                        <span class="text-[10px] text-slate-400 italic">Simulasi 4 paket pertama:</span>
-                    </div>
-
-                    <div class="border border-slate-200 rounded-xl overflow-hidden max-h-40 overflow-y-auto">
-                        <table class="w-full text-left border-collapse text-[11px]">
-                            <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0">
-                                <tr>
-                                    <th class="py-2 px-3">Kode &amp; Paket</th>
-                                    <th class="py-2 px-3 text-center">Tagihan</th>
-                                    <th class="py-2 px-3 text-right">Cicilan per Kali</th>
-                                    <th class="py-2 px-3 text-right">Total Target</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <template x-for="pkg in getAffectedPackages().slice(0, 4)" :key="pkg.id">
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="py-2 px-3">
-                                            <span class="font-mono font-bold text-slate-800" x-text="pkg.code"></span>
-                                            <div class="text-[10px] text-slate-500 truncate max-w-[160px]" x-text="pkg.name"></div>
-                                        </td>
-                                        <td class="py-2 px-3 text-center whitespace-nowrap">
-                                            <span class="text-slate-400 line-through text-[10px]" x-text="pkg.installment_count + 'x'"></span>
-                                            <i class="fa-solid fa-arrow-right text-[9px] text-slate-400 mx-1"></i>
-                                            <span class="font-black text-indigo-700" x-text="bulkAdjustCount + 'x'"></span>
-                                        </td>
-                                        <td class="py-2 px-3 text-right whitespace-nowrap">
-                                            <div class="text-[10px] text-slate-400 line-through" x-text="formatRupiah(pkg.installment_amount)"></div>
-                                            <div class="font-extrabold text-emerald-700" x-text="formatRupiah(calculateNewInstallment(pkg, bulkAdjustCount, bulkAdjustMode))"></div>
-                                        </td>
-                                        <td class="py-2 px-3 text-right whitespace-nowrap">
-                                            <div class="text-[10px] text-slate-400 line-through" x-text="formatRupiah(pkg.target_nominal)"></div>
-                                            <div class="font-bold text-slate-800" x-text="formatRupiah(calculateNewTarget(pkg, bulkAdjustCount, bulkAdjustMode))"></div>
+                        <div class="border border-slate-200 rounded-xl overflow-hidden max-h-32 overflow-y-auto">
+                            <table class="w-full text-left border-collapse text-[11px]">
+                                <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0">
+                                    <tr>
+                                        <th class="py-1.5 px-3">Kode &amp; Paket</th>
+                                        <th class="py-1.5 px-3 text-center">Tagihan</th>
+                                        <th class="py-1.5 px-3 text-right">Cicilan per Kali</th>
+                                        <th class="py-1.5 px-3 text-right">Total Target</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <template x-for="pkg in getAffectedPackages().slice(0, 4)" :key="pkg.id">
+                                        <tr class="hover:bg-slate-50">
+                                            <td class="py-1.5 px-3">
+                                                <span class="font-mono font-bold text-slate-800" x-text="pkg.code"></span>
+                                                <div class="text-[10px] text-slate-500 truncate max-w-[160px]" x-text="pkg.name"></div>
+                                            </td>
+                                            <td class="py-1.5 px-3 text-center whitespace-nowrap">
+                                                <span class="text-slate-400 line-through text-[10px]" x-text="pkg.installment_count + 'x'"></span>
+                                                <i class="fa-solid fa-arrow-right text-[9px] text-slate-400 mx-1"></i>
+                                                <span class="font-black text-indigo-700" x-text="bulkAdjustCount + 'x'"></span>
+                                            </td>
+                                            <td class="py-1.5 px-3 text-right whitespace-nowrap">
+                                                <div class="text-[10px] text-slate-400 line-through" x-text="formatRupiah(pkg.installment_amount)"></div>
+                                                <div class="font-extrabold text-emerald-700" x-text="formatRupiah(calculateNewInstallment(pkg, bulkAdjustCount, bulkAdjustMode))"></div>
+                                            </td>
+                                            <td class="py-1.5 px-3 text-right whitespace-nowrap">
+                                                <div class="text-[10px] text-slate-400 line-through" x-text="formatRupiah(pkg.target_nominal)"></div>
+                                                <div class="font-bold text-slate-800" x-text="formatRupiah(calculateNewTarget(pkg, bulkAdjustCount, bulkAdjustMode))"></div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    <tr x-show="getAffectedPackages().length === 0">
+                                        <td colspan="4" class="py-4 text-center text-slate-400 text-xs">
+                                            Tidak ada paket yang sesuai dengan filter yang dipilih.
                                         </td>
                                     </tr>
-                                </template>
-                                <tr x-show="getAffectedPackages().length === 0">
-                                    <td colspan="4" class="py-4 text-center text-slate-400 text-xs">
-                                        Tidak ada paket yang sesuai dengan filter yang dipilih.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
-                <!-- TOMBOL AKSI -->
-                <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <button type="button" @click="showBulkAdjustModal = false" class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold transition cursor-pointer">
+                <!-- TOMBOL AKSI (STICKY FOOTER) -->
+                <div class="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
+                    <button type="button" @click="showBulkAdjustModal = false" class="px-3.5 py-2 rounded-xl text-slate-600 hover:bg-slate-200 font-semibold transition cursor-pointer text-xs">
                         Batal
                     </button>
                     <button 
                         type="submit" 
                         :disabled="getAffectedPackages().length === 0 || !bulkAdjustCount || bulkAdjustCount <= 0"
-                        class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 disabled:opacity-50 text-white font-extrabold rounded-xl shadow-md transition flex items-center cursor-pointer"
+                        class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 disabled:opacity-50 text-white font-extrabold rounded-xl shadow-md transition flex items-center cursor-pointer text-xs"
                     >
-                        <i class="fa-solid fa-check mr-2"></i>
+                        <i class="fa-solid fa-check mr-1.5"></i>
                         <span>Terapkan ke <span x-text="getAffectedPackages().length"></span> Paket Serentak</span>
                     </button>
                 </div>
