@@ -33,24 +33,24 @@
         </div>
     </div>
 
-    <!-- SCOPE SWITCHER: SEMUA KONSUMEN (PO SUPPLIER) VS TITIK AMAN (SOP TUTUP BUKU) -->
-    <div class="bg-white rounded-2xl border-2 {{ $scope === 'all' ? 'border-pink-300 bg-gradient-to-r from-pink-50/40 via-white to-pink-50/20' : 'border-amber-300 bg-gradient-to-r from-amber-50/40 via-white to-amber-50/20' }} shadow-xs p-4 sm:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <!-- SCOPE SWITCHER: TITIK AMAN & TUTUP BUKU VS RAW ALL -->
+    <div class="bg-white rounded-2xl border-2 {{ $scope === 'safe' ? 'border-pink-300 bg-gradient-to-r from-pink-50/40 via-white to-pink-50/20' : 'border-amber-300 bg-gradient-to-r from-amber-50/40 via-white to-amber-50/20' }} shadow-xs p-4 sm:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div class="flex items-start sm:items-center space-x-3.5">
-            <div class="w-11 h-11 rounded-2xl {{ $scope === 'all' ? 'bg-pink-700 text-white shadow-pink-200' : 'bg-amber-600 text-white shadow-amber-200' }} flex items-center justify-center text-lg shrink-0 shadow-md">
-                <i class="fa-solid {{ $scope === 'all' ? 'fa-truck-ramp-box' : 'fa-shield-halved' }}"></i>
+            <div class="w-11 h-11 rounded-2xl {{ $scope === 'safe' ? 'bg-pink-700 text-white shadow-pink-200' : 'bg-amber-600 text-white shadow-amber-200' }} flex items-center justify-center text-lg shrink-0 shadow-md">
+                <i class="fa-solid {{ $scope === 'safe' ? 'fa-shield-halved' : 'fa-truck-ramp-box' }}"></i>
             </div>
             <div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <h3 class="text-sm font-heading font-black text-slate-900">Mode Cakupan Belanja & Pengadaan Barang:</h3>
-                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider {{ $scope === 'all' ? 'bg-pink-700 text-white shadow-xs' : 'bg-amber-600 text-white shadow-xs' }}">
-                        {{ $scope === 'all' ? '✓ REKOMENDASI UTAMA: PO Grosir ke Supplier (Semua Konsumen Aktif)' : 'SOP Realisasi Tutup Buku (Hanya Lolos Titik Aman)' }}
+                    <h3 class="text-sm font-heading font-black text-slate-900">Aturan Kelayakan Daftar Belanja SPL:</h3>
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider {{ $scope === 'safe' ? 'bg-pink-700 text-white shadow-xs' : 'bg-amber-600 text-white shadow-xs' }}">
+                        {{ $scope === 'safe' ? '✓ STANDAR RESMI: Hanya Lolos Titik Aman & ACC Tutup Buku' : 'Semua Pesanan Tanpa Filter (Termasuk Belum Aman)' }}
                     </span>
                 </div>
                 <p class="text-xs text-slate-600 mt-1 leading-relaxed max-w-3xl">
-                    @if($scope === 'all')
-                        Menampilkan <strong>total gabungan dari seluruh {{ number_format($summary['total_eligible_customers'] ?? 0) }} pesanan konsumen aktif se-SPL</strong> (Parsel Sembako, Tabungan, dan Eceran). Sangat tepat digunakan Owner saat membuat pesanan kulakan/PO ke Supplier grosir & pabrikan agar <strong>jumlah belanja pas</strong> dan <strong>meminimalisir kelebihan atau kekurangan barang</strong> saat belanja.
+                    @if($scope === 'safe')
+                        Sesuai instruksi Owner: Konsumen yang <strong>belum mencapai titik aman tidak dimasukkan ke daftar belanja</strong>, kecuali jika <strong>sudah melewati titik aman</strong>, atau <strong>sudah direkonsiliasi dan ditentukan barangnya oleh Owner pada Tutup Buku</strong>. Menampilkan <strong>{{ number_format($summary['total_eligible_customers'] ?? 0) }} pesanan konsumen yang sah masuk belanja</strong>. Terdapat <strong>{{ number_format($summary['total_excluded_incomplete'] ?? 0) }} konsumen</strong> belum titik aman yang disaring.
                     @else
-                        Menampilkan hanya pesanan dari <strong>{{ number_format($summary['total_eligible_customers'] ?? 0) }} konsumen yang telah melampaui titik aman</strong> / di-ACC Owner sesuai SOP tutup buku akhir musim. Terdapat <strong>{{ number_format($summary['total_excluded_incomplete'] ?? 0) }} konsumen</strong> yang belum titik aman disaring dari daftar belanja ini.
+                        Menampilkan seluruh {{ number_format($summary['all_packages_count'] ?? 0) }} pesanan aktif konsumen tanpa memfilter batas titik aman (Hanya untuk estimasi kasar).
                     @endif
                 </p>
             </div>
@@ -58,13 +58,13 @@
 
         <!-- TOGGLE PILL SELECTOR -->
         <div class="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 shrink-0 self-start md:self-auto text-xs font-bold shadow-2xs">
-            <a href="{{ route('inventory.planner', array_merge(request()->except('scope'), ['scope' => 'all'])) }}" class="px-3.5 py-2 rounded-lg transition flex items-center space-x-1.5 {{ $scope === 'all' ? 'bg-pink-700 text-white shadow-xs font-extrabold' : 'text-slate-600 hover:text-slate-900' }}">
-                <i class="fa-solid fa-cart-shopping text-xs"></i>
-                <span>Semua Konsumen (PO Supplier)</span>
-            </a>
-            <a href="{{ route('inventory.planner', array_merge(request()->except('scope'), ['scope' => 'safe'])) }}" class="px-3.5 py-2 rounded-lg transition flex items-center space-x-1.5 {{ $scope === 'safe' ? 'bg-amber-600 text-white shadow-xs font-extrabold' : 'text-slate-600 hover:text-slate-900' }}">
+            <a href="{{ route('inventory.planner', array_merge(request()->except('scope'), ['scope' => 'safe'])) }}" class="px-3.5 py-2 rounded-lg transition flex items-center space-x-1.5 {{ $scope === 'safe' ? 'bg-pink-700 text-white shadow-xs font-extrabold' : 'text-slate-600 hover:text-slate-900' }}">
                 <i class="fa-solid fa-shield-halved text-xs"></i>
-                <span>Hanya Titik Aman</span>
+                <span>Standar Belanja (Titik Aman & Tutup Buku)</span>
+            </a>
+            <a href="{{ route('inventory.planner', array_merge(request()->except('scope'), ['scope' => 'raw_all'])) }}" class="px-3.5 py-2 rounded-lg transition flex items-center space-x-1.5 {{ $scope === 'raw_all' ? 'bg-amber-600 text-white shadow-xs font-extrabold' : 'text-slate-600 hover:text-slate-900' }}">
+                <i class="fa-solid fa-list-check text-xs"></i>
+                <span>Semua Pesanan (Tanpa Filter)</span>
             </a>
         </div>
     </div>
@@ -110,7 +110,7 @@
                         </span>
                     </div>
                     <p class="text-xs text-amber-900 mt-1 leading-relaxed">
-                        Sesuai SOP SPL, yang masuk daftar belanja grosir hanyalah konsumen yang <strong>sudah melebihi/mencapai titik aman</strong> atau <strong>konsumen tidak selesai yang sudah ditentukan alokasi barangnya oleh Owner</strong>. Sebanyak <strong>{{ count($excludedIncompleteCustomers) }} konsumen</strong> yang belum aman dan belum ditentukan barangnya <em>dikecualikan dari daftar belanja</em> agar tidak terjadi pemborosan modal belanja kulakan.
+                        Sesuai SOP SPL, yang masuk daftar belanja grosir hanyalah konsumen yang <strong>sudah melebihi/mencapai titik aman</strong> atau <strong>konsumen tidak selesai yang sudah ditentukan alokasi barangnya oleh Owner pada saat tutup buku</strong>. Sebanyak <strong>{{ count($excludedIncompleteCustomers) }} konsumen</strong> yang belum aman dan belum ditentukan barangnya <em>dikecualikan dari daftar belanja</em> agar tidak terjadi pemborosan modal belanja kulakan.
                     </p>
                 </div>
             </div>
@@ -127,141 +127,204 @@
         </div>
     @endif
 
-    <!-- 6 EXECUTIVE STAT CARDS -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+    <!-- EXECUTIVE STAT CARDS DENGAN PEMISAHAN KATEGORI BELANJA -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <!-- Card 0: Paket Harus Disiapkan -->
-        <div class="bg-white rounded-xl p-3.5 border-2 border-pink-400 shadow-xs flex items-center justify-between bg-gradient-to-br from-pink-50/40 to-white">
+        <div class="bg-white rounded-xl p-3 border-2 border-pink-400 shadow-xs flex items-center justify-between bg-gradient-to-br from-pink-50/40 to-white">
             <div>
-                <div class="text-[10px] font-bold text-pink-900 uppercase tracking-wider flex items-center">
-                    <i class="fa-solid fa-boxes-packing mr-1 text-pink-600"></i> Paket Harus Disiapkan
+                <div class="text-[9px] font-bold text-pink-900 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-boxes-packing mr-1 text-pink-600"></i> Paket Disiapkan
                 </div>
-                <div class="text-xl font-heading font-black text-pink-900 mt-0.5">
-                    {{ number_format($summary['total_packages_count'] ?? 0) }} <span class="text-xs font-bold text-slate-500">Paket</span>
+                <div class="text-lg font-heading font-black text-pink-900 mt-0.5">
+                    {{ number_format($summary['total_packages_count'] ?? 0) }} <span class="text-[10px] font-bold text-slate-500">Paket</span>
                 </div>
-                <div class="text-[10px] text-slate-600 mt-0.5">
-                    <strong>{{ $summary['total_packages_pending'] ?? 0 }}</strong> Pending &bull; {{ $summary['total_packages_fulfilled'] ?? 0 }} Selesai
+                <div class="text-[9px] text-slate-600 mt-0.5">
+                    <strong>{{ $summary['total_packages_pending'] ?? 0 }}</strong> Pending • {{ $summary['total_packages_fulfilled'] ?? 0 }} Selesai
                 </div>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-pink-600 text-white flex items-center justify-center text-base shrink-0 shadow-xs">
+            <div class="w-8 h-8 rounded-lg bg-pink-600 text-white flex items-center justify-center text-xs shrink-0 shadow-xs">
                 <i class="fa-solid fa-box-check"></i>
             </div>
         </div>
 
-        <!-- Card 1: Barang Pokok -->
-        <div class="bg-white rounded-xl p-3.5 border border-pink-200 shadow-xs flex items-center justify-between">
+        <!-- Card 1: Parsel Harian -->
+        <div class="bg-white rounded-xl p-3 border border-pink-200 shadow-xs flex items-center justify-between">
             <div>
-                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center">
-                    <i class="fa-solid fa-cart-flatbed mr-1 text-pink-600"></i> Barang Pokok
+                <div class="text-[9px] font-bold text-pink-800 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-calendar-day mr-1 text-pink-600"></i> 1. Parsel Harian
                 </div>
                 <div class="text-base font-heading font-extrabold text-pink-900 mt-0.5">
-                    Rp {{ number_format($summary['total_estimated_cost'], 0, ',', '.') }}
+                    Rp {{ number_format($summary['parsel_harian_cost'] ?? 0, 0, ',', '.') }}
                 </div>
-                <div class="text-[10px] text-slate-500 mt-0.5">
-                    <strong>{{ number_format($summary['total_base_pieces']) }}</strong> Pcs ({{ $summary['total_unique_items'] }} Macam)
+                <div class="text-[9px] text-slate-500 mt-0.5">
+                    <strong>{{ number_format($summary['parsel_harian_pieces'] ?? 0) }}</strong> Pcs ({{ $summary['parsel_harian_unique'] ?? 0 }} Macam)
                 </div>
             </div>
-            <div class="w-9 h-9 rounded-xl bg-pink-100 text-pink-700 flex items-center justify-center text-sm shrink-0">
-                <i class="fa-solid fa-boxes-stacked"></i>
+            <div class="w-8 h-8 rounded-lg bg-pink-100 text-pink-700 flex items-center justify-center text-xs shrink-0">
+                <i class="fa-solid fa-calendar-day"></i>
             </div>
         </div>
 
-        <!-- Card 2: Bonus Paket -->
-        <div class="bg-white rounded-xl p-3.5 border border-amber-200 shadow-xs flex items-center justify-between">
+        <!-- Card 2: Parsel Mingguan -->
+        <div class="bg-white rounded-xl p-3 border border-indigo-200 shadow-xs flex items-center justify-between">
             <div>
-                <div class="text-[10px] font-bold text-amber-800 uppercase tracking-wider flex items-center">
-                    <i class="fa-solid fa-gift mr-1 text-amber-600"></i> Bonus Paket
+                <div class="text-[9px] font-bold text-indigo-800 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-calendar-week mr-1 text-indigo-600"></i> 2. Parsel Mingguan
                 </div>
-                <div class="text-base font-heading font-extrabold text-amber-800 mt-0.5">
-                    Rp {{ number_format($summary['total_bonus_cost'] ?? 0, 0, ',', '.') }}
+                <div class="text-base font-heading font-extrabold text-indigo-900 mt-0.5">
+                    Rp {{ number_format($summary['parsel_mingguan_cost'] ?? 0, 0, ',', '.') }}
                 </div>
-                <div class="text-[10px] text-slate-500 mt-0.5">
-                    <strong>{{ number_format($summary['total_bonus_pieces'] ?? 0) }}</strong> Pcs ({{ $summary['total_unique_bonus'] ?? 0 }} Macam)
+                <div class="text-[9px] text-slate-500 mt-0.5">
+                    <strong>{{ number_format($summary['parsel_mingguan_pieces'] ?? 0) }}</strong> Pcs ({{ $summary['parsel_mingguan_unique'] ?? 0 }} Macam)
                 </div>
             </div>
-            <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-sm shrink-0">
+            <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs shrink-0">
+                <i class="fa-solid fa-calendar-week"></i>
+            </div>
+        </div>
+
+        <!-- Card 3: Paket Eceran -->
+        <div class="bg-white rounded-xl p-3 border border-blue-200 shadow-xs flex items-center justify-between">
+            <div>
+                <div class="text-[9px] font-bold text-blue-800 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-basket-shopping mr-1 text-blue-600"></i> 3. Paket Eceran
+                </div>
+                <div class="text-base font-heading font-extrabold text-blue-900 mt-0.5">
+                    Rp {{ number_format($summary['ecer_cost'] ?? 0, 0, ',', '.') }}
+                </div>
+                <div class="text-[9px] text-slate-500 mt-0.5">
+                    <strong>{{ number_format($summary['ecer_pieces'] ?? 0) }}</strong> Pcs ({{ $summary['ecer_unique'] ?? 0 }} Macam)
+                </div>
+            </div>
+            <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs shrink-0">
+                <i class="fa-solid fa-basket-shopping"></i>
+            </div>
+        </div>
+
+        <!-- Card 4: Hadiah Tabungan -->
+        <div class="bg-white rounded-xl p-3 border border-amber-200 shadow-xs flex items-center justify-between">
+            <div>
+                <div class="text-[9px] font-bold text-amber-800 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-gift mr-1 text-amber-600"></i> 4. Hadiah Tabungan
+                </div>
+                <div class="text-base font-heading font-extrabold text-amber-800 mt-0.5">
+                    Rp {{ number_format($summary['tabungan_bonus_cost'] ?? 0, 0, ',', '.') }}
+                </div>
+                <div class="text-[9px] text-slate-500 mt-0.5">
+                    <strong>{{ number_format($summary['tabungan_bonus_pieces'] ?? 0) }}</strong> Pcs ({{ $summary['tabungan_bonus_unique'] ?? 0 }} Macam)
+                </div>
+            </div>
+            <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-xs shrink-0">
                 <i class="fa-solid fa-award"></i>
             </div>
         </div>
 
-        <!-- Card 3: Kemasan Parsel -->
-        <div class="bg-white rounded-xl p-3.5 border border-purple-200 shadow-xs flex items-center justify-between">
+        <!-- Card 5: Rekap Kulakan Semua Barang -->
+        <div class="bg-white rounded-xl p-3 border-2 border-slate-700 shadow-xs flex items-center justify-between bg-slate-900 text-white">
             <div>
-                <div class="text-[10px] font-bold text-purple-800 uppercase tracking-wider flex items-center">
-                    <i class="fa-solid fa-box-archive mr-1 text-purple-600"></i> Kemasan / Wadah
+                <div class="text-[9px] font-bold text-pink-300 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-cart-flatbed mr-1 text-pink-400"></i> 5. Total Rekap Barang
+                </div>
+                <div class="text-base font-heading font-extrabold text-white mt-0.5">
+                    Rp {{ number_format($summary['total_estimated_cost'], 0, ',', '.') }}
+                </div>
+                <div class="text-[9px] text-slate-300 mt-0.5">
+                    <strong>{{ number_format($summary['total_base_pieces']) }}</strong> Pcs ({{ $summary['total_unique_items'] }} Macam)
+                </div>
+            </div>
+            <div class="w-8 h-8 rounded-lg bg-pink-700 text-white flex items-center justify-center text-xs shrink-0">
+                <i class="fa-solid fa-layer-group"></i>
+            </div>
+        </div>
+
+        <!-- Card 6: Kemasan Parsel -->
+        <div class="bg-white rounded-xl p-3 border border-purple-200 shadow-xs flex items-center justify-between">
+            <div>
+                <div class="text-[9px] font-bold text-purple-800 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-box-archive mr-1 text-purple-600"></i> 6. Kemasan / Wadah
                 </div>
                 <div class="text-base font-heading font-extrabold text-purple-900 mt-0.5">
                     Rp {{ number_format($summary['total_packaging_cost'] ?? 0, 0, ',', '.') }}
                 </div>
-                <div class="text-[10px] text-slate-500 mt-0.5">
+                <div class="text-[9px] text-slate-500 mt-0.5">
                     <strong>{{ number_format($summary['total_packaging_units'] ?? 0) }}</strong> Unit ({{ $summary['total_packaging_types'] ?? 0 }} Model)
                 </div>
             </div>
-            <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-sm shrink-0">
+            <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-xs shrink-0">
                 <i class="fa-solid fa-suitcase"></i>
             </div>
         </div>
 
-        <!-- Card 4: Uang Tunai Disiapkan -->
-        <div class="bg-white rounded-xl p-3.5 border border-emerald-200 shadow-xs flex items-center justify-between">
+        <!-- Card 7: Uang Tunai Disiapkan -->
+        <div class="bg-white rounded-xl p-3 border border-emerald-200 shadow-xs flex items-center justify-between">
             <div>
-                <div class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider flex items-center">
-                    <i class="fa-solid fa-money-bill-wave mr-1 text-emerald-600"></i> Uang Tunai Harus Disiapkan
+                <div class="text-[9px] font-bold text-emerald-800 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-money-bill-wave mr-1 text-emerald-600"></i> 7. Uang Tunai
                 </div>
                 <div class="text-base font-heading font-extrabold text-emerald-700 mt-0.5">
                     Rp {{ number_format($summary['total_cash_amount'], 0, ',', '.') }}
                 </div>
-                <div class="text-[10px] text-slate-500 mt-0.5">
+                <div class="text-[9px] text-slate-500 mt-0.5">
                     <strong>{{ $summary['total_cash_recipients'] }}</strong> Konsumen ({{ $summary['total_cash_agents'] }} Agen)
                 </div>
             </div>
-            <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm shrink-0">
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs shrink-0">
                 <i class="fa-solid fa-hand-holding-dollar"></i>
             </div>
         </div>
 
-        <!-- Card 5: Grand Total Dana Modal Owner -->
-        <div class="bg-white rounded-xl p-3.5 border border-pink-300 shadow-xs flex items-center justify-between bg-gradient-to-br from-white to-pink-50/60">
+        <!-- Card 8: Grand Total Dana Modal Owner -->
+        <div class="col-span-2 bg-white rounded-xl p-3 border-2 border-pink-400 shadow-xs flex items-center justify-between bg-gradient-to-r from-pink-50 via-white to-pink-50">
             <div>
-                <div class="text-[10px] font-bold text-pink-900 uppercase tracking-wider">
-                    Total Dana Modal
+                <div class="text-[9px] font-bold text-pink-900 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-vault mr-1 text-pink-700"></i> Grand Total Dana Modal Belanja & Uang Owner
                 </div>
-                <div class="text-base font-heading font-black text-pink-800 mt-0.5">
+                <div class="text-lg font-heading font-black text-pink-900 mt-0.5">
                     Rp {{ number_format($summary['grand_total_fund'], 0, ',', '.') }}
                 </div>
-                <div class="text-[10px] text-slate-500 mt-0.5">
-                    Belanja + Uang Tunai
+                <div class="text-[9px] text-slate-600 mt-0.5">
+                    Belanja Barang + Kemasan + Uang Tunai Konsumen
                 </div>
             </div>
-            <div class="w-9 h-9 rounded-xl bg-pink-200/70 text-pink-800 flex items-center justify-center text-sm shrink-0">
-                <i class="fa-solid fa-vault"></i>
+            <div class="w-9 h-9 rounded-xl bg-pink-700 text-white flex items-center justify-center text-sm shrink-0 shadow-xs">
+                <i class="fa-solid fa-coins"></i>
             </div>
         </div>
     </div>
 
-    <!-- TAB FILTER SELECTOR -->
+    <!-- TAB FILTER SELECTOR DENGAN PEMISAHAN KATEGORI JELAS -->
     <div class="flex items-center space-x-2 border-b border-pink-200 pb-3 text-xs font-bold overflow-x-auto">
-        <button type="button" @click="activeTab = 'packages'" :class="activeTab === 'packages' ? 'bg-pink-700 text-white shadow-xs' : 'bg-white text-pink-900 hover:bg-pink-50 border border-pink-200'" class="px-4 py-2 rounded-xl transition flex items-center shrink-0">
-            <i class="fa-solid fa-boxes-packing mr-1.5"></i> 1. Rekapan Paket yang Harus Disiapkan ({{ count($packagesToPrepare) }})
+        <button type="button" @click="activeTab = 'packages'" :class="activeTab === 'packages' ? 'bg-pink-700 text-white shadow-xs' : 'bg-white text-pink-900 hover:bg-pink-50 border border-pink-200'" class="px-3.5 py-2 rounded-xl transition flex items-center shrink-0">
+            <i class="fa-solid fa-boxes-packing mr-1.5"></i> Rekapan Paket ({{ count($packagesToPrepare) }})
         </button>
-        <button type="button" @click="activeTab = 'goods'" :class="activeTab === 'goods' ? 'bg-pink-700 text-white shadow-xs' : 'bg-white text-slate-600 hover:bg-pink-50 border border-slate-200'" class="px-4 py-2 rounded-xl transition flex items-center shrink-0">
-            <i class="fa-solid fa-box-open mr-1.5"></i> 2. Belanja Barang Pokok ({{ count($items) }})
+        <button type="button" @click="activeTab = 'parsel_harian'" :class="activeTab === 'parsel_harian' ? 'bg-pink-700 text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-pink-50 border border-pink-200'" class="px-3.5 py-2 rounded-xl transition flex items-center shrink-0">
+            <i class="fa-solid fa-calendar-day mr-1.5 text-pink-500"></i> 1. Parsel Harian ({{ count($parselHarianItems) }})
         </button>
-        <button type="button" @click="activeTab = 'bonus'" :class="activeTab === 'bonus' ? 'bg-amber-600 text-white shadow-xs' : 'bg-white text-amber-800 hover:bg-amber-50 border border-amber-200'" class="px-4 py-2 rounded-xl transition flex items-center shrink-0">
-            <i class="fa-solid fa-award mr-1.5"></i> 3. Belanja Bonus Paket ({{ count($bonusItems) }})
+        <button type="button" @click="activeTab = 'parsel_mingguan'" :class="activeTab === 'parsel_mingguan' ? 'bg-indigo-700 text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-indigo-50 border border-indigo-200'" class="px-3.5 py-2 rounded-xl transition flex items-center shrink-0">
+            <i class="fa-solid fa-calendar-week mr-1.5 text-indigo-500"></i> 2. Parsel Mingguan ({{ count($parselMingguanItems) }})
         </button>
-        <button type="button" @click="activeTab = 'packaging'" :class="activeTab === 'packaging' ? 'bg-purple-700 text-white shadow-xs' : 'bg-white text-purple-800 hover:bg-purple-50 border border-purple-200'" class="px-4 py-2 rounded-xl transition flex items-center shrink-0">
-            <i class="fa-solid fa-box-archive mr-1.5"></i> 4. Belanja Kemasan Parsel ({{ count($packagingItems) }})
+        <button type="button" @click="activeTab = 'ecer'" :class="activeTab === 'ecer' ? 'bg-blue-700 text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-blue-50 border border-blue-200'" class="px-3.5 py-2 rounded-xl transition flex items-center shrink-0">
+            <i class="fa-solid fa-basket-shopping mr-1.5 text-blue-500"></i> 3. Paket Eceran ({{ count($ecerItems) }})
         </button>
-        <button type="button" @click="activeTab = 'cash'" :class="activeTab === 'cash' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white text-emerald-800 hover:bg-emerald-50 border border-emerald-200'" class="px-4 py-2 rounded-xl transition flex items-center shrink-0">
-            <i class="fa-solid fa-money-bill-wave mr-1.5"></i> 5. Penyiapan Uang Tunai ({{ count($cashItems) }})
+        <button type="button" @click="activeTab = 'tabungan_bonus'" :class="activeTab === 'tabungan_bonus' ? 'bg-amber-600 text-white shadow-xs' : 'bg-white text-amber-800 hover:bg-amber-50 border border-amber-200'" class="px-3.5 py-2 rounded-xl transition flex items-center shrink-0">
+            <i class="fa-solid fa-gift mr-1.5 text-amber-500"></i> 4. Hadiah Tabungan ({{ count($tabunganBonusItems) }})
+        </button>
+        <button type="button" @click="activeTab = 'all_goods'" :class="activeTab === 'all_goods' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white text-slate-800 hover:bg-slate-100 border border-slate-300'" class="px-3.5 py-2 rounded-xl transition flex items-center shrink-0">
+            <i class="fa-solid fa-layer-group mr-1.5 text-pink-400"></i> 5. Total Rekap Semua Barang ({{ count($allGoodsItems) }})
+        </button>
+        <button type="button" @click="activeTab = 'packaging'" :class="activeTab === 'packaging' ? 'bg-purple-700 text-white shadow-xs' : 'bg-white text-purple-800 hover:bg-purple-50 border border-purple-200'" class="px-3.5 py-2 rounded-xl transition flex items-center shrink-0">
+            <i class="fa-solid fa-box-archive mr-1.5 text-purple-500"></i> 6. Kemasan ({{ count($packagingItems) }})
+        </button>
+        <button type="button" @click="activeTab = 'cash'" :class="activeTab === 'cash' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white text-emerald-800 hover:bg-emerald-50 border border-emerald-200'" class="px-3.5 py-2 rounded-xl transition flex items-center shrink-0">
+            <i class="fa-solid fa-money-bill-wave mr-1.5 text-emerald-500"></i> 7. Uang Tunai ({{ count($cashItems) }})
         </button>
         @if(count($excludedIncompleteCustomers) > 0)
-            <button type="button" @click="activeTab = 'excluded'" :class="activeTab === 'excluded' ? 'bg-amber-600 text-white shadow-xs' : 'bg-white text-amber-900 hover:bg-amber-50 border border-amber-300'" class="px-4 py-2 rounded-xl transition flex items-center shrink-0">
-                <i class="fa-solid fa-user-xmark mr-1.5"></i> 6. Belum Ditetapkan Owner ({{ count($excludedIncompleteCustomers) }})
+            <button type="button" @click="activeTab = 'excluded'" :class="activeTab === 'excluded' ? 'bg-amber-600 text-white shadow-xs' : 'bg-white text-amber-900 hover:bg-amber-50 border border-amber-300'" class="px-3.5 py-2 rounded-xl transition flex items-center shrink-0">
+                <i class="fa-solid fa-user-xmark mr-1.5"></i> Belum Masuk Belanja ({{ count($excludedIncompleteCustomers) }})
             </button>
         @endif
-        <button type="button" @click="activeTab = 'all'" :class="activeTab === 'all' ? 'bg-slate-800 text-white shadow-xs' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'" class="px-4 py-2 rounded-xl transition flex items-center shrink-0">
-            <i class="fa-solid fa-layer-group mr-1.5"></i> Tampilkan Semua
+        <button type="button" @click="activeTab = 'all'" :class="activeTab === 'all' ? 'bg-slate-800 text-white shadow-xs' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'" class="px-3.5 py-2 rounded-xl transition flex items-center shrink-0">
+            <i class="fa-solid fa-eye mr-1.5"></i> Tampilkan Semua
         </button>
     </div>
 
@@ -576,84 +639,61 @@
         </div>
     </div>
 
-    <!-- ================= TABEL 2: BELANJA GROSIR BARANG POKOK ================= -->
-    <div x-show="activeTab === 'all' || activeTab === 'goods'" x-transition class="space-y-4">
-        <div class="bg-white rounded-2xl border border-pink-200 shadow-xs p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <!-- ================= TABEL 1: BELANJA BARANG PAKET PARSEL HARIAN ================= -->
+    <div x-show="activeTab === 'all' || activeTab === 'parsel_harian'" x-transition class="space-y-4">
+        <div class="bg-white rounded-2xl border border-pink-200 shadow-xs p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-gradient-to-r from-pink-50/50 to-white">
             <div>
                 <div class="flex items-center space-x-2">
                     <span class="w-3 h-3 rounded-full bg-pink-600 inline-block"></span>
-                    <h3 class="font-heading font-bold text-slate-900 text-base">Tabel 1: Rekap Belanja Barang Pokok (Parsel & Eceran)</h3>
+                    <h3 class="font-heading font-black text-slate-900 text-base">Tabel 1: Belanja Barang Paket Parsel Harian</h3>
                 </div>
                 <p class="text-xs text-slate-500 mt-0.5">
-                    Hasil konversi total pesanan satuan dasar (pcs/botol/kaleng) ke satuan kulakan yang lebih besar (Dus/Karton/Bal).
+                    Daftar belanja seluruh barang sembako & kebutuhan untuk konsumen <strong>Paket Parsel Bertipe Harian</strong>.
                 </p>
             </div>
-
-            <!-- SEARCH & CATEGORY FILTER -->
-            <form action="{{ route('inventory.planner') }}" method="GET" class="flex flex-wrap items-center gap-2 text-xs">
-                <input type="hidden" name="scope" value="{{ $scope }}">
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari barang / kode..." class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-pink-500">
-                <select name="category" onchange="this.form.submit()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-medium">
-                    <option value="">Semua Kategori</option>
-                    @foreach($summary['categories'] as $cat)
-                        <option value="{{ $cat['category'] }}" {{ request('category') === $cat['category'] ? 'selected' : '' }}>
-                            {{ $cat['category'] }}
-                        </option>
-                    @endforeach
-                </select>
-                <button type="submit" class="px-3 py-2 bg-pink-700 hover:bg-pink-800 text-white rounded-lg font-bold">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                </button>
-                @if(request()->hasAny(['search', 'category']))
-                    <a href="{{ route('inventory.planner', ['scope' => $scope]) }}" class="px-3 py-2 text-slate-500 hover:text-slate-800">
-                        <i class="fa-solid fa-xmark mr-1"></i> Reset
-                    </a>
-                @endif
-            </form>
+            <div class="flex items-center space-x-2 shrink-0">
+                <div class="px-3 py-1.5 rounded-xl bg-pink-100 border border-pink-200 text-xs font-bold text-pink-900 flex items-center">
+                    <i class="fa-solid fa-coins mr-1.5 text-pink-600"></i> Modal: Rp {{ number_format($summary['parsel_harian_cost'] ?? 0, 0, ',', '.') }}
+                </div>
+                <div class="px-3 py-1.5 rounded-xl bg-slate-100 text-xs font-bold text-slate-700">
+                    {{ number_format($summary['parsel_harian_pieces'] ?? 0) }} Pcs ({{ count($parselHarianItems) }} Macam)
+                </div>
+            </div>
         </div>
 
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div class="bg-white rounded-2xl border border-pink-200 shadow-xs overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
-                        <tr class="border-b border-slate-100 text-slate-600 font-bold bg-slate-50/50">
-                            <th class="py-3 px-4">Kode</th>
-                            <th class="py-3 px-4">Nama Barang Pokok</th>
-                            <th class="py-3 px-4">Kategori</th>
-                            <th class="py-3 px-4 text-center">Isi per Dus</th>
-                            <th class="py-3 px-4 text-center">Total Kebutuhan (Pcs)</th>
-                            <th class="py-3 px-4">Sumber Pesanan</th>
+                        <tr class="border-b border-pink-100 text-slate-700 font-extrabold bg-pink-50/60">
+                            <th class="py-3 px-3 text-center w-10">No</th>
+                            <th class="py-3 px-3">Kode</th>
+                            <th class="py-3 px-4">Nama Barang Parsel Harian</th>
+                            <th class="py-3 px-3">Kategori</th>
+                            <th class="py-3 px-3 text-center">Isi per Dus</th>
+                            <th class="py-3 px-3 text-center">Total Kebutuhan (Pcs)</th>
                             <th class="py-3 px-4 font-bold text-pink-900">Kebutuhan Grosir</th>
                             <th class="py-3 px-4 text-right">Estimasi Modal</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        @forelse($items as $row)
+                        @forelse($parselHarianItems as $row)
                             <tr class="hover:bg-pink-50/20 transition">
-                                <td class="py-3 px-4 font-mono font-medium text-slate-400">
-                                    {{ $row['item_code'] }}
-                                </td>
+                                <td class="py-3 px-3 text-center font-mono text-slate-400">{{ $loop->iteration }}</td>
+                                <td class="py-3 px-3 font-mono font-bold text-pink-800">{{ $row['item_code'] }}</td>
                                 <td class="py-3 px-4">
                                     <div class="font-bold text-slate-900">{{ $row['item_name'] }}</div>
                                 </td>
-                                <td class="py-3 px-4">
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">
+                                <td class="py-3 px-3">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-pink-50 text-pink-800 border border-pink-100">
                                         {{ $row['category'] }}
                                     </span>
                                 </td>
-                                <td class="py-3 px-4 text-center font-mono">
+                                <td class="py-3 px-3 text-center font-mono text-slate-600">
                                     {{ (int)$row['conversion_rate'] }} {{ $row['base_unit'] }}/{{ $row['wholesale_unit'] }}
                                 </td>
-                                <td class="py-3 px-4 text-center font-bold text-slate-900">
+                                <td class="py-3 px-3 text-center font-black text-slate-900">
                                     {{ number_format($row['total_base_qty']) }} {{ $row['base_unit'] }}
-                                </td>
-                                <td class="py-3 px-4 text-[10px] text-slate-500 space-x-1">
-                                    @if($row['from_parsel'] > 0)
-                                        <span class="inline-block px-1.5 py-0.5 rounded bg-pink-50 text-pink-700 font-medium">Parsel: {{ $row['from_parsel'] }}</span>
-                                    @endif
-                                    @if($row['from_ecer'] > 0)
-                                        <span class="inline-block px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-medium">Ecer: {{ $row['from_ecer'] }}</span>
-                                    @endif
                                 </td>
                                 <td class="py-3 px-4">
                                     <div class="font-extrabold text-pink-900 text-xs">
@@ -661,18 +701,18 @@
                                     </div>
                                     @if($row['conversion_rate'] > 1)
                                         <div class="text-[10px] text-slate-400 font-medium">
-                                            (atau genap <strong>{{ $row['wholesale_ceil'] }} {{ $row['wholesale_unit'] }}</strong>)
+                                            (genap <strong>{{ $row['wholesale_ceil'] }} {{ $row['wholesale_unit'] }}</strong>)
                                         </div>
                                     @endif
                                 </td>
-                                <td class="py-3 px-4 text-right font-bold text-slate-900">
+                                <td class="py-3 px-4 text-right font-black text-slate-900">
                                     Rp {{ number_format($row['estimated_cost'], 0, ',', '.') }}
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="py-10 text-center text-slate-400">
-                                    Belum ada pesanan barang pokok yang memerlukan kalkulasi kulakan grosir.
+                                <td colspan="8" class="py-8 text-center text-slate-400">
+                                    Tidak ada data belanja barang untuk Paket Parsel Harian.
                                 </td>
                             </tr>
                         @endforelse
@@ -682,20 +722,191 @@
         </div>
     </div>
 
-    <!-- ================= TABEL 2: BELANJA BARANG BONUS PAKET (TABEL TERPISAH SESUAI ARAHAN OWNER) ================= -->
-    <div x-show="activeTab === 'all' || activeTab === 'bonus'" x-transition class="space-y-4">
-        <div class="bg-white rounded-2xl border border-amber-200 shadow-xs p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <!-- ================= TABEL 2: BELANJA BARANG PAKET PARSEL MINGGUAN ================= -->
+    <div x-show="activeTab === 'all' || activeTab === 'parsel_mingguan'" x-transition class="space-y-4">
+        <div class="bg-white rounded-2xl border border-indigo-200 shadow-xs p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-gradient-to-r from-indigo-50/50 to-white">
+            <div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 rounded-full bg-indigo-600 inline-block"></span>
+                    <h3 class="font-heading font-black text-slate-900 text-base">Tabel 2: Belanja Barang Paket Parsel Mingguan</h3>
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    Daftar belanja seluruh barang sembako & kebutuhan untuk konsumen <strong>Paket Parsel Bertipe Mingguan</strong>.
+                </p>
+            </div>
+            <div class="flex items-center space-x-2 shrink-0">
+                <div class="px-3 py-1.5 rounded-xl bg-indigo-100 border border-indigo-200 text-xs font-bold text-indigo-900 flex items-center">
+                    <i class="fa-solid fa-coins mr-1.5 text-indigo-600"></i> Modal: Rp {{ number_format($summary['parsel_mingguan_cost'] ?? 0, 0, ',', '.') }}
+                </div>
+                <div class="px-3 py-1.5 rounded-xl bg-slate-100 text-xs font-bold text-slate-700">
+                    {{ number_format($summary['parsel_mingguan_pieces'] ?? 0) }} Pcs ({{ count($parselMingguanItems) }} Macam)
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-indigo-200 shadow-xs overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="border-b border-indigo-100 text-slate-700 font-extrabold bg-indigo-50/60">
+                            <th class="py-3 px-3 text-center w-10">No</th>
+                            <th class="py-3 px-3">Kode</th>
+                            <th class="py-3 px-4">Nama Barang Parsel Mingguan</th>
+                            <th class="py-3 px-3">Kategori</th>
+                            <th class="py-3 px-3 text-center">Isi per Dus</th>
+                            <th class="py-3 px-3 text-center">Total Kebutuhan (Pcs)</th>
+                            <th class="py-3 px-4 font-bold text-indigo-900">Kebutuhan Grosir</th>
+                            <th class="py-3 px-4 text-right">Estimasi Modal</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse($parselMingguanItems as $row)
+                            <tr class="hover:bg-indigo-50/20 transition">
+                                <td class="py-3 px-3 text-center font-mono text-slate-400">{{ $loop->iteration }}</td>
+                                <td class="py-3 px-3 font-mono font-bold text-indigo-800">{{ $row['item_code'] }}</td>
+                                <td class="py-3 px-4">
+                                    <div class="font-bold text-slate-900">{{ $row['item_name'] }}</div>
+                                </td>
+                                <td class="py-3 px-3">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-800 border border-indigo-100">
+                                        {{ $row['category'] }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-3 text-center font-mono text-slate-600">
+                                    {{ (int)$row['conversion_rate'] }} {{ $row['base_unit'] }}/{{ $row['wholesale_unit'] }}
+                                </td>
+                                <td class="py-3 px-3 text-center font-black text-slate-900">
+                                    {{ number_format($row['total_base_qty']) }} {{ $row['base_unit'] }}
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="font-extrabold text-indigo-900 text-xs">
+                                        {{ $row['wholesale_text'] }}
+                                    </div>
+                                    @if($row['conversion_rate'] > 1)
+                                        <div class="text-[10px] text-slate-400 font-medium">
+                                            (genap <strong>{{ $row['wholesale_ceil'] }} {{ $row['wholesale_unit'] }}</strong>)
+                                        </div>
+                                    @endif
+                                </td>
+                                <td class="py-3 px-4 text-right font-black text-slate-900">
+                                    Rp {{ number_format($row['estimated_cost'], 0, ',', '.') }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" class="py-8 text-center text-slate-400">
+                                    Tidak ada data belanja barang untuk Paket Parsel Mingguan.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= TABEL 3: BELANJA BARANG PAKET ECERAN ================= -->
+    <div x-show="activeTab === 'all' || activeTab === 'ecer'" x-transition class="space-y-4">
+        <div class="bg-white rounded-2xl border border-blue-200 shadow-xs p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-gradient-to-r from-blue-50/50 to-white">
+            <div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 rounded-full bg-blue-600 inline-block"></span>
+                    <h3 class="font-heading font-black text-slate-900 text-base">Tabel 3: Belanja Barang Paket Eceran / Bebas</h3>
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    Daftar belanja barang rakitan bebas yang dipilih khusus oleh masing-masing konsumen <strong>Paket Eceran</strong>.
+                </p>
+            </div>
+            <div class="flex items-center space-x-2 shrink-0">
+                <div class="px-3 py-1.5 rounded-xl bg-blue-100 border border-blue-200 text-xs font-bold text-blue-900 flex items-center">
+                    <i class="fa-solid fa-coins mr-1.5 text-blue-600"></i> Modal: Rp {{ number_format($summary['ecer_cost'] ?? 0, 0, ',', '.') }}
+                </div>
+                <div class="px-3 py-1.5 rounded-xl bg-slate-100 text-xs font-bold text-slate-700">
+                    {{ number_format($summary['ecer_pieces'] ?? 0) }} Pcs ({{ count($ecerItems) }} Macam)
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-blue-200 shadow-xs overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="border-b border-blue-100 text-slate-700 font-extrabold bg-blue-50/60">
+                            <th class="py-3 px-3 text-center w-10">No</th>
+                            <th class="py-3 px-3">Kode</th>
+                            <th class="py-3 px-4">Nama Barang Eceran</th>
+                            <th class="py-3 px-3">Kategori</th>
+                            <th class="py-3 px-3 text-center">Isi per Dus</th>
+                            <th class="py-3 px-3 text-center">Total Kebutuhan (Pcs)</th>
+                            <th class="py-3 px-4 font-bold text-blue-900">Kebutuhan Grosir</th>
+                            <th class="py-3 px-4 text-right">Estimasi Modal</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse($ecerItems as $row)
+                            <tr class="hover:bg-blue-50/20 transition">
+                                <td class="py-3 px-3 text-center font-mono text-slate-400">{{ $loop->iteration }}</td>
+                                <td class="py-3 px-3 font-mono font-bold text-blue-800">{{ $row['item_code'] }}</td>
+                                <td class="py-3 px-4">
+                                    <div class="font-bold text-slate-900">{{ $row['item_name'] }}</div>
+                                </td>
+                                <td class="py-3 px-3">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-800 border border-blue-100">
+                                        {{ $row['category'] }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-3 text-center font-mono text-slate-600">
+                                    {{ (int)$row['conversion_rate'] }} {{ $row['base_unit'] }}/{{ $row['wholesale_unit'] }}
+                                </td>
+                                <td class="py-3 px-3 text-center font-black text-slate-900">
+                                    {{ number_format($row['total_base_qty']) }} {{ $row['base_unit'] }}
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="font-extrabold text-blue-900 text-xs">
+                                        {{ $row['wholesale_text'] }}
+                                    </div>
+                                    @if($row['conversion_rate'] > 1)
+                                        <div class="text-[10px] text-slate-400 font-medium">
+                                            (genap <strong>{{ $row['wholesale_ceil'] }} {{ $row['wholesale_unit'] }}</strong>)
+                                        </div>
+                                    @endif
+                                </td>
+                                <td class="py-3 px-4 text-right font-black text-slate-900">
+                                    Rp {{ number_format($row['estimated_cost'], 0, ',', '.') }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" class="py-8 text-center text-slate-400">
+                                    Tidak ada data belanja barang untuk Paket Eceran.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= TABEL 4: BELANJA HADIAH TABUNGAN ================= -->
+    <div x-show="activeTab === 'all' || activeTab === 'tabungan_bonus'" x-transition class="space-y-4">
+        <div class="bg-white rounded-2xl border border-amber-200 shadow-xs p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-gradient-to-r from-amber-50/50 to-white">
             <div>
                 <div class="flex items-center space-x-2">
                     <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
-                    <h3 class="font-heading font-bold text-slate-900 text-base">Tabel 2: Rekap Belanja Bonus Paket (Hadiah Gratis Tabungan & Parsel)</h3>
+                    <h3 class="font-heading font-black text-slate-900 text-base">Tabel 4: Belanja Hadiah Bonus Tabungan Lebaran</h3>
                 </div>
                 <p class="text-xs text-slate-500 mt-0.5">
-                    Daftar seluruh barang bonus/hadiah yang harus dibeli owner. Dipisahkan agar tidak tertukar dengan barang pokok paket.
+                    Daftar seluruh barang hadiah bonus fisik yang wajib dibelanjakan untuk para nasabah <strong>Tabungan SPL</strong> yang berhak menerima hadiah.
                 </p>
             </div>
-            <div class="px-3.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-900 flex items-center shrink-0">
-                <i class="fa-solid fa-gift mr-1.5 text-amber-600"></i> Total Modal Bonus: Rp {{ number_format($summary['total_bonus_cost'] ?? 0, 0, ',', '.') }}
+            <div class="flex items-center space-x-2 shrink-0">
+                <div class="px-3 py-1.5 rounded-xl bg-amber-100 border border-amber-200 text-xs font-bold text-amber-900 flex items-center">
+                    <i class="fa-solid fa-gift mr-1.5 text-amber-600"></i> Modal: Rp {{ number_format($summary['tabungan_bonus_cost'] ?? 0, 0, ',', '.') }}
+                </div>
+                <div class="px-3 py-1.5 rounded-xl bg-slate-100 text-xs font-bold text-slate-700">
+                    {{ number_format($summary['tabungan_bonus_pieces'] ?? 0) }} Pcs ({{ count($tabunganBonusItems) }} Macam)
+                </div>
             </div>
         </div>
 
@@ -703,38 +914,38 @@
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
-                        <tr class="border-b border-amber-100 text-slate-600 font-bold bg-amber-50/40">
-                            <th class="py-3 px-4">Kode</th>
-                            <th class="py-3 px-4">Nama Barang Bonus</th>
-                            <th class="py-3 px-4">Kategori</th>
-                            <th class="py-3 px-4 text-center">Isi per Dus</th>
-                            <th class="py-3 px-4 text-center">Jumlah Bonus (Pcs)</th>
-                            <th class="py-3 px-4">Paket yang Memberikan Bonus</th>
+                        <tr class="border-b border-amber-100 text-slate-700 font-extrabold bg-amber-50/60">
+                            <th class="py-3 px-3 text-center w-10">No</th>
+                            <th class="py-3 px-3">Kode</th>
+                            <th class="py-3 px-4">Nama Barang Hadiah Tabungan</th>
+                            <th class="py-3 px-3">Kategori</th>
+                            <th class="py-3 px-3 text-center">Isi per Dus</th>
+                            <th class="py-3 px-3 text-center">Jumlah Hadiah (Pcs)</th>
+                            <th class="py-3 px-4">Paket Tabungan Terkait</th>
                             <th class="py-3 px-4 font-bold text-amber-900">Kebutuhan Grosir</th>
                             <th class="py-3 px-4 text-right">Estimasi Modal</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        @forelse($bonusItems as $b)
+                        @forelse($tabunganBonusItems as $b)
                             <tr class="hover:bg-amber-50/20 transition">
-                                <td class="py-3 px-4 font-mono font-medium text-slate-400">
-                                    {{ $b['item_code'] }}
-                                </td>
+                                <td class="py-3 px-3 text-center font-mono text-slate-400">{{ $loop->iteration }}</td>
+                                <td class="py-3 px-3 font-mono font-bold text-amber-800">{{ $b['item_code'] }}</td>
                                 <td class="py-3 px-4">
                                     <div class="font-bold text-slate-900 flex items-center">
                                         <i class="fa-solid fa-gift text-amber-500 mr-1.5 text-xs"></i>
                                         <span>{{ $b['item_name'] }}</span>
                                     </div>
                                 </td>
-                                <td class="py-3 px-4">
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800">
+                                <td class="py-3 px-3">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-100">
                                         {{ $b['category'] }}
                                     </span>
                                 </td>
-                                <td class="py-3 px-4 text-center font-mono">
+                                <td class="py-3 px-3 text-center font-mono text-slate-600">
                                     {{ (int)$b['conversion_rate'] }} {{ $b['base_unit'] }}/{{ $b['wholesale_unit'] }}
                                 </td>
-                                <td class="py-3 px-4 text-center font-bold text-amber-900">
+                                <td class="py-3 px-3 text-center font-black text-amber-900">
                                     {{ number_format($b['total_base_qty']) }} {{ $b['base_unit'] }}
                                 </td>
                                 <td class="py-3 px-4 text-[10px] text-slate-600">
@@ -748,19 +959,129 @@
                                     </div>
                                     @if($b['conversion_rate'] > 1)
                                         <div class="text-[10px] text-slate-400 font-medium">
-                                            (atau genap <strong>{{ $b['wholesale_ceil'] }} {{ $b['wholesale_unit'] }}</strong>)
+                                            (genap <strong>{{ $b['wholesale_ceil'] }} {{ $b['wholesale_unit'] }}</strong>)
                                         </div>
                                     @endif
                                 </td>
-                                <td class="py-3 px-4 text-right font-bold text-slate-900">
+                                <td class="py-3 px-4 text-right font-black text-slate-900">
                                     Rp {{ number_format($b['estimated_cost'], 0, ',', '.') }}
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="py-10 text-center text-slate-400">
-                                    <i class="fa-solid fa-gift text-2xl text-slate-300 mb-2 block"></i>
-                                    Belum ada pesanan aktif dengan item bonus/hadiah.
+                                <td colspan="9" class="py-8 text-center text-slate-400">
+                                    Tidak ada data hadiah tabungan yang perlu dibelanjakan.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= TABEL 5: TOTAL REKAPITULASI KULAKAN GROSIR SELURUH BARANG (GABUNGAN) ================= -->
+    <div x-show="activeTab === 'all' || activeTab === 'all_goods'" x-transition class="space-y-4">
+        <div class="bg-white rounded-2xl border-2 border-slate-700 shadow-xs p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-slate-900 text-white">
+            <div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 rounded-full bg-pink-500 inline-block"></span>
+                    <h3 class="font-heading font-black text-white text-base">Tabel 5: Total Rekapitulasi Kulakan Grosir Seluruh Barang (Gabungan Semua Paket)</h3>
+                </div>
+                <p class="text-xs text-slate-300 mt-0.5">
+                    Rekapitulasi gabungan seluruh barang (Parsel Harian, Parsel Mingguan, Eceran, dan Hadiah Tabungan) untuk kemudahan <strong>Purchase Order (PO) langsung ke Supplier Pabrikan & Agen Grosir</strong>.
+                </p>
+            </div>
+            <div class="flex items-center space-x-2 shrink-0">
+                <div class="px-3 py-1.5 rounded-xl bg-pink-700 text-xs font-black text-white flex items-center shadow-xs">
+                    <i class="fa-solid fa-cart-shopping mr-1.5"></i> Total Modal: Rp {{ number_format($summary['total_estimated_cost'], 0, ',', '.') }}
+                </div>
+                <div class="px-3 py-1.5 rounded-xl bg-slate-800 text-xs font-bold text-slate-200 border border-slate-700">
+                    {{ number_format($summary['total_base_pieces']) }} Pcs ({{ count($allGoodsItems) }} Macam)
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-slate-700 font-extrabold bg-slate-100">
+                            <th class="py-3 px-3 text-center w-10">No</th>
+                            <th class="py-3 px-3">Kode</th>
+                            <th class="py-3 px-4">Nama Barang (Semua Paket)</th>
+                            <th class="py-3 px-3">Kategori</th>
+                            <th class="py-3 px-3 text-center">Isi/Dus</th>
+                            <th class="py-3 px-3 text-center">Total Pcs</th>
+                            <th class="py-3 px-4">Rincian Sumber Paket</th>
+                            <th class="py-3 px-4 font-bold text-pink-900">Kebutuhan Grosir Total</th>
+                            <th class="py-3 px-4 text-right">Estimasi Modal</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse($allGoodsItems as $row)
+                            <tr class="hover:bg-slate-50 transition">
+                                <td class="py-3 px-3 text-center font-mono text-slate-400">{{ $loop->iteration }}</td>
+                                <td class="py-3 px-3 font-mono font-bold text-slate-700">{{ $row['item_code'] }}</td>
+                                <td class="py-3 px-4">
+                                    <div class="font-bold text-slate-900">{{ $row['item_name'] }}</div>
+                                </td>
+                                <td class="py-3 px-3">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">
+                                        {{ $row['category'] }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-3 text-center font-mono text-slate-600">
+                                    {{ (int)$row['conversion_rate'] }} {{ $row['base_unit'] }}/{{ $row['wholesale_unit'] }}
+                                </td>
+                                <td class="py-3 px-3 text-center font-black text-slate-900">
+                                    {{ number_format($row['total_base_qty']) }} {{ $row['base_unit'] }}
+                                </td>
+                                <td class="py-3 px-4 text-[10px] space-x-1">
+                                    @if(!empty($row['from_parsel_harian']))
+                                        <span class="inline-block px-1.5 py-0.5 rounded bg-pink-100 text-pink-800 font-bold mb-0.5">
+                                            Harian: {{ $row['from_parsel_harian'] }}
+                                        </span>
+                                    @endif
+                                    @if(!empty($row['from_parsel_mingguan']))
+                                        <span class="inline-block px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold mb-0.5">
+                                            Mingguan: {{ $row['from_parsel_mingguan'] }}
+                                        </span>
+                                    @endif
+                                    @if(!empty($row['from_ecer']))
+                                        <span class="inline-block px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-bold mb-0.5">
+                                            Ecer: {{ $row['from_ecer'] }}
+                                        </span>
+                                    @endif
+                                    @if(!empty($row['from_tabungan_bonus']))
+                                        <span class="inline-block px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold mb-0.5">
+                                            Tabungan: {{ $row['from_tabungan_bonus'] }}
+                                        </span>
+                                    @endif
+                                    @if(!empty($row['from_parsel_bonus']))
+                                        <span class="inline-block px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 font-bold mb-0.5">
+                                            Bonus Parsel: {{ $row['from_parsel_bonus'] }}
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="font-extrabold text-pink-900 text-xs">
+                                        {{ $row['wholesale_text'] }}
+                                    </div>
+                                    @if($row['conversion_rate'] > 1)
+                                        <div class="text-[10px] text-slate-400 font-medium">
+                                            (genap <strong>{{ $row['wholesale_ceil'] }} {{ $row['wholesale_unit'] }}</strong>)
+                                        </div>
+                                    @endif
+                                </td>
+                                <td class="py-3 px-4 text-right font-black text-slate-900">
+                                    Rp {{ number_format($row['estimated_cost'], 0, ',', '.') }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="9" class="py-8 text-center text-slate-400">
+                                    Belum ada data belanja barang yang perlu dikulak ke supplier.
                                 </td>
                             </tr>
                         @endforelse

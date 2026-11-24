@@ -6,6 +6,7 @@ use App\Models\Item;
 use App\Models\CustomerPackage;
 use App\Models\Packaging;
 use App\Models\Package;
+use App\Models\CatalogSetting;
 
 class WholesalePlannerService
 {
@@ -13,9 +14,9 @@ class WholesalePlannerService
      * Hitung kebutuhan belanja grosir barang pokok, bonus paket, kemasan wadah, & penyiapan uang tunai dari seluruh pesanan aktif
      * Serta rekapan jumlah masing-masing paket yang harus disiapkan untuk memenuhi permintaan konsumen.
      * 
-     * @param string $scope 'all' = Seluruh pesanan konsumen aktif (Rekomendasi Utama PO Supplier), 'safe' = Hanya konsumen lolos titik aman / ACC owner
+     * @param string $scope 'safe' = Hanya konsumen lolos titik aman / ACC owner pada tutup buku (Standar Belanja SPL), 'raw_all' = Seluruh pesanan konsumen aktif tanpa filter
      */
-    public function calculateRequirements(string $scope = 'all'): array
+    public function calculateRequirements(string $scope = 'safe'): array
     {
         // Ambil semua master paket aktif untuk inisialisasi rekapan paket
         $allMasterPackages = Package::with(['packageItems.item'])->where('is_active', true)->get();
@@ -95,10 +96,17 @@ class WholesalePlannerService
               });
         })->get();
 
-        $regularTotals = [];   // [item_id => ['qty' => 0, 'from_parsel' => 0, 'from_ecer' => 0]]
-        $bonusTotals = [];     // [item_id => ['qty' => 0, 'packages' => []]]
-        $packagingTotals = []; // [packaging_id => ['packaging' => ..., 'total_qty' => 0, ...]]
-        $cashRequirements = []; // Rincian uang tunai per konsumen & agen
+        $appSetting = CatalogSetting::current();
+        $isBookClosed = (bool) ($appSetting->is_book_closed ?? false);
+
+        $parselHarianTotals = [];   // [item_id => ['qty' => 0, 'packages' => []]]
+        $parselMingguanTotals = []; // [item_id => ['qty' => 0, 'packages' => []]]
+        $ecerTotals = [];           // [item_id => ['qty' => 0, 'packages' => []]]
+        $tabunganBonusTotals = [];  // [item_id => ['qty' => 0, 'packages' => []]]
+        $parselBonusTotals = [];    // [item_id => ['qty' => 0, 'packages' => []]]
+        $allGoodsTotals = [];       // [item_id => ['qty' => 0, 'packages' => [], 'from_parsel_harian' => 0, 'from_parsel_mingguan' => 0, 'from_ecer' => 0, 'from_tabungan_bonus' => 0, 'from_parsel_bonus' => 0]]
+        $packagingTotals = [];      // [packaging_id => ['packaging' => ..., 'total_qty' => 0, ...]]
+        $cashRequirements = [];     // Rincian uang tunai per konsumen & agen
         $excludedIncompleteCustomers = []; // Konsumen tidak selesai yang belum ditentukan barangnya oleh owner
         $eligibleCustomersCount = 0;
         $safeThresholdReachedCount = 0;
@@ -122,19 +130,22 @@ class WholesalePlannerService
             $isSafeReached = $cp->isSafeThresholdReached();
             $hasOwnerDecision = (bool) ($cp->partialFulfillment && ($cp->partialFulfillment->items->isNotEmpty() || (float)$cp->partialFulfillment->cash_payout > 0));
 
-            if ($isSafeReached || $hasOwnerDecision) {
+            if ($isSafeReached || ($isBookClosed && $hasOwnerDecision)) {
                 $safeThresholdReachedCount++;
             } else {
                 $pendingSafeCount++;
             }
 
             // ATURAN RESMI OWNER SPL:
-            // 1. Jika scope == 'all' (PO Pengadaan ke Supplier):
-            //    Seluruh pesanan konsumen aktif (status != 'canceled') dimasukkan ke dalam rekapitulasi kebutuhan pengadaan ke supplier.
-            // 2. Jika scope == 'safe' (Realisasi Belanja Tutup Buku):
-            //    Yang masuk daftar belanja adalah konsumen yang sudah melebihi/mencapai titik aman ($isSafeReached == true).
-            //    Atau jika belum aman / berhenti, sudah ditentukan barangnya oleh Owner ($hasOwnerDecision == true).
-            $isEligibleForShopping = ($scope === 'all') ? true : ($isSafeReached || $hasOwnerDecision);
+            // Sesuai instruksi Owner:
+            // Yang statusnya belum mencapai titik aman barangnya TIDAK dimasukkan ke daftar belanja,
+            // KECUALI jika statusnya sudah melewati titik aman,
+            // DAN KECUALI Owner sudah melakukan rekonsiliasi agen dan menentukan barang yang akan diberikan,
+            // JUGA Owner sudah tutup buku.
+            // Selama belum dilakukan itu maka yang masuk ke daftar belanja HANYA barang konsumen yang sudah melewati batas titik aman.
+            $isEligibleForShopping = ($scope === 'raw_all')
+                ? true
+                : ($isSafeReached || ($isBookClosed && $hasOwnerDecision));
 
             if (!$isEligibleForShopping) {
                 // Catat ke daftar konsumen tidak selesai yang belum ditentukan barangnya oleh Owner
@@ -291,8 +302,13 @@ class WholesalePlannerService
                 $packageSummaryMap[$pkgId]['packagings_needed'][$kmsId]['qty'] += 1;
             }
 
-            // 2. REKAP ISI BARANG & UANG
-            // Integrasi Tutup Buku: Jika ada keputusan pemenuhan khusus (PartialFulfillment / Keputusan Owner)
+            // 2. REKAP ISI BARANG & UANG DENGAN PEMISAHAN KATEGORI:
+            // - Parsel Harian
+            // - Parsel Mingguan
+            // - Paket Eceran
+            // - Hadiah Tabungan
+            // - Hadiah Parsel
+            // - Rekap Semua Barang (Gabungan)
             if ($cp->partialFulfillment && in_array($cp->partialFulfillment->settlement_type, ['goods', 'custom', 'partial', 'cash'])) {
                 $pf = $cp->partialFulfillment;
 
@@ -354,7 +370,13 @@ class WholesalePlannerService
                         ];
                         $packageSummaryMap[$pkgId]['total_cash_needed'] += $cashAmount;
                     } elseif ($pfi->is_bonus) {
-                        $this->accumulateBonus($bonusTotals, $pfi->item_id, $pfi->quantity, $pkg->name . ' (Bonus Tutup Buku)');
+                        if ($pkg->isTabungan()) {
+                            $this->accumulateItem($tabunganBonusTotals, $pfi->item_id, $pfi->quantity, $pkg->name . ' (Bonus Tutup Buku)');
+                            $this->accumulateItem($allGoodsTotals, $pfi->item_id, $pfi->quantity, $pkg->name . ' (Bonus Tutup Buku)', 'from_tabungan_bonus');
+                        } else {
+                            $this->accumulateItem($parselBonusTotals, $pfi->item_id, $pfi->quantity, $pkg->name . ' (Bonus Tutup Buku)');
+                            $this->accumulateItem($allGoodsTotals, $pfi->item_id, $pfi->quantity, $pkg->name . ' (Bonus Tutup Buku)', 'from_parsel_bonus');
+                        }
 
                         $bId = $pfi->item_id;
                         if (!isset($packageSummaryMap[$pkgId]['bonuses_needed'][$bId])) {
@@ -370,7 +392,21 @@ class WholesalePlannerService
                         }
                         $packageSummaryMap[$pkgId]['bonuses_needed'][$bId]['total_qty'] += $pfi->quantity;
                     } else {
-                        $this->accumulateRegular($regularTotals, $pfi->item_id, $pfi->quantity, 'from_parsel');
+                        if ($pkg->isParsel()) {
+                            if ($pkg->isHarian()) {
+                                $this->accumulateItem($parselHarianTotals, $pfi->item_id, $pfi->quantity, $pkg->name . ' (Tutup Buku)');
+                                $this->accumulateItem($allGoodsTotals, $pfi->item_id, $pfi->quantity, $pkg->name . ' (Tutup Buku)', 'from_parsel_harian');
+                            } else {
+                                $this->accumulateItem($parselMingguanTotals, $pfi->item_id, $pfi->quantity, $pkg->name . ' (Tutup Buku)');
+                                $this->accumulateItem($allGoodsTotals, $pfi->item_id, $pfi->quantity, $pkg->name . ' (Tutup Buku)', 'from_parsel_mingguan');
+                            }
+                        } elseif ($pkg->isEcer()) {
+                            $this->accumulateItem($ecerTotals, $pfi->item_id, $pfi->quantity, $pkg->name . ' (Tutup Buku)');
+                            $this->accumulateItem($allGoodsTotals, $pfi->item_id, $pfi->quantity, $pkg->name . ' (Tutup Buku)', 'from_ecer');
+                        } elseif ($pkg->isTabungan()) {
+                            $this->accumulateItem($tabunganBonusTotals, $pfi->item_id, $pfi->quantity, $pkg->name . ' (Barang Pengganti Tabungan)');
+                            $this->accumulateItem($allGoodsTotals, $pfi->item_id, $pfi->quantity, $pkg->name . ' (Barang Pengganti Tabungan)', 'from_tabungan_bonus');
+                        }
 
                         $gId = $pfi->item_id;
                         if (!isset($packageSummaryMap[$pkgId]['total_goods_needed'][$gId])) {
@@ -391,7 +427,8 @@ class WholesalePlannerService
                 }
 
             } elseif ($pkg->isParsel()) {
-                // Parsel regular items & bonus items
+                $isHarian = $pkg->isHarian();
+
                 foreach ($pkg->packageItems as $pi) {
                     if (!$pi->item_id || !$pi->item) continue;
 
@@ -422,42 +459,47 @@ class WholesalePlannerService
                         ];
 
                         $packageSummaryMap[$pkgId]['total_cash_needed'] += $cashAmount;
-                    } else {
-                        if ($pi->is_bonus) {
-                            $this->accumulateBonus($bonusTotals, $pi->item_id, $pi->quantity, $pkg->name);
+                    } elseif ($pi->is_bonus) {
+                        $this->accumulateItem($parselBonusTotals, $pi->item_id, $pi->quantity, $pkg->name);
+                        $this->accumulateItem($allGoodsTotals, $pi->item_id, $pi->quantity, $pkg->name, 'from_parsel_bonus');
 
-                            $bId = $pi->item_id;
-                            if (!isset($packageSummaryMap[$pkgId]['bonuses_needed'][$bId])) {
-                                $packageSummaryMap[$pkgId]['bonuses_needed'][$bId] = [
-                                    'item_id' => $bId,
-                                    'item_name' => $pi->item->name,
-                                    'item_code' => $pi->item->code,
-                                    'category' => $pi->item->category ?: 'Hadiah Bonus',
-                                    'qty_per_unit' => $pi->quantity,
-                                    'unit' => $pi->unit ?: $pi->item->base_unit,
-                                    'total_qty' => 0,
-                                ];
-                            }
-                            $packageSummaryMap[$pkgId]['bonuses_needed'][$bId]['total_qty'] += $pi->quantity;
-                        } else {
-                            $this->accumulateRegular($regularTotals, $pi->item_id, $pi->quantity, 'from_parsel');
-
-                            $gId = $pi->item_id;
-                            if (!isset($packageSummaryMap[$pkgId]['total_goods_needed'][$gId])) {
-                                $packageSummaryMap[$pkgId]['total_goods_needed'][$gId] = [
-                                    'item_id' => $gId,
-                                    'item_name' => $pi->item->name,
-                                    'item_code' => $pi->item->code,
-                                    'category' => $pi->item->category ?: 'Sembako',
-                                    'qty_per_unit' => $pi->quantity,
-                                    'unit' => $pi->unit ?: $pi->item->base_unit,
-                                    'wholesale_unit' => $pi->item->wholesale_unit,
-                                    'conversion_rate' => $pi->item->conversion_rate,
-                                    'total_qty' => 0,
-                                ];
-                            }
-                            $packageSummaryMap[$pkgId]['total_goods_needed'][$gId]['total_qty'] += $pi->quantity;
+                        $bId = $pi->item_id;
+                        if (!isset($packageSummaryMap[$pkgId]['bonuses_needed'][$bId])) {
+                            $packageSummaryMap[$pkgId]['bonuses_needed'][$bId] = [
+                                'item_id' => $bId,
+                                'item_name' => $pi->item->name,
+                                'item_code' => $pi->item->code,
+                                'category' => $pi->item->category ?: 'Hadiah Bonus',
+                                'qty_per_unit' => $pi->quantity,
+                                'unit' => $pi->unit ?: $pi->item->base_unit,
+                                'total_qty' => 0,
+                            ];
                         }
+                        $packageSummaryMap[$pkgId]['bonuses_needed'][$bId]['total_qty'] += $pi->quantity;
+                    } else {
+                        if ($isHarian) {
+                            $this->accumulateItem($parselHarianTotals, $pi->item_id, $pi->quantity, $pkg->name);
+                            $this->accumulateItem($allGoodsTotals, $pi->item_id, $pi->quantity, $pkg->name, 'from_parsel_harian');
+                        } else {
+                            $this->accumulateItem($parselMingguanTotals, $pi->item_id, $pi->quantity, $pkg->name);
+                            $this->accumulateItem($allGoodsTotals, $pi->item_id, $pi->quantity, $pkg->name, 'from_parsel_mingguan');
+                        }
+
+                        $gId = $pi->item_id;
+                        if (!isset($packageSummaryMap[$pkgId]['total_goods_needed'][$gId])) {
+                            $packageSummaryMap[$pkgId]['total_goods_needed'][$gId] = [
+                                'item_id' => $gId,
+                                'item_name' => $pi->item->name,
+                                'item_code' => $pi->item->code,
+                                'category' => $pi->item->category ?: 'Sembako',
+                                'qty_per_unit' => $pi->quantity,
+                                'unit' => $pi->unit ?: $pi->item->base_unit,
+                                'wholesale_unit' => $pi->item->wholesale_unit,
+                                'conversion_rate' => $pi->item->conversion_rate,
+                                'total_qty' => 0,
+                            ];
+                        }
+                        $packageSummaryMap[$pkgId]['total_goods_needed'][$gId]['total_qty'] += $pi->quantity;
                     }
                 }
             } elseif ($pkg->isTabungan()) {
@@ -495,7 +537,8 @@ class WholesalePlannerService
                     foreach ($pkg->packageItems as $pi) {
                         if ($pi->is_bonus && $pi->item_id && $pi->item) {
                             if (!$pi->item->isUang()) {
-                                $this->accumulateBonus($bonusTotals, $pi->item_id, $pi->quantity, $pkg->name);
+                                $this->accumulateItem($tabunganBonusTotals, $pi->item_id, $pi->quantity, $pkg->name);
+                                $this->accumulateItem($allGoodsTotals, $pi->item_id, $pi->quantity, $pkg->name, 'from_tabungan_bonus');
 
                                 $bId = $pi->item_id;
                                 if (!isset($packageSummaryMap[$pkgId]['bonuses_needed'][$bId])) {
@@ -546,7 +589,8 @@ class WholesalePlannerService
 
                         $packageSummaryMap[$pkgId]['total_cash_needed'] += $cashAmount;
                     } else {
-                        $this->accumulateRegular($regularTotals, $ci->item_id, $ci->quantity, 'from_ecer');
+                        $this->accumulateItem($ecerTotals, $ci->item_id, $ci->quantity, $pkg->name);
+                        $this->accumulateItem($allGoodsTotals, $ci->item_id, $ci->quantity, $pkg->name, 'from_ecer');
 
                         $gId = $ci->item_id;
                         if (!isset($packageSummaryMap[$pkgId]['total_goods_needed'][$gId])) {
@@ -568,43 +612,54 @@ class WholesalePlannerService
             }
         }
 
-        // 3. OLAH TABEL 1: BARANG POKOK FISIK (PARSEL & ECERAN)
-        $allItemIds = array_unique(array_merge(array_keys($regularTotals), array_keys($bonusTotals)));
+        // 3. OLAH LAPORAN PER KATEGORI (PARSEL HARIAN, PARSEL MINGGUAN, ECERAN, HADIAH TABUNGAN, GRAND TOTAL SEMUA BARANG)
+        $allItemIds = array_unique(array_merge(
+            array_keys($parselHarianTotals),
+            array_keys($parselMingguanTotals),
+            array_keys($ecerTotals),
+            array_keys($tabunganBonusTotals),
+            array_keys($parselBonusTotals),
+            array_keys($allGoodsTotals)
+        ));
         $itemsMaster = Item::whereIn('id', $allItemIds)->get()->keyBy('id');
 
-        $goodsReport = [];
-        $totalEstimatedCost = 0;
-        $totalItemsCount = 0;
-        $categoryBreakdown = [];
+        $parselHarianReport = $this->buildGoodsReport($parselHarianTotals, $itemsMaster);
+        $parselMingguanReport = $this->buildGoodsReport($parselMingguanTotals, $itemsMaster);
+        $ecerReport = $this->buildGoodsReport($ecerTotals, $itemsMaster);
+        $tabunganBonusReport = $this->buildGoodsReport($tabunganBonusTotals, $itemsMaster, 'Hadiah Tabungan');
+        $parselBonusReport = $this->buildGoodsReport($parselBonusTotals, $itemsMaster, 'Bonus Parsel');
+        $allGoodsReport = $this->buildGoodsReport($allGoodsTotals, $itemsMaster);
 
-        foreach ($regularTotals as $itemId => $data) {
-            /** @var Item $item */
-            $item = $itemsMaster->get($itemId);
-            if (!$item) continue;
+        // Gabungan bonus untuk kompatibilitas
+        $bonusReport = array_merge($tabunganBonusReport, $parselBonusReport);
+        usort($bonusReport, function ($a, $b) {
+            $catCmp = strcasecmp($a['category'], $b['category']);
+            if ($catCmp !== 0) return $catCmp;
+            return strcasecmp($a['item_name'], $b['item_name']);
+        });
 
-            $totalBase = $data['qty'];
-            $rate = $item->conversion_rate > 0 ? (float)$item->conversion_rate : 1;
-            
-            if ($rate > 1) {
-                $wholesaleFull = floor($totalBase / $rate);
-                $wholesaleRemainder = $totalBase - ($wholesaleFull * $rate);
-                $wholesaleCeil = (int) ceil($totalBase / $rate);
-                $wholesaleUnit = $item->wholesale_unit ?: $item->base_unit;
-                $wholesaleText = $wholesaleFull . ' ' . $wholesaleUnit . ($wholesaleRemainder > 0 ? ' + ' . $wholesaleRemainder . ' ' . $item->base_unit : '');
-            } else {
-                $wholesaleFull = $totalBase;
-                $wholesaleRemainder = 0;
-                $wholesaleCeil = $totalBase;
-                $wholesaleUnit = $item->base_unit;
-                $wholesaleText = $totalBase . ' ' . $item->base_unit;
+        $calcTotals = function(array $list) {
+            $cost = 0;
+            $pieces = 0;
+            foreach ($list as $item) {
+                $cost += (float)$item['estimated_cost'];
+                $pieces += (int)$item['total_base_qty'];
             }
-            
-            $costPerUnit = $item->cost_price > 0 ? (float)$item->cost_price : ((float)$item->unit_price * 0.85);
-            $estCost = $totalBase * $costPerUnit;
-            $totalEstimatedCost += $estCost;
-            $totalItemsCount += $totalBase;
+            return ['cost' => $cost, 'pieces' => $pieces, 'unique' => count($list)];
+        };
 
-            $cat = $item->category ?: 'Lain-lain';
+        $harianTotals = $calcTotals($parselHarianReport);
+        $mingguanTotals = $calcTotals($parselMingguanReport);
+        $ecerSumTotals = $calcTotals($ecerReport);
+        $tabunganBonusSumTotals = $calcTotals($tabunganBonusReport);
+        $parselBonusSumTotals = $calcTotals($parselBonusReport);
+        $bonusSumTotals = $calcTotals($bonusReport);
+        $allGoodsSumTotals = $calcTotals($allGoodsReport);
+
+        // Kategori breakdown untuk all goods
+        $categoryBreakdown = [];
+        foreach ($allGoodsReport as $gr) {
+            $cat = $gr['category'] ?: 'Lain-lain';
             if (!isset($categoryBreakdown[$cat])) {
                 $categoryBreakdown[$cat] = [
                     'category' => $cat,
@@ -612,96 +667,11 @@ class WholesalePlannerService
                     'estimated_cost' => 0,
                 ];
             }
-            $categoryBreakdown[$cat]['total_base_qty'] += $totalBase;
-            $categoryBreakdown[$cat]['estimated_cost'] += $estCost;
-
-            $goodsReport[] = [
-                'item_id' => $item->id,
-                'item_code' => $item->code,
-                'item_name' => $item->name,
-                'category' => $cat,
-                'base_unit' => $item->base_unit,
-                'wholesale_unit' => $wholesaleUnit,
-                'conversion_rate' => $rate,
-                'total_base_qty' => $totalBase,
-                'from_parsel' => $data['from_parsel'],
-                'from_ecer' => $data['from_ecer'],
-                'wholesale_full' => (int) $wholesaleFull,
-                'wholesale_remainder' => (int) $wholesaleRemainder,
-                'wholesale_ceil' => $wholesaleCeil,
-                'wholesale_text' => $wholesaleText,
-                'cost_price' => $costPerUnit,
-                'estimated_cost' => $estCost,
-            ];
+            $categoryBreakdown[$cat]['total_base_qty'] += $gr['total_base_qty'];
+            $categoryBreakdown[$cat]['estimated_cost'] += $gr['estimated_cost'];
         }
 
-        // Urutkan barang pokok: berdasarkan Kategori (A-Z), lalu Nama Barang (A-Z)
-        usort($goodsReport, function ($a, $b) {
-            $catCmp = strcasecmp($a['category'], $b['category']);
-            if ($catCmp !== 0) return $catCmp;
-            return strcasecmp($a['item_name'], $b['item_name']);
-        });
-
-        // 4. OLAH TABEL 2: BARANG BONUS PAKET (TABEL TERPISAH SESUAI ARAHAN OWNER)
-        $bonusReport = [];
-        $totalBonusCount = 0;
-        $totalBonusCost = 0;
-
-        foreach ($bonusTotals as $itemId => $data) {
-            /** @var Item $item */
-            $item = $itemsMaster->get($itemId);
-            if (!$item) continue;
-
-            $totalBase = $data['qty'];
-            $rate = $item->conversion_rate > 0 ? (float)$item->conversion_rate : 1;
-            
-            if ($rate > 1) {
-                $wholesaleFull = floor($totalBase / $rate);
-                $wholesaleRemainder = $totalBase - ($wholesaleFull * $rate);
-                $wholesaleCeil = (int) ceil($totalBase / $rate);
-                $wholesaleUnit = $item->wholesale_unit ?: $item->base_unit;
-                $wholesaleText = $wholesaleFull . ' ' . $wholesaleUnit . ($wholesaleRemainder > 0 ? ' + ' . $wholesaleRemainder . ' ' . $item->base_unit : '');
-            } else {
-                $wholesaleFull = $totalBase;
-                $wholesaleRemainder = 0;
-                $wholesaleCeil = $totalBase;
-                $wholesaleUnit = $item->base_unit;
-                $wholesaleText = $totalBase . ' ' . $item->base_unit;
-            }
-            
-            $costPerUnit = $item->cost_price > 0 ? (float)$item->cost_price : ((float)$item->unit_price * 0.85);
-            $estCost = $totalBase * $costPerUnit;
-            $totalBonusCost += $estCost;
-            $totalBonusCount += $totalBase;
-
-            $bonusReport[] = [
-                'item_id' => $item->id,
-                'item_code' => $item->code,
-                'item_name' => $item->name,
-                'category' => $item->category ?: 'Bonus Hadiah',
-                'base_unit' => $item->base_unit,
-                'wholesale_unit' => $wholesaleUnit,
-                'conversion_rate' => $rate,
-                'total_base_qty' => $totalBase,
-                'packages_list' => array_unique($data['packages']),
-                'wholesale_full' => (int) $wholesaleFull,
-                'wholesale_remainder' => (int) $wholesaleRemainder,
-                'wholesale_ceil' => $wholesaleCeil,
-                'wholesale_text' => $wholesaleText,
-                'cost_price' => $costPerUnit,
-                'estimated_cost' => $estCost,
-            ];
-        }
-
-        // Urutkan barang bonus: berdasarkan Kategori (A-Z), lalu Nama Barang (A-Z)
-        usort($bonusReport, function ($a, $b) {
-            $catCmp = strcasecmp($a['category'], $b['category']);
-            if ($catCmp !== 0) return $catCmp;
-            return strcasecmp($a['item_name'], $b['item_name']);
-        });
-
-        // 5. OLAH TABEL 3: KEMASAN / WADAH PARSEL (TABEL TERPISAH DENGAN FOTO)
-        // Urutkan kemasan berdasarkan nama wadah (A-Z)
+        // 4. OLAH TABEL KEMASAN / WADAH PARSEL
         uasort($packagingTotals, function ($a, $b) {
             return strcasecmp($a['name'], $b['name']);
         });
@@ -713,7 +683,7 @@ class WholesalePlannerService
             $totalPackagingCost += $kms['total_cost'];
         }
 
-        // 6. OLAH TABEL 4: PENYIAPAN UANG TUNAI
+        // 5. OLAH TABEL PENYIAPAN UANG TUNAI
         $cashByAgent = [];
         $totalCashAmount = 0;
 
@@ -735,7 +705,7 @@ class WholesalePlannerService
             $totalCashAmount += $cr['cash_amount'];
         }
 
-        // 7. OLAH TABEL 0: REKAPAN JUMLAH PAKET YANG HARUS DISIAPKAN (PER JENIS PAKET)
+        // 6. OLAH REKAPAN JUMLAH PAKET YANG HARUS DISIAPKAN
         $totalPackagesCount = 0;
         $totalPackagesPending = 0;
         $totalPackagesFulfilled = 0;
@@ -767,7 +737,6 @@ class WholesalePlannerService
         }
         unset($pkgSummary);
 
-        // Urutkan paket: yang memiliki pesanan terbanyak di atas, kemudian abjad nama paket
         uasort($packageSummaryMap, function ($a, $b) {
             if ($a['total_orders'] !== $b['total_orders']) {
                 return $b['total_orders'] <=> $a['total_orders'];
@@ -775,11 +744,17 @@ class WholesalePlannerService
             return strcmp($a['package_name'], $b['package_name']);
         });
 
-        $grandTotalFund = $totalCashAmount + $totalEstimatedCost + $totalBonusCost + $totalPackagingCost;
+        $grandTotalFund = $totalCashAmount + $allGoodsSumTotals['cost'] + $totalPackagingCost;
 
         return [
             'packages_to_prepare' => array_values($packageSummaryMap),
-            'items' => $goodsReport,
+            'items' => $allGoodsReport, // Rekapitulasi belanja seluruh barang pokok
+            'all_goods_items' => $allGoodsReport,
+            'parsel_harian_items' => $parselHarianReport,
+            'parsel_mingguan_items' => $parselMingguanReport,
+            'ecer_items' => $ecerReport,
+            'tabungan_bonus_items' => $tabunganBonusReport,
+            'parsel_bonus_items' => $parselBonusReport,
             'bonus_items' => $bonusReport,
             'packaging_items' => array_values($packagingTotals),
             'cash_items' => $cashRequirements,
@@ -788,9 +763,9 @@ class WholesalePlannerService
             'excluded_incomplete_customers' => $excludedIncompleteCustomers,
             'summary' => [
                 'scope' => $scope,
-                'scope_label' => $scope === 'all'
-                    ? 'Semua Pesanan Konsumen (PO ke Supplier)'
-                    : 'Hanya Konsumen Lolos Titik Aman (SOP Tutup Buku)',
+                'scope_label' => $scope === 'raw_all'
+                    ? 'Semua Pesanan Konsumen Tanpa Filter (PO Supplier)'
+                    : 'Hanya Konsumen Lolos Titik Aman / Ditetapkan Tutup Buku',
                 'safe_threshold_reached_count' => $safeThresholdReachedCount,
                 'pending_safe_count' => $pendingSafeCount,
                 'total_packages_count' => $totalPackagesCount,
@@ -801,19 +776,47 @@ class WholesalePlannerService
                 'total_ecer_count' => $totalEcerCount,
                 'packages_with_orders_count' => $packagesWithOrdersCount,
                 'total_packages_master' => count($packageSummaryMap),
-                'total_unique_items' => count($goodsReport),
-                'total_base_pieces' => $totalItemsCount,
-                'total_estimated_cost' => $totalEstimatedCost,
-                'total_unique_bonus' => count($bonusReport),
-                'total_bonus_pieces' => $totalBonusCount,
-                'total_bonus_cost' => $totalBonusCost,
+
+                // Kategori Terpisah Belanja Barang
+                'parsel_harian_cost' => $harianTotals['cost'],
+                'parsel_harian_pieces' => $harianTotals['pieces'],
+                'parsel_harian_unique' => $harianTotals['unique'],
+
+                'parsel_mingguan_cost' => $mingguanTotals['cost'],
+                'parsel_mingguan_pieces' => $mingguanTotals['pieces'],
+                'parsel_mingguan_unique' => $mingguanTotals['unique'],
+
+                'ecer_cost' => $ecerSumTotals['cost'],
+                'ecer_pieces' => $ecerSumTotals['pieces'],
+                'ecer_unique' => $ecerSumTotals['unique'],
+
+                'tabungan_bonus_cost' => $tabunganBonusSumTotals['cost'],
+                'tabungan_bonus_pieces' => $tabunganBonusSumTotals['pieces'],
+                'tabungan_bonus_unique' => $tabunganBonusSumTotals['unique'],
+
+                'parsel_bonus_cost' => $parselBonusSumTotals['cost'],
+                'parsel_bonus_pieces' => $parselBonusSumTotals['pieces'],
+                'parsel_bonus_unique' => $parselBonusSumTotals['unique'],
+
+                // Rekap Gabungan Semua Barang
+                'total_unique_items' => $allGoodsSumTotals['unique'],
+                'total_base_pieces' => $allGoodsSumTotals['pieces'],
+                'total_estimated_cost' => $allGoodsSumTotals['cost'],
+
+                'total_unique_bonus' => $bonusSumTotals['unique'],
+                'total_bonus_pieces' => $bonusSumTotals['pieces'],
+                'total_bonus_cost' => $bonusSumTotals['cost'],
+
+                // Kemasan & Uang
                 'total_packaging_types' => count($packagingTotals),
                 'total_packaging_units' => $totalPackagingUnits,
                 'total_packaging_cost' => $totalPackagingCost,
+
                 'total_cash_amount' => $totalCashAmount,
                 'total_cash_recipients' => count($cashRequirements),
                 'total_cash_agents' => count($cashByAgent),
-                'grand_total_goods_fund' => $totalEstimatedCost + $totalBonusCost + $totalPackagingCost,
+
+                'grand_total_goods_fund' => $allGoodsSumTotals['cost'] + $totalPackagingCost,
                 'grand_total_fund' => $grandTotalFund,
                 'total_eligible_customers' => $eligibleCustomersCount,
                 'total_excluded_incomplete' => count($excludedIncompleteCustomers),
@@ -823,30 +826,90 @@ class WholesalePlannerService
         ];
     }
 
-    private function accumulateRegular(array &$itemTotals, int $itemId, int $qty, string $sourceKey): void
+    private function accumulateItem(array &$totals, int $itemId, int $qty, string $packageName, string $sourceKey = 'qty'): void
     {
-        if (!isset($itemTotals[$itemId])) {
-            $itemTotals[$itemId] = [
-                'qty' => 0,
-                'from_parsel' => 0,
-                'from_ecer' => 0,
-            ];
-        }
-
-        $itemTotals[$itemId]['qty'] += $qty;
-        $itemTotals[$itemId][$sourceKey] += $qty;
-    }
-
-    private function accumulateBonus(array &$bonusTotals, int $itemId, int $qty, string $packageName): void
-    {
-        if (!isset($bonusTotals[$itemId])) {
-            $bonusTotals[$itemId] = [
+        if (!isset($totals[$itemId])) {
+            $totals[$itemId] = [
                 'qty' => 0,
                 'packages' => [],
+                'from_parsel_harian' => 0,
+                'from_parsel_mingguan' => 0,
+                'from_ecer' => 0,
+                'from_tabungan_bonus' => 0,
+                'from_parsel_bonus' => 0,
             ];
         }
 
-        $bonusTotals[$itemId]['qty'] += $qty;
-        $bonusTotals[$itemId]['packages'][] = $packageName;
+        $totals[$itemId]['qty'] += $qty;
+        if ($sourceKey !== 'qty') {
+            $totals[$itemId][$sourceKey] += $qty;
+        }
+        $totals[$itemId]['packages'][] = $packageName;
+    }
+
+    private function buildGoodsReport(array $totals, $itemsMaster, ?string $defaultCategory = null): array
+    {
+        $report = [];
+
+        foreach ($totals as $itemId => $data) {
+            /** @var Item $item */
+            $item = $itemsMaster->get($itemId);
+            if (!$item) continue;
+
+            $totalBase = (int) $data['qty'];
+            if ($totalBase <= 0) continue;
+
+            $rate = $item->conversion_rate > 0 ? (float)$item->conversion_rate : 1;
+
+            if ($rate > 1) {
+                $wholesaleFull = floor($totalBase / $rate);
+                $wholesaleRemainder = $totalBase - ($wholesaleFull * $rate);
+                $wholesaleCeil = (int) ceil($totalBase / $rate);
+                $wholesaleUnit = $item->wholesale_unit ?: $item->base_unit;
+                $wholesaleText = $wholesaleFull . ' ' . $wholesaleUnit . ($wholesaleRemainder > 0 ? ' + ' . $wholesaleRemainder . ' ' . $item->base_unit : '');
+            } else {
+                $wholesaleFull = $totalBase;
+                $wholesaleRemainder = 0;
+                $wholesaleCeil = $totalBase;
+                $wholesaleUnit = $item->base_unit;
+                $wholesaleText = $totalBase . ' ' . $item->base_unit;
+            }
+
+            $costPerUnit = $item->cost_price > 0 ? (float)$item->cost_price : ((float)$item->unit_price * 0.85);
+            $estCost = $totalBase * $costPerUnit;
+            $cat = $item->category ?: ($defaultCategory ?: 'Lain-lain');
+
+            $report[] = [
+                'item_id' => $item->id,
+                'item_code' => $item->code,
+                'item_name' => $item->name,
+                'category' => $cat,
+                'base_unit' => $item->base_unit,
+                'wholesale_unit' => $wholesaleUnit,
+                'conversion_rate' => $rate,
+                'total_base_qty' => $totalBase,
+                'from_parsel_harian' => $data['from_parsel_harian'] ?? 0,
+                'from_parsel_mingguan' => $data['from_parsel_mingguan'] ?? 0,
+                'from_ecer' => $data['from_ecer'] ?? 0,
+                'from_tabungan_bonus' => $data['from_tabungan_bonus'] ?? 0,
+                'from_parsel_bonus' => $data['from_parsel_bonus'] ?? 0,
+                'wholesale_full' => (int) $wholesaleFull,
+                'wholesale_remainder' => (int) $wholesaleRemainder,
+                'wholesale_ceil' => $wholesaleCeil,
+                'wholesale_text' => $wholesaleText,
+                'cost_price' => $costPerUnit,
+                'estimated_cost' => $estCost,
+                'packages_list' => array_values(array_unique($data['packages'] ?? [])),
+            ];
+        }
+
+        // Urutkan barang: Kategori (A-Z), Nama Barang (A-Z)
+        usort($report, function ($a, $b) {
+            $catCmp = strcasecmp($a['category'], $b['category']);
+            if ($catCmp !== 0) return $catCmp;
+            return strcasecmp($a['item_name'], $b['item_name']);
+        });
+
+        return $report;
     }
 }

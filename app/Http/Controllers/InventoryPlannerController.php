@@ -19,15 +19,21 @@ class InventoryPlannerController extends Controller
 
     public function index(Request $request)
     {
-        $scope = $request->input('scope', 'all');
+        $scope = $request->input('scope', 'safe');
         $result = $this->plannerService->calculateRequirements($scope);
         $packagesToPrepare = $result['packages_to_prepare'] ?? [];
-        $items = $result['items'];
-        $bonusItems = $result['bonus_items'];
-        $packagingItems = $result['packaging_items'];
-        $summary = $result['summary'];
-        $cashItems = $result['cash_items'];
-        $cashByAgent = $result['cash_by_agent'];
+        $items = $result['items'] ?? [];
+        $allGoodsItems = $result['all_goods_items'] ?? $items;
+        $parselHarianItems = $result['parsel_harian_items'] ?? [];
+        $parselMingguanItems = $result['parsel_mingguan_items'] ?? [];
+        $ecerItems = $result['ecer_items'] ?? [];
+        $tabunganBonusItems = $result['tabungan_bonus_items'] ?? [];
+        $parselBonusItems = $result['parsel_bonus_items'] ?? [];
+        $bonusItems = $result['bonus_items'] ?? [];
+        $packagingItems = $result['packaging_items'] ?? [];
+        $summary = $result['summary'] ?? [];
+        $cashItems = $result['cash_items'] ?? [];
+        $cashByAgent = $result['cash_by_agent'] ?? [];
         $excludedIncompleteCustomers = $result['excluded_incomplete_customers'] ?? [];
 
         // Filter tipe paket jika diminta
@@ -41,10 +47,16 @@ class InventoryPlannerController extends Controller
             $packagesToPrepare = array_filter($packagesToPrepare, fn($p) => $p['total_orders'] > 0);
         }
 
-        // Filter kategori jika diminta (pada barang pokok)
+        // Filter kategori jika diminta (pada barang belanja)
         if ($request->filled('category')) {
             $cat = $request->category;
-            $items = array_filter($items, fn($i) => $i['category'] === $cat);
+            $filterCat = fn($i) => ($i['category'] ?? '') === $cat;
+            $items = array_filter($items, $filterCat);
+            $allGoodsItems = array_filter($allGoodsItems, $filterCat);
+            $parselHarianItems = array_filter($parselHarianItems, $filterCat);
+            $parselMingguanItems = array_filter($parselMingguanItems, $filterCat);
+            $ecerItems = array_filter($ecerItems, $filterCat);
+            $tabunganBonusItems = array_filter($tabunganBonusItems, $filterCat);
         }
 
         // Pencarian nama barang, bonus, kemasan, atau nama konsumen / agen / paket
@@ -56,26 +68,31 @@ class InventoryPlannerController extends Controller
                        str_contains(strtolower($p['package_type_label']), $s) ||
                        collect($p['customers'])->contains(fn($c) => str_contains(strtolower($c['customer_name']), $s) || str_contains(strtolower($c['agent_name']), $s));
             });
-            $items = array_filter($items, function ($i) use ($s) {
-                return str_contains(strtolower($i['item_name']), $s) || str_contains(strtolower($i['item_code']), $s);
-            });
-            $bonusItems = array_filter($bonusItems, function ($b) use ($s) {
-                return str_contains(strtolower($b['item_name']), $s) || str_contains(strtolower($b['item_code']), $s);
-            });
+            $filterItemSearch = function ($i) use ($s) {
+                return str_contains(strtolower($i['item_name'] ?? ''), $s) || str_contains(strtolower($i['item_code'] ?? ''), $s);
+            };
+            $items = array_filter($items, $filterItemSearch);
+            $allGoodsItems = array_filter($allGoodsItems, $filterItemSearch);
+            $parselHarianItems = array_filter($parselHarianItems, $filterItemSearch);
+            $parselMingguanItems = array_filter($parselMingguanItems, $filterItemSearch);
+            $ecerItems = array_filter($ecerItems, $filterItemSearch);
+            $tabunganBonusItems = array_filter($tabunganBonusItems, $filterItemSearch);
+            $bonusItems = array_filter($bonusItems, $filterItemSearch);
+
             $packagingItems = array_filter($packagingItems, function ($p) use ($s) {
-                return str_contains(strtolower($p['name']), $s) || str_contains(strtolower($p['code']), $s);
+                return str_contains(strtolower($p['name'] ?? ''), $s) || str_contains(strtolower($p['code'] ?? ''), $s);
             });
             $cashItems = array_filter($cashItems, function ($c) use ($s) {
-                return str_contains(strtolower($c['customer_name']), $s) || 
-                       str_contains(strtolower($c['agent_name']), $s) ||
-                       str_contains(strtolower($c['package_name']), $s) ||
-                       str_contains(strtolower($c['cash_description']), $s);
+                return str_contains(strtolower($c['customer_name'] ?? ''), $s) || 
+                       str_contains(strtolower($c['agent_name'] ?? ''), $s) ||
+                       str_contains(strtolower($c['package_name'] ?? ''), $s) ||
+                       str_contains(strtolower($c['cash_description'] ?? ''), $s);
             });
             $excludedIncompleteCustomers = array_filter($excludedIncompleteCustomers, function ($c) use ($s) {
-                return str_contains(strtolower($c['customer_name']), $s) ||
-                       str_contains(strtolower($c['customer_code']), $s) ||
-                       str_contains(strtolower($c['agent_name']), $s) ||
-                       str_contains(strtolower($c['package_name']), $s);
+                return str_contains(strtolower($c['customer_name'] ?? ''), $s) ||
+                       str_contains(strtolower($c['customer_code'] ?? ''), $s) ||
+                       str_contains(strtolower($c['agent_name'] ?? ''), $s) ||
+                       str_contains(strtolower($c['package_name'] ?? ''), $s);
             });
         }
 
@@ -83,6 +100,12 @@ class InventoryPlannerController extends Controller
             'scope',
             'packagesToPrepare',
             'items',
+            'allGoodsItems',
+            'parselHarianItems',
+            'parselMingguanItems',
+            'ecerItems',
+            'tabunganBonusItems',
+            'parselBonusItems',
             'bonusItems',
             'packagingItems',
             'summary',
@@ -97,21 +120,33 @@ class InventoryPlannerController extends Controller
      */
     public function printView(Request $request)
     {
-        $scope = $request->input('scope', 'all');
+        $scope = $request->input('scope', 'safe');
         $result = $this->plannerService->calculateRequirements($scope);
         $packagesToPrepare = $result['packages_to_prepare'] ?? [];
-        $items = $result['items'];
-        $bonusItems = $result['bonus_items'];
-        $packagingItems = $result['packaging_items'];
-        $summary = $result['summary'];
-        $cashItems = $result['cash_items'];
-        $cashByAgent = $result['cash_by_agent'];
+        $items = $result['items'] ?? [];
+        $allGoodsItems = $result['all_goods_items'] ?? $items;
+        $parselHarianItems = $result['parsel_harian_items'] ?? [];
+        $parselMingguanItems = $result['parsel_mingguan_items'] ?? [];
+        $ecerItems = $result['ecer_items'] ?? [];
+        $tabunganBonusItems = $result['tabungan_bonus_items'] ?? [];
+        $parselBonusItems = $result['parsel_bonus_items'] ?? [];
+        $bonusItems = $result['bonus_items'] ?? [];
+        $packagingItems = $result['packaging_items'] ?? [];
+        $summary = $result['summary'] ?? [];
+        $cashItems = $result['cash_items'] ?? [];
+        $cashByAgent = $result['cash_by_agent'] ?? [];
         $excludedIncompleteCustomers = $result['excluded_incomplete_customers'] ?? [];
 
         return view('inventory.print', compact(
             'scope',
             'packagesToPrepare',
             'items',
+            'allGoodsItems',
+            'parselHarianItems',
+            'parselMingguanItems',
+            'ecerItems',
+            'tabunganBonusItems',
+            'parselBonusItems',
             'bonusItems',
             'packagingItems',
             'summary',
@@ -126,7 +161,7 @@ class InventoryPlannerController extends Controller
      */
     public function exportXlsx(Request $request)
     {
-        $scope = $request->input('scope', 'all');
+        $scope = $request->input('scope', 'safe');
         $result = $this->plannerService->calculateRequirements($scope);
 
         return $this->exportService->exportXlsx($result, $scope);

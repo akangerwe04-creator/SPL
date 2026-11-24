@@ -25,13 +25,17 @@ class WholesaleProcurementExportService
             throw new \RuntimeException('Gagal membuat file temporary XLSX.');
         }
 
-        // Definisi Sheets
+        // Definisi Sheets Terpisah Sesuai Kategori
         $sheets = [
-            ['id' => 1, 'name' => '1. Belanja Barang Pokok', 'type' => 'goods'],
-            ['id' => 2, 'name' => '2. Belanja Kemasan & Wadah', 'type' => 'packaging'],
-            ['id' => 3, 'name' => '3. Belanja Bonus Hadiah', 'type' => 'bonus'],
-            ['id' => 4, 'name' => '4. Rekapan Paket Disiapkan', 'type' => 'packages'],
-            ['id' => 5, 'name' => '5. Ringkasan Anggaran', 'type' => 'summary'],
+            ['id' => 1, 'name' => '1. Rekap Semua Barang', 'type' => 'all_goods'],
+            ['id' => 2, 'name' => '2. Parsel Harian', 'type' => 'parsel_harian'],
+            ['id' => 3, 'name' => '3. Parsel Mingguan', 'type' => 'parsel_mingguan'],
+            ['id' => 4, 'name' => '4. Paket Eceran', 'type' => 'ecer'],
+            ['id' => 5, 'name' => '5. Hadiah Tabungan', 'type' => 'tabungan_bonus'],
+            ['id' => 6, 'name' => '6. Kemasan & Wadah', 'type' => 'packaging'],
+            ['id' => 7, 'name' => '7. Rekapan Paket', 'type' => 'packages'],
+            ['id' => 8, 'name' => '8. Uang Tunai', 'type' => 'cash'],
+            ['id' => 9, 'name' => '9. Ringkasan Anggaran', 'type' => 'summary'],
         ];
 
         // 1. [Content_Types].xml
@@ -53,10 +57,34 @@ class WholesaleProcurementExportService
         foreach ($sheets as $s) {
             $path = "xl/worksheets/sheet{$s['id']}.xml";
             $sheetXml = match($s['type']) {
-                'goods' => $this->buildGoodsSheetXml($plannerData, $appName, $programPeriod, $printedDate, $scope),
+                'all_goods' => $this->buildGoodsSheetXml(
+                    $plannerData['all_goods_items'] ?? $plannerData['items'] ?? [],
+                    '1. TOTAL REKAPITULASI KULAKAN GROSIR SELURUH BARANG (SEMUA PAKET)',
+                    $appName, $programPeriod, $printedDate, $scope, true
+                ),
+                'parsel_harian' => $this->buildGoodsSheetXml(
+                    $plannerData['parsel_harian_items'] ?? [],
+                    '2. DAFTAR BELANJA BARANG: PAKET PARSEL HARIAN',
+                    $appName, $programPeriod, $printedDate, $scope, false
+                ),
+                'parsel_mingguan' => $this->buildGoodsSheetXml(
+                    $plannerData['parsel_mingguan_items'] ?? [],
+                    '3. DAFTAR BELANJA BARANG: PAKET PARSEL MINGGUAN',
+                    $appName, $programPeriod, $printedDate, $scope, false
+                ),
+                'ecer' => $this->buildGoodsSheetXml(
+                    $plannerData['ecer_items'] ?? [],
+                    '4. DAFTAR BELANJA BARANG: PAKET ECERAN / BEBAS',
+                    $appName, $programPeriod, $printedDate, $scope, false
+                ),
+                'tabungan_bonus' => $this->buildGoodsSheetXml(
+                    $plannerData['tabungan_bonus_items'] ?? [],
+                    '5. DAFTAR BELANJA HADIAH BONUS TABUNGAN LEBARAN',
+                    $appName, $programPeriod, $printedDate, $scope, false
+                ),
                 'packaging' => $this->buildPackagingSheetXml($plannerData, $appName, $programPeriod, $printedDate, $scope),
-                'bonus' => $this->buildBonusSheetXml($plannerData, $appName, $programPeriod, $printedDate, $scope),
                 'packages' => $this->buildPackagesSheetXml($plannerData, $appName, $programPeriod, $printedDate, $scope),
+                'cash' => $this->buildCashSheetXml($plannerData, $appName, $programPeriod, $printedDate, $scope),
                 'summary' => $this->buildSummarySheetXml($plannerData, $appName, $programPeriod, $printedDate, $scope),
             };
             $zip->addFromString($path, $sheetXml);
@@ -222,29 +250,81 @@ class WholesaleProcurementExportService
     }
 
     /**
-     * Sheet 1: Belanja Barang Pokok (Parsel & Eceran)
+     * Builder XML untuk Sheet Belanja Barang (Bisa untuk Rekap Semua Barang, Parsel Harian, Parsel Mingguan, Eceran, Hadiah Tabungan)
      */
-    private function buildGoodsSheetXml(array $data, string $appName, string $period, string $date, string $scope): string
+    private function buildGoodsSheetXml(array $items, string $sheetTitle, string $appName, string $period, string $date, string $scope, bool $showBreakdown = false): string
     {
-        $items = $data['items'];
         $scopeLabel = $scope === 'all' ? 'Seluruh Pesanan Konsumen Aktif (PO ke Supplier)' : 'Hanya Konsumen Lolos Titik Aman';
 
-        $colWidths = [
-            1 => 6,   // A: No
-            2 => 16,  // B: Kode Barang
-            3 => 32,  // C: Nama Barang Pokok
-            4 => 18,  // D: Kategori
-            5 => 18,  // E: Total Satuan Dasar
-            6 => 14,  // F: Satuan Dasar
-            7 => 14,  // G: Isi per Dus
-            8 => 26,  // H: Rekomendasi Kulakan Grosir
-            9 => 18,  // I: Pembulatan Dus
-            10 => 14, // J: Satuan Grosir
-            11 => 14, // K: Dari Parsel
-            12 => 14, // L: Dari Ecer
-            13 => 18, // M: Harga Modal
-            14 => 22, // N: Total Estimasi Modal
-        ];
+        if ($showBreakdown) {
+            $colWidths = [
+                1 => 6,   // A: No
+                2 => 16,  // B: Kode Barang
+                3 => 32,  // C: Nama Barang Pokok
+                4 => 18,  // D: Kategori
+                5 => 18,  // E: Total Satuan Dasar
+                6 => 14,  // F: Satuan Dasar
+                7 => 14,  // G: Isi per Dus
+                8 => 26,  // H: Rekomendasi Kulakan Grosir
+                9 => 16,  // I: Pembulatan Dus
+                10 => 14, // J: Satuan Grosir
+                11 => 14, // K: Parsel Harian
+                12 => 14, // L: Parsel Mingguan
+                13 => 14, // M: Dari Ecer
+                14 => 16, // N: Hadiah Tabungan
+                15 => 18, // O: Harga Modal
+                16 => 22, // P: Total Estimasi Modal
+            ];
+            $headers = [
+                'A' => 'No',
+                'B' => 'Kode Barang',
+                'C' => 'Nama Barang',
+                'D' => 'Kategori',
+                'E' => 'Total Pesanan (Satuan)',
+                'F' => 'Satuan Dasar',
+                'G' => 'Isi per Dus',
+                'H' => 'Kebutuhan Kulakan Grosir',
+                'I' => 'Genap (Dus)',
+                'J' => 'Satuan Grosir',
+                'K' => 'Parsel Harian',
+                'L' => 'Parsel Mingguan',
+                'M' => 'Dari Ecer',
+                'N' => 'Hadiah Tabungan',
+                'O' => 'Harga Modal / Unit (Rp)',
+                'P' => 'Total Estimasi Modal (Rp)',
+            ];
+            $lastCol = 'P';
+        } else {
+            $colWidths = [
+                1 => 6,   // A: No
+                2 => 16,  // B: Kode Barang
+                3 => 32,  // C: Nama Barang Pokok
+                4 => 18,  // D: Kategori
+                5 => 18,  // E: Total Satuan Dasar
+                6 => 14,  // F: Satuan Dasar
+                7 => 14,  // G: Isi per Dus
+                8 => 26,  // H: Rekomendasi Kulakan Grosir
+                9 => 18,  // I: Pembulatan Dus
+                10 => 14, // J: Satuan Grosir
+                11 => 18, // K: Harga Modal
+                12 => 22, // L: Total Estimasi Modal
+            ];
+            $headers = [
+                'A' => 'No',
+                'B' => 'Kode Barang',
+                'C' => 'Nama Barang',
+                'D' => 'Kategori',
+                'E' => 'Total Pesanan (Satuan)',
+                'F' => 'Satuan Dasar',
+                'G' => 'Isi per Dus',
+                'H' => 'Kebutuhan Kulakan Grosir',
+                'I' => 'Genap (Dus)',
+                'J' => 'Satuan Grosir',
+                'K' => 'Harga Modal / Unit (Rp)',
+                'L' => 'Total Estimasi Modal (Rp)',
+            ];
+            $lastCol = 'L';
+        }
 
         $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n";
         $xml .= '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' . "\n";
@@ -266,7 +346,7 @@ class WholesaleProcurementExportService
         // Row 2: Subtitle
         $r = 2;
         $xml .= "    <row r=\"{$r}\" ht=\"20\">\n";
-        $xml .= $this->cellStr('A', $r, '1. REKAPITULASI BELANJA GROSIR BARANG POKOK KE SUPPLIER (PARSEL & ECERAN)', 2);
+        $xml .= $this->cellStr('A', $r, $sheetTitle, 2);
         $xml .= "    </row>\n";
 
         // Row 3: Meta Info
@@ -281,22 +361,6 @@ class WholesaleProcurementExportService
 
         // Row 5: Table Header
         $r = 5;
-        $headers = [
-            'A' => 'No',
-            'B' => 'Kode Barang',
-            'C' => 'Nama Barang Pokok',
-            'D' => 'Kategori',
-            'E' => 'Total Pesanan (Satuan)',
-            'F' => 'Satuan Dasar',
-            'G' => 'Isi per Dus',
-            'H' => 'Kebutuhan Kulakan Grosir',
-            'I' => 'Genap (Dus)',
-            'J' => 'Satuan Grosir',
-            'K' => 'Dari Parsel',
-            'L' => 'Dari Ecer',
-            'M' => 'Harga Modal / Unit (Rp)',
-            'N' => 'Total Estimasi Modal (Rp)',
-        ];
         $xml .= "    <row r=\"{$r}\" ht=\"28\">\n";
         foreach ($headers as $col => $text) {
             $xml .= $this->cellStr($col, $r, $text, 4);
@@ -323,10 +387,18 @@ class WholesaleProcurementExportService
             $xml .= $this->cellStr('H', $r, $row['wholesale_text'], 5);
             $xml .= $this->cellNum('I', $r, $row['wholesale_ceil'], 7);
             $xml .= $this->cellStr('J', $r, $row['wholesale_unit'] ?: 'Dus', 6);
-            $xml .= $this->cellNum('K', $r, $row['from_parsel'], 7);
-            $xml .= $this->cellNum('L', $r, $row['from_ecer'], 7);
-            $xml .= $this->cellNum('M', $r, $row['cost_price'], 8);
-            $xml .= $this->cellNum('N', $r, $row['estimated_cost'], 8);
+
+            if ($showBreakdown) {
+                $xml .= $this->cellNum('K', $r, $row['from_parsel_harian'] ?? 0, 7);
+                $xml .= $this->cellNum('L', $r, $row['from_parsel_mingguan'] ?? 0, 7);
+                $xml .= $this->cellNum('M', $r, $row['from_ecer'] ?? 0, 7);
+                $xml .= $this->cellNum('N', $r, $row['from_tabungan_bonus'] ?? 0, 7);
+                $xml .= $this->cellNum('O', $r, $row['cost_price'], 8);
+                $xml .= $this->cellNum('P', $r, $row['estimated_cost'], 8);
+            } else {
+                $xml .= $this->cellNum('K', $r, $row['cost_price'], 8);
+                $xml .= $this->cellNum('L', $r, $row['estimated_cost'], 8);
+            }
             $xml .= "    </row>\n";
         }
 
@@ -336,7 +408,7 @@ class WholesaleProcurementExportService
         $r++;
         $xml .= "    <row r=\"{$r}\" ht=\"24\">\n";
         $xml .= $this->cellStr('A', $r, '', 9);
-        $xml .= $this->cellStr('B', $r, 'TOTAL KESELURUHAN BARANG POKOK', 9);
+        $xml .= $this->cellStr('B', $r, 'TOTAL KESELURUHAN', 9);
         $xml .= $this->cellStr('C', $r, count($items) . ' Macam Barang', 9);
         $xml .= $this->cellStr('D', $r, '', 9);
         $xml .= $this->cellNum('E', $r, $totPieces, 9);
@@ -345,15 +417,23 @@ class WholesaleProcurementExportService
         $xml .= $this->cellStr('H', $r, '', 9);
         $xml .= $this->cellStr('I', $r, '', 9);
         $xml .= $this->cellStr('J', $r, '', 9);
-        $xml .= $this->cellStr('K', $r, '', 9);
-        $xml .= $this->cellStr('L', $r, '', 9);
-        $xml .= $this->cellStr('M', $r, '', 9);
-        $xml .= $this->cellNum('N', $r, $totCost, 9);
+
+        if ($showBreakdown) {
+            $xml .= $this->cellStr('K', $r, '', 9);
+            $xml .= $this->cellStr('L', $r, '', 9);
+            $xml .= $this->cellStr('M', $r, '', 9);
+            $xml .= $this->cellStr('N', $r, '', 9);
+            $xml .= $this->cellStr('O', $r, '', 9);
+            $xml .= $this->cellNum('P', $r, $totCost, 9);
+        } else {
+            $xml .= $this->cellStr('K', $r, '', 9);
+            $xml .= $this->cellNum('L', $r, $totCost, 9);
+        }
         $xml .= "    </row>\n";
 
         $xml .= '  </sheetData>' . "\n";
         if ($lastDataRow >= 6) {
-            $xml .= "  <autoFilter ref=\"A5:N{$lastDataRow}\"/>\n";
+            $xml .= "  <autoFilter ref=\"A5:{$lastCol}{$lastDataRow}\"/>\n";
         }
         $xml .= '  <printOptions gridLines="1"/>' . "\n";
         $xml .= '  <pageMargins left="0.5" right="0.5" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>' . "\n";
@@ -401,7 +481,7 @@ class WholesaleProcurementExportService
         // Row 2: Subtitle
         $r = 2;
         $xml .= "    <row r=\"{$r}\" ht=\"20\">\n";
-        $xml .= $this->cellStr('A', $r, '2. REKAPITULASI BELANJA KEMASAN & WADAH PARSEL (KOPER, BOX, KERANJANG, TOPLES, DLL.)', 2);
+        $xml .= $this->cellStr('A', $r, '6. REKAPITULASI BELANJA KEMASAN & WADAH PARSEL (KOPER, BOX, KERANJANG, TOPLES, DLL.)', 2);
         $xml .= "    </row>\n";
 
         // Row 3: Meta Info
@@ -664,7 +744,7 @@ class WholesaleProcurementExportService
         // Row 2: Subtitle
         $r = 2;
         $xml .= "    <row r=\"{$r}\" ht=\"20\">\n";
-        $xml .= $this->cellStr('A', $r, '4. REKAPITULASI JUMLAH PAKET YANG HARUS DISIAPKAN (PERMINTAAN KONSUMEN)', 2);
+        $xml .= $this->cellStr('A', $r, '7. REKAPITULASI JUMLAH PAKET YANG HARUS DISIAPKAN (PERMINTAAN KONSUMEN)', 2);
         $xml .= "    </row>\n";
 
         // Row 3: Meta Info
@@ -791,12 +871,149 @@ class WholesaleProcurementExportService
     }
 
     /**
-     * Sheet 5: Ringkasan Eksekutif Anggaran Pengadaan & Uang Tunai
+     * Sheet 8: Daftar Penyiapan Uang Tunai Konsumen (Tabungan & Parsel)
+     */
+    private function buildCashSheetXml(array $data, string $appName, string $period, string $date, string $scope): string
+    {
+        $cashItems = $data['cash_items'] ?? $data['cash_requirements'] ?? [];
+        $scopeLabel = $scope === 'all' || $scope === 'raw_all' ? 'Seluruh Pesanan Konsumen Aktif (PO ke Supplier)' : 'Hanya Konsumen Lolos Titik Aman / Ditetapkan Tutup Buku';
+
+        $colWidths = [
+            1 => 6,   // A: No
+            2 => 14,  // B: Kode Konsumen
+            3 => 26,  // C: Nama Konsumen
+            4 => 20,  // D: Agen
+            5 => 26,  // E: Paket
+            6 => 18,  // F: Skema / Durasi
+            7 => 30,  // G: Rincian Uang Tunai
+            8 => 22,  // H: Nominal Uang Tunai (Rp)
+            9 => 20,  // I: Total Terbayar (Rp)
+            10 => 14, // J: Progress
+            11 => 18, // K: No. HP
+            12 => 32, // L: Alamat
+        ];
+
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n";
+        $xml .= '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' . "\n";
+        $xml .= '  <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' . "\n";
+        $xml .= '  <sheetFormatPr defaultRowHeight="20"/>' . "\n";
+        $xml .= '  <cols>' . "\n";
+        foreach ($colWidths as $col => $w) {
+            $xml .= "    <col min=\"{$col}\" max=\"{$col}\" width=\"{$w}\" customWidth=\"1\"/>\n";
+        }
+        $xml .= '  </cols>' . "\n";
+        $xml .= '  <sheetData>' . "\n";
+
+        // Row 1: Title
+        $r = 1;
+        $xml .= "    <row r=\"{$r}\" ht=\"24\">\n";
+        $xml .= $this->cellStr('A', $r, strtoupper($appName), 1);
+        $xml .= "    </row>\n";
+
+        // Row 2: Subtitle
+        $r = 2;
+        $xml .= "    <row r=\"{$r}\" ht=\"20\">\n";
+        $xml .= $this->cellStr('A', $r, '8. DAFTAR PENYIAPAN UANG TUNAI KONSUMEN (TABUNGAN & PARSEL)', 2);
+        $xml .= "    </row>\n";
+
+        // Row 3: Meta Info
+        $r = 3;
+        $xml .= "    <row r=\"{$r}\" ht=\"18\">\n";
+        $xml .= $this->cellStr('A', $r, "Cakupan: {$scopeLabel} | Periode: {$period} | Dicetak: {$date} | Total: " . count($cashItems) . " Penerima Uang Tunai", 3);
+        $xml .= "    </row>\n";
+
+        // Row 4: Empty row
+        $r = 4;
+        $xml .= "    <row r=\"{$r}\" ht=\"10\"/>\n";
+
+        // Row 5: Table Header
+        $r = 5;
+        $headers = [
+            'A' => 'No',
+            'B' => 'Kode Konsumen',
+            'C' => 'Nama Konsumen',
+            'D' => 'Agen Penanggungjawab',
+            'E' => 'Paket Terdaftar',
+            'F' => 'Skema Tagihan',
+            'G' => 'Rincian Uang Tunai',
+            'H' => 'Nominal Uang Tunai (Rp)',
+            'I' => 'Total Terbayar (Rp)',
+            'J' => 'Progress Setoran',
+            'K' => 'No. HP',
+            'L' => 'Alamat Konsumen',
+        ];
+        $xml .= "    <row r=\"{$r}\" ht=\"28\">\n";
+        foreach ($headers as $col => $text) {
+            $xml .= $this->cellStr($col, $r, $text, 4);
+        }
+        $xml .= "    </row>\n";
+
+        $totCash = 0;
+        $totPaid = 0;
+
+        foreach ($cashItems as $idx => $c) {
+            $r++;
+            $cashAmount = (float)($c['cash_amount'] ?? 0);
+            $totalPaid = (float)($c['total_paid'] ?? 0);
+            $totCash += $cashAmount;
+            $totPaid += $totalPaid;
+
+            $progress = isset($c['progress_percent']) ? number_format($c['progress_percent'], 1) . '%' : '-';
+
+            $xml .= "    <row r=\"{$r}\" ht=\"20\">\n";
+            $xml .= $this->cellNum('A', $r, $idx + 1, 6);
+            $xml .= $this->cellStr('B', $r, $c['customer_code'] ?? '-', 6);
+            $xml .= $this->cellStr('C', $r, $c['customer_name'] ?? '-', 5);
+            $xml .= $this->cellStr('D', $r, $c['agent_name'] ?? '-', 5);
+            $xml .= $this->cellStr('E', $r, $c['package_name'] ?? '-', 5);
+            $xml .= $this->cellStr('F', $r, $c['period_text'] ?? '-', 6);
+            $xml .= $this->cellStr('G', $r, $c['cash_description'] ?? '-', 5);
+            $xml .= $this->cellNum('H', $r, $cashAmount, 8);
+            $xml .= $this->cellNum('I', $r, $totalPaid, 8);
+            $xml .= $this->cellStr('J', $r, $progress, 6);
+            $xml .= $this->cellStr('K', $r, $c['customer_phone'] ?? '-', 6);
+            $xml .= $this->cellStr('L', $r, $c['customer_address'] ?? '-', 5);
+            $xml .= "    </row>\n";
+        }
+
+        $lastDataRow = $r;
+
+        // Total Row
+        $r++;
+        $xml .= "    <row r=\"{$r}\" ht=\"24\">\n";
+        $xml .= $this->cellStr('A', $r, '', 9);
+        $xml .= $this->cellStr('B', $r, 'TOTAL PENYIAPAN UANG TUNAI', 9);
+        $xml .= $this->cellStr('C', $r, count($cashItems) . ' Konsumen Penerima', 9);
+        $xml .= $this->cellStr('D', $r, '', 9);
+        $xml .= $this->cellStr('E', $r, '', 9);
+        $xml .= $this->cellStr('F', $r, '', 9);
+        $xml .= $this->cellStr('G', $r, '', 9);
+        $xml .= $this->cellNum('H', $r, $totCash, 9);
+        $xml .= $this->cellNum('I', $r, $totPaid, 9);
+        $xml .= $this->cellStr('J', $r, '', 9);
+        $xml .= $this->cellStr('K', $r, '', 9);
+        $xml .= $this->cellStr('L', $r, '', 9);
+        $xml .= "    </row>\n";
+
+        $xml .= '  </sheetData>' . "\n";
+        if ($lastDataRow >= 6) {
+            $xml .= "  <autoFilter ref=\"A5:L{$lastDataRow}\"/>\n";
+        }
+        $xml .= '  <printOptions gridLines="1"/>' . "\n";
+        $xml .= '  <pageMargins left="0.5" right="0.5" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>' . "\n";
+        $xml .= '  <pageSetup orientation="landscape" paperSize="9" fitToWidth="1" fitToHeight="0"/>' . "\n";
+        $xml .= '</worksheet>';
+
+        return $xml;
+    }
+
+    /**
+     * Sheet 9: Ringkasan Eksekutif Anggaran Pengadaan & Uang Tunai
      */
     private function buildSummarySheetXml(array $data, string $appName, string $period, string $date, string $scope): string
     {
         $sum = $data['summary'];
-        $scopeLabel = $scope === 'all' ? 'Seluruh Pesanan Konsumen Aktif (PO ke Supplier)' : 'Hanya Konsumen Lolos Titik Aman';
+        $scopeLabel = $scope === 'all' || $scope === 'raw_all' ? 'Seluruh Pesanan Konsumen Aktif (PO ke Supplier)' : 'Hanya Konsumen Lolos Titik Aman / Ditetapkan Tutup Buku';
 
         $colWidths = [
             1 => 6,   // A: No
@@ -826,7 +1043,7 @@ class WholesaleProcurementExportService
         // Row 2: Subtitle
         $r = 2;
         $xml .= "    <row r=\"{$r}\" ht=\"20\">\n";
-        $xml .= $this->cellStr('A', $r, '5. RINGKASAN EKSEKUTIF KEBUTUHAN MODAL BELANJA & PENYIAPAN DANA OWNER', 2);
+        $xml .= $this->cellStr('A', $r, '9. RINGKASAN EKSEKUTIF KEBUTUHAN MODAL BELANJA & PENYIAPAN DANA OWNER', 2);
         $xml .= "    </row>\n";
 
         // Row 3: Meta Info

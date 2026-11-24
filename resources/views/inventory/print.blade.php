@@ -62,7 +62,7 @@
         </div>
 
         <!-- EXECUTIVE SUMMARY BOX -->
-        <div class="grid grid-cols-5 gap-2.5 p-3.5 rounded-xl bg-slate-50 border border-slate-300 text-xs">
+        <div class="grid grid-cols-4 gap-2.5 p-3.5 rounded-xl bg-slate-50 border border-slate-300 text-xs">
             <div>
                 <span class="text-slate-500 block">Total Paket Disiapkan:</span>
                 <strong class="text-base font-extrabold text-pink-900">
@@ -71,32 +71,53 @@
                 <span class="block text-[10px] text-slate-500">({{ $summary['total_parsel_count'] ?? 0 }} Parsel, {{ $summary['total_tabungan_count'] ?? 0 }} Tabungan, {{ $summary['total_ecer_count'] ?? 0 }} Ecer)</span>
             </div>
             <div>
-                <span class="text-slate-500 block">1. Uang Tunai Konsumen:</span>
+                <span class="text-slate-500 block">1. Parsel Harian:</span>
+                <strong class="text-base font-extrabold text-pink-800">
+                    Rp {{ number_format($summary['parsel_harian_cost'] ?? 0, 0, ',', '.') }}
+                </strong>
+                <span class="block text-[10px] text-slate-500">({{ number_format($summary['parsel_harian_pieces'] ?? 0) }} Pcs / {{ count($parselHarianItems) }} Macam)</span>
+            </div>
+            <div>
+                <span class="text-slate-500 block">2. Parsel Mingguan:</span>
+                <strong class="text-base font-extrabold text-indigo-900">
+                    Rp {{ number_format($summary['parsel_mingguan_cost'] ?? 0, 0, ',', '.') }}
+                </strong>
+                <span class="block text-[10px] text-slate-500">({{ number_format($summary['parsel_mingguan_pieces'] ?? 0) }} Pcs / {{ count($parselMingguanItems) }} Macam)</span>
+            </div>
+            <div>
+                <span class="text-slate-500 block">3. Paket Eceran:</span>
+                <strong class="text-base font-extrabold text-blue-900">
+                    Rp {{ number_format($summary['ecer_cost'] ?? 0, 0, ',', '.') }}
+                </strong>
+                <span class="block text-[10px] text-slate-500">({{ number_format($summary['ecer_pieces'] ?? 0) }} Pcs / {{ count($ecerItems) }} Macam)</span>
+            </div>
+            <div>
+                <span class="text-slate-500 block">4. Hadiah Tabungan:</span>
+                <strong class="text-base font-extrabold text-amber-800">
+                    Rp {{ number_format($summary['tabungan_bonus_cost'] ?? 0, 0, ',', '.') }}
+                </strong>
+                <span class="block text-[10px] text-slate-500">({{ number_format($summary['tabungan_bonus_pieces'] ?? 0) }} Pcs / {{ count($tabunganBonusItems) }} Macam)</span>
+            </div>
+            <div>
+                <span class="text-slate-500 block">5. Total Rekap Semua Barang:</span>
+                <strong class="text-base font-extrabold text-slate-900">
+                    Rp {{ number_format($summary['total_estimated_cost'], 0, ',', '.') }}
+                </strong>
+                <span class="block text-[10px] text-slate-500">({{ number_format($summary['total_base_pieces']) }} Pcs / {{ count($allGoodsItems) }} Macam)</span>
+            </div>
+            <div>
+                <span class="text-slate-500 block">6. Kemasan & Wadah:</span>
+                <strong class="text-base font-extrabold text-purple-900">
+                    Rp {{ number_format($summary['total_packaging_cost'] ?? 0, 0, ',', '.') }}
+                </strong>
+                <span class="block text-[10px] text-slate-500">({{ number_format($summary['total_packaging_units'] ?? 0) }} Unit / {{ count($packagingItems ?? []) }} Model)</span>
+            </div>
+            <div>
+                <span class="text-slate-500 block">7. Uang Tunai Konsumen:</span>
                 <strong class="text-base font-extrabold text-emerald-800">
                     Rp {{ number_format($summary['total_cash_amount'], 0, ',', '.') }}
                 </strong>
                 <span class="block text-[10px] text-slate-500">({{ $summary['total_cash_recipients'] }} Konsumen / {{ $summary['total_cash_agents'] }} Agen)</span>
-            </div>
-            <div>
-                <span class="text-slate-500 block">2. Modal Barang Pokok:</span>
-                <strong class="text-base font-extrabold text-slate-900">
-                    Rp {{ number_format($summary['total_estimated_cost'], 0, ',', '.') }}
-                </strong>
-                <span class="block text-[10px] text-slate-500">({{ count($items) }} Macam / {{ number_format($summary['total_base_pieces']) }} Pcs)</span>
-            </div>
-            <div>
-                <span class="text-slate-500 block">3. Modal Bonus Paket:</span>
-                <strong class="text-base font-extrabold text-amber-800">
-                    Rp {{ number_format($summary['total_bonus_cost'] ?? 0, 0, ',', '.') }}
-                </strong>
-                <span class="block text-[10px] text-slate-500">({{ count($bonusItems ?? []) }} Macam / {{ number_format($summary['total_bonus_pieces'] ?? 0) }} Pcs)</span>
-            </div>
-            <div>
-                <span class="text-slate-500 block">4. Modal Kemasan / Wadah:</span>
-                <strong class="text-base font-extrabold text-purple-900">
-                    Rp {{ number_format($summary['total_packaging_cost'] ?? 0, 0, ',', '.') }}
-                </strong>
-                <span class="block text-[10px] text-slate-500">({{ count($packagingItems ?? []) }} Model / {{ number_format($summary['total_packaging_units'] ?? 0) }} Unit)</span>
             </div>
         </div>
 
@@ -206,90 +227,23 @@
             </table>
         </div>
 
-        <!-- ================= BAGIAN 1: PERSIAPAN UANG TUNAI ================= -->
+        <!-- ================= BAGIAN 1: BELANJA BARANG PAKET PARSEL HARIAN ================= -->
         <div class="page-break">
             <div class="flex items-center justify-between pb-2 mb-3 border-b-2 border-slate-900">
                 <h3 class="font-extrabold uppercase text-sm tracking-wider text-slate-900">
-                    BAGIAN 1: DAFTAR PERSIAPAN UANG TUNAI KONSUMEN & AGEN
+                    BAGIAN 1: DAFTAR BELANJA BARANG: PAKET PARSEL HARIAN
                 </h3>
                 <span class="text-xs font-bold text-slate-700">
-                    Subtotal Uang: Rp {{ number_format($summary['total_cash_amount'], 0, ',', '.') }}
+                    Subtotal Parsel Harian: Rp {{ number_format($summary['parsel_harian_cost'] ?? 0, 0, ',', '.') }} ({{ number_format($summary['parsel_harian_pieces'] ?? 0) }} Pcs / {{ count($parselHarianItems) }} Macam)
                 </span>
             </div>
 
             <table class="w-full text-left border-collapse text-xs mb-4">
                 <thead>
                     <tr class="border-y-2 border-slate-900 bg-slate-100 font-bold text-slate-900">
-                        <th class="py-2 px-2 text-center">No</th>
-                        <th class="py-2 px-3">Nama Konsumen & Kode</th>
-                        <th class="py-2 px-3">Agen Penanggung Jawab</th>
-                        <th class="py-2 px-3">Paket & Keterangan Uang</th>
-                        <th class="py-2 px-3 text-right">Uang Tunai (Rp)</th>
-                        <th class="py-2 px-2 text-center no-print">Ceklis Amplop</th>
-                        <th class="py-2 px-3 text-center">Paraf Penerima</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200">
-                    @forelse($cashItems as $idx => $c)
-                        <tr>
-                            <td class="py-2 px-2 font-mono text-center text-slate-500">{{ $idx + 1 }}</td>
-                            <td class="py-2 px-3">
-                                <div class="font-bold text-slate-900">{{ $c['customer_name'] }}</div>
-                                <div class="text-[10px] text-slate-500">Kode: {{ $c['customer_code'] }} • Telp: {{ $c['customer_phone'] }}</div>
-                            </td>
-                            <td class="py-2 px-3 font-semibold text-slate-800">
-                                {{ $c['agent_name'] }}
-                            </td>
-                            <td class="py-2 px-3">
-                                <div class="font-bold text-slate-900">{{ $c['cash_description'] }}</div>
-                                <div class="text-[10px] text-slate-500">{{ $c['package_name'] }} ({{ $c['period_text'] }})</div>
-                            </td>
-                            <td class="py-2 px-3 text-right font-extrabold text-slate-900">
-                                Rp {{ number_format($c['cash_amount'], 0, ',', '.') }}
-                            </td>
-                            <td class="py-2 px-2 text-center no-print">
-                                <input type="checkbox" class="w-4 h-4 rounded border-slate-300">
-                            </td>
-                            <td class="py-2 px-3 text-center text-slate-400 font-mono text-[10px]">
-                                ( ..................... )
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="py-4 text-center text-slate-400">
-                                Tidak ada penyiapan uang tunai untuk pesanan aktif saat ini.
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-                <tfoot>
-                    <tr class="border-t-2 border-slate-900 font-bold bg-slate-50">
-                        <td colspan="4" class="py-2.5 px-3 text-right">TOTAL UANG TUNAI YANG HARUS DISIAPKAN:</td>
-                        <td class="py-2.5 px-3 text-right font-extrabold text-slate-900 text-sm">
-                            Rp {{ number_format($summary['total_cash_amount'], 0, ',', '.') }}
-                        </td>
-                        <td colspan="2"></td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-
-        <!-- ================= BAGIAN 2: BELANJA GROSIR BARANG POKOK ================= -->
-        <div class="page-break">
-            <div class="flex items-center justify-between pb-2 mb-3 border-b-2 border-slate-900">
-                <h3 class="font-extrabold uppercase text-sm tracking-wider text-slate-900">
-                    BAGIAN 2: DAFTAR RENCANA BELANJA GROSIR BARANG FISIK (KONVERSI DUS)
-                </h3>
-                <span class="text-xs font-bold text-slate-700">
-                    Subtotal Barang Pokok: Rp {{ number_format($summary['total_estimated_cost'], 0, ',', '.') }}
-                </span>
-            </div>
-
-            <table class="w-full text-left border-collapse text-xs mb-4">
-                <thead>
-                    <tr class="border-y-2 border-slate-900 bg-slate-100 font-bold text-slate-900">
-                        <th class="py-2 px-2 text-center">No</th>
-                        <th class="py-2 px-3">Nama Barang</th>
+                        <th class="py-2 px-2 text-center w-8">No</th>
+                        <th class="py-2 px-3">Kode</th>
+                        <th class="py-2 px-3">Nama Barang Parsel Harian</th>
                         <th class="py-2 px-3">Kategori</th>
                         <th class="py-2 px-3 text-center">Isi/Dus</th>
                         <th class="py-2 px-3 text-center">Total Unit (Pcs)</th>
@@ -299,9 +253,10 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200">
-                    @forelse($items as $idx => $r)
+                    @forelse($parselHarianItems as $idx => $r)
                         <tr>
                             <td class="py-2 px-2 font-mono text-center text-slate-400">{{ $idx + 1 }}</td>
+                            <td class="py-2 px-3 font-mono font-bold text-slate-700">{{ $r['item_code'] }}</td>
                             <td class="py-2 px-3 font-bold text-slate-900">{{ $r['item_name'] }}</td>
                             <td class="py-2 px-3 text-slate-600">{{ $r['category'] }}</td>
                             <td class="py-2 px-3 text-center font-mono">{{ (int)$r['conversion_rate'] }} {{ $r['base_unit'] }}</td>
@@ -321,13 +276,273 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="py-4 text-center text-slate-400">Belum ada kebutuhan barang pokok.</td>
+                            <td colspan="9" class="py-4 text-center text-slate-400">Belum ada kebutuhan belanja barang untuk Parsel Harian.</td>
                         </tr>
                     @endforelse
                 </tbody>
                 <tfoot>
                     <tr class="border-t-2 border-slate-900 font-bold bg-slate-50">
-                        <td colspan="6" class="py-2.5 px-3 text-right">TOTAL ESTIMASI MODAL BARANG GROSIR:</td>
+                        <td colspan="7" class="py-2.5 px-3 text-right">TOTAL ESTIMASI MODAL PARSEL HARIAN:</td>
+                        <td class="py-2.5 px-3 text-right font-extrabold text-slate-900 text-sm">
+                            Rp {{ number_format($summary['parsel_harian_cost'] ?? 0, 0, ',', '.') }}
+                        </td>
+                        <td class="no-print"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- ================= BAGIAN 2: BELANJA BARANG PAKET PARSEL MINGGUAN ================= -->
+        <div class="page-break">
+            <div class="flex items-center justify-between pb-2 mb-3 border-b-2 border-slate-900">
+                <h3 class="font-extrabold uppercase text-sm tracking-wider text-slate-900">
+                    BAGIAN 2: DAFTAR BELANJA BARANG: PAKET PARSEL MINGGUAN
+                </h3>
+                <span class="text-xs font-bold text-slate-700">
+                    Subtotal Parsel Mingguan: Rp {{ number_format($summary['parsel_mingguan_cost'] ?? 0, 0, ',', '.') }} ({{ number_format($summary['parsel_mingguan_pieces'] ?? 0) }} Pcs / {{ count($parselMingguanItems) }} Macam)
+                </span>
+            </div>
+
+            <table class="w-full text-left border-collapse text-xs mb-4">
+                <thead>
+                    <tr class="border-y-2 border-slate-900 bg-slate-100 font-bold text-slate-900">
+                        <th class="py-2 px-2 text-center w-8">No</th>
+                        <th class="py-2 px-3">Kode</th>
+                        <th class="py-2 px-3">Nama Barang Parsel Mingguan</th>
+                        <th class="py-2 px-3">Kategori</th>
+                        <th class="py-2 px-3 text-center">Isi/Dus</th>
+                        <th class="py-2 px-3 text-center">Total Unit (Pcs)</th>
+                        <th class="py-2 px-3 font-extrabold">Rekomendasi Beli Grosir</th>
+                        <th class="py-2 px-3 text-right">Estimasi Modal</th>
+                        <th class="py-2 px-2 text-center no-print">Ceklis Beli</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    @forelse($parselMingguanItems as $idx => $r)
+                        <tr>
+                            <td class="py-2 px-2 font-mono text-center text-slate-400">{{ $idx + 1 }}</td>
+                            <td class="py-2 px-3 font-mono font-bold text-slate-700">{{ $r['item_code'] }}</td>
+                            <td class="py-2 px-3 font-bold text-slate-900">{{ $r['item_name'] }}</td>
+                            <td class="py-2 px-3 text-slate-600">{{ $r['category'] }}</td>
+                            <td class="py-2 px-3 text-center font-mono">{{ (int)$r['conversion_rate'] }} {{ $r['base_unit'] }}</td>
+                            <td class="py-2 px-3 text-center font-bold">{{ number_format($r['total_base_qty']) }} {{ $r['base_unit'] }}</td>
+                            <td class="py-2 px-3 font-extrabold text-slate-900">
+                                {{ $r['wholesale_text'] }}
+                                @if($r['conversion_rate'] > 1)
+                                    <span class="font-normal text-slate-500 text-[10px]">(atau {{ $r['wholesale_ceil'] }} {{ $r['wholesale_unit'] }})</span>
+                                @endif
+                            </td>
+                            <td class="py-2 px-3 text-right font-bold text-slate-800">
+                                Rp {{ number_format($r['estimated_cost'], 0, ',', '.') }}
+                            </td>
+                            <td class="py-2 px-2 text-center no-print">
+                                <input type="checkbox" class="w-4 h-4 rounded text-indigo-600 border-slate-300">
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="py-4 text-center text-slate-400">Belum ada kebutuhan belanja barang untuk Parsel Mingguan.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+                <tfoot>
+                    <tr class="border-t-2 border-slate-900 font-bold bg-slate-50">
+                        <td colspan="7" class="py-2.5 px-3 text-right">TOTAL ESTIMASI MODAL PARSEL MINGGUAN:</td>
+                        <td class="py-2.5 px-3 text-right font-extrabold text-slate-900 text-sm">
+                            Rp {{ number_format($summary['parsel_mingguan_cost'] ?? 0, 0, ',', '.') }}
+                        </td>
+                        <td class="no-print"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- ================= BAGIAN 3: BELANJA BARANG PAKET ECERAN ================= -->
+        <div class="page-break">
+            <div class="flex items-center justify-between pb-2 mb-3 border-b-2 border-slate-900">
+                <h3 class="font-extrabold uppercase text-sm tracking-wider text-slate-900">
+                    BAGIAN 3: DAFTAR BELANJA BARANG: PAKET ECERAN / BEBAS
+                </h3>
+                <span class="text-xs font-bold text-slate-700">
+                    Subtotal Paket Eceran: Rp {{ number_format($summary['ecer_cost'] ?? 0, 0, ',', '.') }} ({{ number_format($summary['ecer_pieces'] ?? 0) }} Pcs / {{ count($ecerItems) }} Macam)
+                </span>
+            </div>
+
+            <table class="w-full text-left border-collapse text-xs mb-4">
+                <thead>
+                    <tr class="border-y-2 border-slate-900 bg-slate-100 font-bold text-slate-900">
+                        <th class="py-2 px-2 text-center w-8">No</th>
+                        <th class="py-2 px-3">Kode</th>
+                        <th class="py-2 px-3">Nama Barang Eceran</th>
+                        <th class="py-2 px-3">Kategori</th>
+                        <th class="py-2 px-3 text-center">Isi/Dus</th>
+                        <th class="py-2 px-3 text-center">Total Unit (Pcs)</th>
+                        <th class="py-2 px-3 font-extrabold">Rekomendasi Beli Grosir</th>
+                        <th class="py-2 px-3 text-right">Estimasi Modal</th>
+                        <th class="py-2 px-2 text-center no-print">Ceklis Beli</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    @forelse($ecerItems as $idx => $r)
+                        <tr>
+                            <td class="py-2 px-2 font-mono text-center text-slate-400">{{ $idx + 1 }}</td>
+                            <td class="py-2 px-3 font-mono font-bold text-slate-700">{{ $r['item_code'] }}</td>
+                            <td class="py-2 px-3 font-bold text-slate-900">{{ $r['item_name'] }}</td>
+                            <td class="py-2 px-3 text-slate-600">{{ $r['category'] }}</td>
+                            <td class="py-2 px-3 text-center font-mono">{{ (int)$r['conversion_rate'] }} {{ $r['base_unit'] }}</td>
+                            <td class="py-2 px-3 text-center font-bold">{{ number_format($r['total_base_qty']) }} {{ $r['base_unit'] }}</td>
+                            <td class="py-2 px-3 font-extrabold text-slate-900">
+                                {{ $r['wholesale_text'] }}
+                                @if($r['conversion_rate'] > 1)
+                                    <span class="font-normal text-slate-500 text-[10px]">(atau {{ $r['wholesale_ceil'] }} {{ $r['wholesale_unit'] }})</span>
+                                @endif
+                            </td>
+                            <td class="py-2 px-3 text-right font-bold text-slate-800">
+                                Rp {{ number_format($r['estimated_cost'], 0, ',', '.') }}
+                            </td>
+                            <td class="py-2 px-2 text-center no-print">
+                                <input type="checkbox" class="w-4 h-4 rounded text-blue-600 border-slate-300">
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="py-4 text-center text-slate-400">Belum ada kebutuhan belanja barang untuk Paket Eceran.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+                <tfoot>
+                    <tr class="border-t-2 border-slate-900 font-bold bg-slate-50">
+                        <td colspan="7" class="py-2.5 px-3 text-right">TOTAL ESTIMASI MODAL PAKET ECERAN:</td>
+                        <td class="py-2.5 px-3 text-right font-extrabold text-slate-900 text-sm">
+                            Rp {{ number_format($summary['ecer_cost'] ?? 0, 0, ',', '.') }}
+                        </td>
+                        <td class="no-print"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- ================= BAGIAN 4: BELANJA HADIAH BONUS TABUNGAN LEBARAN ================= -->
+        <div class="page-break">
+            <div class="flex items-center justify-between pb-2 mb-3 border-b-2 border-slate-900">
+                <h3 class="font-extrabold uppercase text-sm tracking-wider text-slate-900">
+                    BAGIAN 4: DAFTAR BELANJA HADIAH BONUS TABUNGAN LEBARAN
+                </h3>
+                <span class="text-xs font-bold text-slate-700">
+                    Subtotal Hadiah Tabungan: Rp {{ number_format($summary['tabungan_bonus_cost'] ?? 0, 0, ',', '.') }} ({{ number_format($summary['tabungan_bonus_pieces'] ?? 0) }} Pcs / {{ count($tabunganBonusItems) }} Macam)
+                </span>
+            </div>
+
+            <table class="w-full text-left border-collapse text-xs mb-4">
+                <thead>
+                    <tr class="border-y-2 border-slate-900 bg-amber-50 font-bold text-slate-900">
+                        <th class="py-2 px-2 text-center w-8">No</th>
+                        <th class="py-2 px-3">Kode</th>
+                        <th class="py-2 px-3">Nama Barang Hadiah Tabungan</th>
+                        <th class="py-2 px-3">Kategori</th>
+                        <th class="py-2 px-3 text-center">Isi/Dus</th>
+                        <th class="py-2 px-3 text-center">Jumlah Hadiah (Pcs)</th>
+                        <th class="py-2 px-3 font-extrabold">Rekomendasi Beli Grosir</th>
+                        <th class="py-2 px-3 text-right">Estimasi Modal</th>
+                        <th class="py-2 px-2 text-center no-print">Ceklis Beli</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    @forelse($tabunganBonusItems as $idx => $b)
+                        <tr>
+                            <td class="py-2 px-2 font-mono text-center text-slate-400">{{ $idx + 1 }}</td>
+                            <td class="py-2 px-3 font-mono font-bold text-slate-700">{{ $b['item_code'] }}</td>
+                            <td class="py-2 px-3 font-bold text-slate-900">{{ $b['item_name'] }}</td>
+                            <td class="py-2 px-3 text-slate-600">{{ $b['category'] }}</td>
+                            <td class="py-2 px-3 text-center font-mono">{{ (int)$b['conversion_rate'] }} {{ $b['base_unit'] }}</td>
+                            <td class="py-2 px-3 text-center font-bold text-amber-900">{{ number_format($b['total_base_qty']) }} {{ $b['base_unit'] }}</td>
+                            <td class="py-2 px-3 font-extrabold text-slate-900">
+                                {{ $b['wholesale_text'] }}
+                                @if($b['conversion_rate'] > 1)
+                                    <span class="font-normal text-slate-500 text-[10px]">(atau {{ $b['wholesale_ceil'] }} {{ $b['wholesale_unit'] }})</span>
+                                @endif
+                            </td>
+                            <td class="py-2 px-3 text-right font-bold text-slate-800">
+                                Rp {{ number_format($b['estimated_cost'], 0, ',', '.') }}
+                            </td>
+                            <td class="py-2 px-2 text-center no-print">
+                                <input type="checkbox" class="w-4 h-4 rounded text-amber-600 border-slate-300">
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="py-4 text-center text-slate-400">Belum ada kebutuhan belanja hadiah tabungan.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+                <tfoot>
+                    <tr class="border-t-2 border-slate-900 font-bold bg-amber-50">
+                        <td colspan="7" class="py-2.5 px-3 text-right">TOTAL ESTIMASI MODAL HADIAH TABUNGAN:</td>
+                        <td class="py-2.5 px-3 text-right font-extrabold text-slate-900 text-sm">
+                            Rp {{ number_format($summary['tabungan_bonus_cost'] ?? 0, 0, ',', '.') }}
+                        </td>
+                        <td class="no-print"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- ================= BAGIAN 5: TOTAL REKAPITULASI KULAKAN GROSIR SELURUH BARANG ================= -->
+        <div class="page-break">
+            <div class="flex items-center justify-between pb-2 mb-3 border-b-2 border-slate-900">
+                <h3 class="font-extrabold uppercase text-sm tracking-wider text-slate-900">
+                    BAGIAN 5: TOTAL REKAPITULASI KULAKAN GROSIR SELURUH BARANG (GABUNGAN SEMUA PAKET)
+                </h3>
+                <span class="text-xs font-bold text-slate-700">
+                    Grand Total Kulakan: Rp {{ number_format($summary['total_estimated_cost'], 0, ',', '.') }} ({{ number_format($summary['total_base_pieces']) }} Pcs / {{ count($allGoodsItems) }} Macam)
+                </span>
+            </div>
+
+            <table class="w-full text-left border-collapse text-xs mb-4">
+                <thead>
+                    <tr class="border-y-2 border-slate-900 bg-slate-100 font-bold text-slate-900">
+                        <th class="py-2 px-2 text-center w-8">No</th>
+                        <th class="py-2 px-3">Kode</th>
+                        <th class="py-2 px-3">Nama Barang (Gabungan Semua Paket)</th>
+                        <th class="py-2 px-3">Kategori</th>
+                        <th class="py-2 px-3 text-center">Isi/Dus</th>
+                        <th class="py-2 px-3 text-center">Total Unit (Pcs)</th>
+                        <th class="py-2 px-3 font-extrabold">Kebutuhan Grosir (Dus)</th>
+                        <th class="py-2 px-3 text-right">Estimasi Modal</th>
+                        <th class="py-2 px-2 text-center no-print">Ceklis Beli</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    @forelse($allGoodsItems as $idx => $r)
+                        <tr>
+                            <td class="py-2 px-2 font-mono text-center text-slate-400">{{ $idx + 1 }}</td>
+                            <td class="py-2 px-3 font-mono font-bold text-slate-700">{{ $r['item_code'] }}</td>
+                            <td class="py-2 px-3 font-bold text-slate-900">{{ $r['item_name'] }}</td>
+                            <td class="py-2 px-3 text-slate-600">{{ $r['category'] }}</td>
+                            <td class="py-2 px-3 text-center font-mono">{{ (int)$r['conversion_rate'] }} {{ $r['base_unit'] }}</td>
+                            <td class="py-2 px-3 text-center font-bold">{{ number_format($r['total_base_qty']) }} {{ $r['base_unit'] }}</td>
+                            <td class="py-2 px-3 font-extrabold text-slate-900">
+                                {{ $r['wholesale_text'] }}
+                                @if($r['conversion_rate'] > 1)
+                                    <span class="font-normal text-slate-500 text-[10px]">(atau {{ $r['wholesale_ceil'] }} {{ $r['wholesale_unit'] }})</span>
+                                @endif
+                            </td>
+                            <td class="py-2 px-3 text-right font-bold text-slate-800">
+                                Rp {{ number_format($r['estimated_cost'], 0, ',', '.') }}
+                            </td>
+                            <td class="py-2 px-2 text-center no-print">
+                                <input type="checkbox" class="w-4 h-4 rounded text-pink-600 border-slate-300">
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="py-4 text-center text-slate-400">Belum ada kebutuhan barang gabungan.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+                <tfoot>
+                    <tr class="border-t-2 border-slate-900 font-bold bg-slate-50">
+                        <td colspan="7" class="py-2.5 px-3 text-right">TOTAL ESTIMASI MODAL SELURUH BARANG:</td>
                         <td class="py-2.5 px-3 text-right font-extrabold text-slate-900 text-sm">
                             Rp {{ number_format($summary['total_estimated_cost'], 0, ',', '.') }}
                         </td>
@@ -337,52 +552,50 @@
             </table>
         </div>
 
-        <!-- ================= BAGIAN 3: BELANJA BARANG BONUS PAKET ================= -->
-        @if(!empty($bonusItems))
+        <!-- ================= BAGIAN 6: BELANJA KEMASAN / WADAH PARSEL ================= -->
+        @if(!empty($packagingItems))
             <div class="page-break">
                 <div class="flex items-center justify-between pb-2 mb-3 border-b-2 border-slate-900">
                     <h3 class="font-extrabold uppercase text-sm tracking-wider text-slate-900">
-                        BAGIAN 3: DAFTAR BELANJA BONUS PAKET (HADIAH GRATIS TABUNGAN & PARSEL)
+                        BAGIAN 6: DAFTAR BELANJA KEMASAN PARSEL (KOPER, KERANJANG, BOX HAMPERS)
                     </h3>
                     <span class="text-xs font-bold text-slate-700">
-                        Subtotal Bonus: Rp {{ number_format($summary['total_bonus_cost'] ?? 0, 0, ',', '.') }}
+                        Subtotal Kemasan: Rp {{ number_format($summary['total_packaging_cost'] ?? 0, 0, ',', '.') }}
                     </span>
                 </div>
 
                 <table class="w-full text-left border-collapse text-xs mb-4">
                     <thead>
-                        <tr class="border-y-2 border-slate-900 bg-amber-50 font-bold text-slate-900">
+                        <tr class="border-y-2 border-slate-900 bg-purple-50 font-bold text-slate-900">
                             <th class="py-2 px-2 text-center">No</th>
-                            <th class="py-2 px-3">Nama Barang Bonus</th>
-                            <th class="py-2 px-3">Kategori</th>
-                            <th class="py-2 px-3 text-center">Isi/Dus</th>
-                            <th class="py-2 px-3 text-center">Jumlah Bonus (Pcs)</th>
-                            <th class="py-2 px-3 font-extrabold">Kebutuhan Grosir</th>
-                            <th class="py-2 px-3 text-right">Estimasi Modal</th>
+                            <th class="py-2 px-3">Kode Kemasan</th>
+                            <th class="py-2 px-3">Nama Wadah / Kemasan</th>
+                            <th class="py-2 px-3 text-right">Harga Modal Kulak</th>
+                            <th class="py-2 px-3 text-center font-bold">Total Unit Dibeli</th>
+                            <th class="py-2 px-3 text-right font-bold">Total Biaya Kulak</th>
                             <th class="py-2 px-2 text-center no-print">Ceklis</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
-                        @foreach($bonusItems as $idx => $b)
+                        @foreach($packagingItems as $idx => $p)
                             <tr>
                                 <td class="py-2 px-2 font-mono text-center text-slate-400">{{ $idx + 1 }}</td>
-                                <td class="py-2 px-3 font-bold text-slate-900">{{ $b['item_name'] }}</td>
-                                <td class="py-2 px-3 text-slate-600">{{ $b['category'] }}</td>
-                                <td class="py-2 px-3 text-center font-mono">{{ (int)$b['conversion_rate'] }} {{ $b['base_unit'] }}</td>
-                                <td class="py-2 px-3 text-center font-bold text-amber-900">{{ number_format($b['total_base_qty']) }} {{ $b['base_unit'] }}</td>
-                                <td class="py-2 px-3 font-extrabold text-slate-900">{{ $b['wholesale_text'] }}</td>
-                                <td class="py-2 px-3 text-right font-bold text-slate-800">Rp {{ number_format($b['estimated_cost'], 0, ',', '.') }}</td>
+                                <td class="py-2 px-3 font-mono font-bold text-purple-900">{{ $p['code'] }}</td>
+                                <td class="py-2 px-3 font-bold text-slate-900">{{ $p['name'] }}</td>
+                                <td class="py-2 px-3 text-right font-mono">Rp {{ number_format($p['cost_price'], 0, ',', '.') }}</td>
+                                <td class="py-2 px-3 text-center font-extrabold text-purple-900">{{ $p['total_qty'] }} Unit</td>
+                                <td class="py-2 px-3 text-right font-extrabold text-slate-900">Rp {{ number_format($p['total_cost'], 0, ',', '.') }}</td>
                                 <td class="py-2 px-2 text-center no-print">
-                                    <input type="checkbox" class="w-4 h-4 rounded text-amber-600 border-slate-300">
+                                    <input type="checkbox" class="w-4 h-4 rounded text-purple-600 border-slate-300">
                                 </td>
                             </tr>
                         @endforeach
                     </tbody>
                     <tfoot>
-                        <tr class="border-t-2 border-slate-900 font-bold bg-amber-50">
-                            <td colspan="6" class="py-2.5 px-3 text-right">TOTAL ESTIMASI MODAL BONUS:</td>
+                        <tr class="border-t-2 border-slate-900 font-bold bg-purple-50">
+                            <td colspan="5" class="py-2.5 px-3 text-right">TOTAL ESTIMASI MODAL KEMASAN:</td>
                             <td class="py-2.5 px-3 text-right font-extrabold text-slate-900 text-sm">
-                                Rp {{ number_format($summary['total_bonus_cost'] ?? 0, 0, ',', '.') }}
+                                Rp {{ number_format($summary['total_packaging_cost'] ?? 0, 0, ',', '.') }}
                             </td>
                             <td class="no-print"></td>
                         </tr>
@@ -391,17 +604,75 @@
             </div>
         @endif
 
-        <!-- ================= BAGIAN 4: BELANJA KEMASAN / WADAH PARSEL ================= -->
-        @if(!empty($packagingItems))
+        <!-- ================= BAGIAN 7: PERSIAPAN UANG TUNAI ================= -->
+        @if(!empty($cashItems))
             <div class="page-break">
                 <div class="flex items-center justify-between pb-2 mb-3 border-b-2 border-slate-900">
                     <h3 class="font-extrabold uppercase text-sm tracking-wider text-slate-900">
-                        BAGIAN 4: DAFTAR BELANJA KEMASAN PARSEL (KOPER, KERANJANG, BOX HAMPERS)
+                        BAGIAN 7: DAFTAR PERSIAPAN UANG TUNAI KONSUMEN & AGEN
                     </h3>
                     <span class="text-xs font-bold text-slate-700">
-                        Subtotal Kemasan: Rp {{ number_format($summary['total_packaging_cost'] ?? 0, 0, ',', '.') }}
+                        Subtotal Uang: Rp {{ number_format($summary['total_cash_amount'], 0, ',', '.') }}
                     </span>
                 </div>
+
+                <table class="w-full text-left border-collapse text-xs mb-4">
+                    <thead>
+                        <tr class="border-y-2 border-slate-900 bg-slate-100 font-bold text-slate-900">
+                            <th class="py-2 px-2 text-center">No</th>
+                            <th class="py-2 px-3">Nama Konsumen & Kode</th>
+                            <th class="py-2 px-3">Agen Penanggung Jawab</th>
+                            <th class="py-2 px-3">Paket & Keterangan Uang</th>
+                            <th class="py-2 px-3 text-right">Uang Tunai (Rp)</th>
+                            <th class="py-2 px-2 text-center no-print">Ceklis Amplop</th>
+                            <th class="py-2 px-3 text-center">Paraf Penerima</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        @forelse($cashItems as $idx => $c)
+                            <tr>
+                                <td class="py-2 px-2 font-mono text-center text-slate-500">{{ $idx + 1 }}</td>
+                                <td class="py-2 px-3">
+                                    <div class="font-bold text-slate-900">{{ $c['customer_name'] }}</div>
+                                    <div class="text-[10px] text-slate-500">Kode: {{ $c['customer_code'] }} • Telp: {{ $c['customer_phone'] }}</div>
+                                </td>
+                                <td class="py-2 px-3 font-semibold text-slate-800">
+                                    {{ $c['agent_name'] }}
+                                </td>
+                                <td class="py-2 px-3">
+                                    <div class="font-bold text-slate-900">{{ $c['cash_description'] }}</div>
+                                    <div class="text-[10px] text-slate-500">{{ $c['package_name'] }} ({{ $c['period_text'] }})</div>
+                                </td>
+                                <td class="py-2 px-3 text-right font-extrabold text-slate-900">
+                                    Rp {{ number_format($c['cash_amount'], 0, ',', '.') }}
+                                </td>
+                                <td class="py-2 px-2 text-center no-print">
+                                    <input type="checkbox" class="w-4 h-4 rounded border-slate-300">
+                                </td>
+                                <td class="py-2 px-3 text-center text-slate-400 font-mono text-[10px]">
+                                    ( ..................... )
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="py-4 text-center text-slate-400">
+                                    Tidak ada penyiapan uang tunai untuk pesanan aktif saat ini.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t-2 border-slate-900 font-bold bg-slate-50">
+                            <td colspan="4" class="py-2.5 px-3 text-right">TOTAL UANG TUNAI YANG HARUS DISIAPKAN:</td>
+                            <td class="py-2.5 px-3 text-right font-extrabold text-slate-900 text-sm">
+                                Rp {{ number_format($summary['total_cash_amount'], 0, ',', '.') }}
+                            </td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        @endif
 
                 <table class="w-full text-left border-collapse text-xs mb-4">
                     <thead>
