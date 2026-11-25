@@ -499,12 +499,13 @@
                         <thead>
                             <tr class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                                 <th class="py-1.5 px-2.5 w-8 text-center">No</th>
-                                <th class="py-1.5 px-2.5 w-40">Nama Konsumen</th>
-                                <th class="py-1.5 px-2.5 w-32">No. HP</th>
+                                <th class="py-1.5 px-2.5 w-36">Nama Konsumen</th>
+                                <th class="py-1.5 px-2.5 w-28">No. HP</th>
                                 <th class="py-1.5 px-2.5">Alamat Konsumen</th>
-                                <th class="py-1.5 px-2.5 min-w-[180px]">Paket yang Dipilih</th>
+                                <th class="py-1.5 px-2.5 min-w-[170px]">Paket yang Dipilih</th>
                                 <th class="py-1.5 px-2.5 text-right w-24">Target</th>
                                 <th class="py-1.5 px-2.5 text-right w-24">Cicilan</th>
+                                <th class="py-1.5 px-2.5 text-right w-24">Uang Masuk</th>
                                 <th class="py-1.5 px-2.5 text-center w-24">Titik Aman</th>
                                 <th class="py-1.5 px-2.5 text-center w-24">Progres &amp; Hari Lunas</th>
                             </tr>
@@ -573,7 +574,7 @@
                                             <div class="text-slate-300">-</div>
                                         @endforelse
                                     </td>
-                                    <td class="py-1.5 px-2.5 text-right text-emerald-800 font-semibold font-mono">
+                                    <td class="py-1.5 px-2.5 text-right text-slate-700 font-semibold font-mono">
                                         @forelse($cust->customerPackages as $cp)
                                             <div>
                                                 @if($cp->package)
@@ -582,6 +583,13 @@
                                                     -
                                                 @endif
                                             </div>
+                                        @empty
+                                            <div class="text-slate-300">-</div>
+                                        @endforelse
+                                    </td>
+                                    <td class="py-1.5 px-2.5 text-right font-bold text-emerald-800 font-mono">
+                                        @forelse($cust->customerPackages as $cp)
+                                            <div>{{ $cp->formatted_paid }}</div>
                                         @empty
                                             <div class="text-slate-300">-</div>
                                         @endforelse
@@ -616,7 +624,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" class="py-3 text-center text-slate-400 italic">
+                                    <td colspan="10" class="py-3 text-center text-slate-400 italic">
                                         Belum ada konsumen binaan terdaftar pada agen ini.
                                     </td>
                                 </tr>
@@ -632,6 +640,9 @@
                                 </td>
                                 <td class="py-2 px-2.5 text-right font-mono font-extrabold text-slate-900">
                                     Rp {{ number_format($agent->total_target_amount, 0, ',', '.') }}
+                                </td>
+                                <td class="py-2 px-2.5 text-right font-mono text-slate-400">
+                                    -
                                 </td>
                                 <td class="py-2 px-2.5 text-right font-mono font-bold text-emerald-800">
                                     Rp {{ number_format($agent->total_paid_amount, 0, ',', '.') }}
