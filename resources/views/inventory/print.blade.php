@@ -619,38 +619,38 @@
                 <table class="w-full text-left border-collapse text-xs mb-4">
                     <thead>
                         <tr class="border-y-2 border-slate-900 bg-slate-100 font-bold text-slate-900">
-                            <th class="py-2 px-2 text-center">No</th>
+                            <th class="py-2 px-2 text-center w-8">No</th>
                             <th class="py-2 px-3">Nama Konsumen & Kode</th>
                             <th class="py-2 px-3">Agen Penanggung Jawab</th>
                             <th class="py-2 px-3">Paket & Keterangan Uang</th>
-                            <th class="py-2 px-3 text-right">Uang Tunai (Rp)</th>
-                            <th class="py-2 px-2 text-center no-print">Ceklis Amplop</th>
-                            <th class="py-2 px-3 text-center">Paraf Penerima</th>
+                            <th class="py-2 px-3 text-right whitespace-nowrap">Uang Tunai (Rp)</th>
+                            <th class="py-2 px-2 text-center no-print w-20">Ceklis Amplop</th>
+                            <th class="py-2 px-3 text-center w-36 whitespace-nowrap">Paraf Penerima</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
                         @forelse($cashItems as $idx => $c)
                             <tr>
-                                <td class="py-2 px-2 font-mono text-center text-slate-500">{{ $idx + 1 }}</td>
-                                <td class="py-2 px-3">
+                                <td class="py-2.5 px-2 font-mono text-center text-slate-500 align-middle">{{ $idx + 1 }}</td>
+                                <td class="py-2.5 px-3 align-middle">
                                     <div class="font-bold text-slate-900">{{ $c['customer_name'] }}</div>
                                     <div class="text-[10px] text-slate-500">Kode: {{ $c['customer_code'] }} • Telp: {{ $c['customer_phone'] }}</div>
                                 </td>
-                                <td class="py-2 px-3 font-semibold text-slate-800">
+                                <td class="py-2.5 px-3 font-semibold text-slate-800 align-middle">
                                     {{ $c['agent_name'] }}
                                 </td>
-                                <td class="py-2 px-3">
+                                <td class="py-2.5 px-3 align-middle">
                                     <div class="font-bold text-slate-900">{{ $c['cash_description'] }}</div>
                                     <div class="text-[10px] text-slate-500">{{ $c['package_name'] }} ({{ $c['period_text'] }})</div>
                                 </td>
-                                <td class="py-2 px-3 text-right font-extrabold text-slate-900">
+                                <td class="py-2.5 px-3 text-right font-extrabold text-slate-900 whitespace-nowrap align-middle">
                                     Rp {{ number_format($c['cash_amount'], 0, ',', '.') }}
                                 </td>
-                                <td class="py-2 px-2 text-center no-print">
+                                <td class="py-2.5 px-2 text-center no-print align-middle">
                                     <input type="checkbox" class="w-4 h-4 rounded border-slate-300">
                                 </td>
-                                <td class="py-2 px-3 text-center text-slate-400 font-mono text-[10px]">
-                                    ( ..................... )
+                                <td class="py-2.5 px-3 text-center align-middle whitespace-nowrap">
+                                    <span class="inline-block font-mono text-xs text-slate-400 select-none whitespace-nowrap tracking-wider">(&nbsp;................&nbsp;)</span>
                                 </td>
                             </tr>
                         @empty
@@ -691,11 +691,11 @@
         <div class="grid grid-cols-3 gap-6 text-center text-xs pt-6 border-t-2 border-slate-900">
             <div>
                 <div class="text-slate-500 mb-14">Petugas Logistik / Pembelian,</div>
-                <div class="font-bold underline text-slate-900">( ......................................... )</div>
+                <div class="font-bold underline text-slate-900 whitespace-nowrap">( ......................................... )</div>
             </div>
             <div>
                 <div class="text-slate-500 mb-14">Koordinator Agen Lapangan,</div>
-                <div class="font-bold underline text-slate-900">( ......................................... )</div>
+                <div class="font-bold underline text-slate-900 whitespace-nowrap">( ......................................... )</div>
             </div>
             <div>
                 <div class="text-slate-500 mb-14">Mengetahui & Menyetujui (Owner),</div>
