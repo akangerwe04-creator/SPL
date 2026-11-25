@@ -674,46 +674,6 @@
             </div>
         @endif
 
-                <table class="w-full text-left border-collapse text-xs mb-4">
-                    <thead>
-                        <tr class="border-y-2 border-slate-900 bg-purple-50 font-bold text-slate-900">
-                            <th class="py-2 px-2 text-center">No</th>
-                            <th class="py-2 px-3">Kode Kemasan</th>
-                            <th class="py-2 px-3">Nama Wadah / Kemasan</th>
-                            <th class="py-2 px-3 text-right">Harga Modal Kulak</th>
-                            <th class="py-2 px-3 text-center font-bold">Total Unit Dibeli</th>
-                            <th class="py-2 px-3 text-right font-bold">Total Biaya Kulak</th>
-                            <th class="py-2 px-2 text-center no-print">Ceklis</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-200">
-                        @foreach($packagingItems as $idx => $p)
-                            <tr>
-                                <td class="py-2 px-2 font-mono text-center text-slate-400">{{ $idx + 1 }}</td>
-                                <td class="py-2 px-3 font-mono font-bold text-purple-900">{{ $p['code'] }}</td>
-                                <td class="py-2 px-3 font-bold text-slate-900">{{ $p['name'] }}</td>
-                                <td class="py-2 px-3 text-right font-mono">Rp {{ number_format($p['cost_price'], 0, ',', '.') }}</td>
-                                <td class="py-2 px-3 text-center font-extrabold text-purple-900">{{ $p['total_qty'] }} Unit</td>
-                                <td class="py-2 px-3 text-right font-extrabold text-slate-900">Rp {{ number_format($p['total_cost'], 0, ',', '.') }}</td>
-                                <td class="py-2 px-2 text-center no-print">
-                                    <input type="checkbox" class="w-4 h-4 rounded text-purple-600 border-slate-300">
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                    <tfoot>
-                        <tr class="border-t-2 border-slate-900 font-bold bg-purple-50">
-                            <td colspan="5" class="py-2.5 px-3 text-right">TOTAL ESTIMASI MODAL KEMASAN:</td>
-                            <td class="py-2.5 px-3 text-right font-extrabold text-slate-900 text-sm">
-                                Rp {{ number_format($summary['total_packaging_cost'] ?? 0, 0, ',', '.') }}
-                            </td>
-                            <td class="no-print"></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        @endif
-
         <!-- CATATAN ATURAN DAFTAR BELANJA SPL (TITIK AMAN & KETETAPAN BARANG OWNER) -->
         <div class="p-3 bg-slate-50 border border-slate-300 rounded-xl text-[11px] text-slate-700 space-y-1">
             <div class="font-bold uppercase tracking-wider text-slate-900 flex items-center">
